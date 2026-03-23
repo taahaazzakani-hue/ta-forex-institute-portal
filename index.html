@@ -284,14 +284,17 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-      {/* Deep navy radial glow */}
-      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 90% 55% at 50% -5%, rgba(13,23,48,.9) 0%, transparent 65%)`, pointerEvents: "none" }} />
+      {/* Background video */}
+      <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.12, pointerEvents: "none", zIndex: 0 }}
+        src="https://assets.mixkit.co/videos/preview/mixkit-trading-financial-chart-close-up-4486-large.mp4" />
+      {/* Dark overlay */}
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(7,9,15,.92) 0%, rgba(13,23,48,.88) 100%)", pointerEvents: "none", zIndex: 1 }} />
       {/* Gold top line */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2 }}><Rule /></div>
 
-      <div className="fu" style={{ marginBottom: 48 }}><Logo w={190} /></div>
+      <div className="fu" style={{ marginBottom: 48, position: "relative", zIndex: 2 }}><Logo w={190} /></div>
 
-      <Card className="fu" style={{ width: "100%", maxWidth: 420, padding: 32, borderRadius: 18, animationDelay: ".1s" }}>
+      <Card className="fu" style={{ width: "100%", maxWidth: 420, padding: 32, borderRadius: 18, animationDelay: ".1s", position: "relative", zIndex: 2 }}>
         {/* Tab switcher */}
         <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 4, marginBottom: 28, gap: 3 }}>
           {["login", "register"].map(t => (
@@ -329,14 +332,22 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
         </button>
       </Card>
 
-      <p style={{ marginTop: 28, fontSize: 11, color: C.faint, letterSpacing: ".05em" }}>© {new Date().getFullYear()} TA Forex Institute Pty Ltd</p>
+      <p style={{ marginTop: 28, fontSize: 11, color: C.faint, letterSpacing: ".05em", position: "relative", zIndex: 2 }}>© {new Date().getFullYear()} TA Forex Institute Pty Ltd</p>
     </div>
   );
 }
 
 function AdminAuthScreen({ onBack, onEnter }) {
-  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
-  const go = () => pass === ADMIN_PW ? onEnter() : setErr("Incorrect password.");
+  const [pass, setPass] = useState(() => { try { return localStorage.getItem("tafx_admin_saved") || ""; } catch { return ""; } });
+  const [remember, setRemember] = useState(() => { try { return !!localStorage.getItem("tafx_admin_saved"); } catch { return false; } });
+  const [err, setErr] = useState("");
+  const go = () => {
+    if (pass === ADMIN_PW) {
+      if (remember) { try { localStorage.setItem("tafx_admin_saved", pass); } catch {} }
+      else { try { localStorage.removeItem("tafx_admin_saved"); } catch {} }
+      onEnter();
+    } else { setErr("Incorrect password."); }
+  };
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <Card style={{ width: "100%", maxWidth: 380, padding: 36, borderRadius: 18 }}>
@@ -345,6 +356,12 @@ function AdminAuthScreen({ onBack, onEnter }) {
         <p style={{ color: C.grey, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Enter your admin password to manage the portal.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div><label>Admin Password</label><input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && go()} /></div>
+          <div onClick={() => setRemember(!remember)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+            <div style={{ width: 18, height: 18, borderRadius: 5, border: "2px solid " + (remember ? C.gold : C.faint), background: remember ? C.gold : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}>
+              {remember && <span style={{ color: "#08090E", fontSize: 11, fontWeight: 900 }}>✓</span>}
+            </div>
+            <span style={{ fontSize: 13, color: C.grey }}>Remember me</span>
+          </div>
           {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
           <Btn onClick={go} full sz="lg">Continue →</Btn>
         </div>
@@ -566,7 +583,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
 }
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -584,7 +601,10 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
   const [showJournal, setShowJournal] = React.useState(false);
   const userLevels = user.levels || [];
-  const accessibleCourses = courses.filter(c => !c.level || userLevels.includes(c.level) || userLevels.includes("Admin"));
+  const accessibleCourses = courses.filter(c => {
+    if (!c.level) return true; // no level restriction = visible to all approved members
+    return userLevels.includes(c.level); // level set = must have that exact level
+  });
   const cSecs    = course ? sections.filter(s => s.courseId === course.id) : [];
   const cVideos  = course ? videos.filter(v => v.courseId === course.id) : [];
 
@@ -885,6 +905,9 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
               </div>
             )}
 
+            {/* Q&A Comments */}
+            <VideoComments videoId={video.id} videoTitle={video.title} user={user} comments={comments} addComment={addComment} deleteComment={deleteComment} />
+
             {/* Lesson list */}
             {secVids.length > 1 && (
               <div style={{ margin: "28px 20px 0" }}>
@@ -912,6 +935,161 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   );
 }
 
+
+
+/* ── VIDEO COMMENTS / Q&A ───────────────────────────────────────────────── */
+function VideoComments({ videoId, videoTitle, user, comments, addComment, deleteComment }) {
+  const [text, setText] = React.useState("");
+  const [replyTo, setReplyTo] = React.useState(null); // { id, userName }
+  const [replyText, setReplyText] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  const videoComments = comments.filter(c => c.videoId === videoId && !c.parentId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+
+  const getReplies = (parentId) => comments.filter(c => c.videoId === videoId && c.parentId === parentId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    await addComment({ id: uid(), videoId, userId: user.id, userName: user.name, text: text.trim(), parentId: null, isAdmin: false, createdAt: Date.now() });
+    setText(""); setSaving(false);
+  };
+
+  const submitReply = async () => {
+    if (!replyText.trim() || !replyTo) return;
+    setSaving(true);
+    await addComment({ id: uid(), videoId, userId: user.id, userName: user.name, text: replyText.trim(), parentId: replyTo.id, isAdmin: false, createdAt: Date.now() });
+    setReplyText(""); setReplyTo(null); setSaving(false);
+  };
+
+  const timeAgo = (ts) => {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s/60) + "m ago";
+    if (s < 86400) return Math.floor(s/3600) + "h ago";
+    return Math.floor(s/86400) + "d ago";
+  };
+
+  const Avatar = ({ name, isAdmin, size = 36 }) => (
+    <div style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * .38,
+      background: isAdmin ? `linear-gradient(135deg,${C.goldLt},${C.gold})` : `linear-gradient(135deg,#1a3a6e,#0D1B3E)`,
+      color: isAdmin ? "#08090E" : C.white, border: isAdmin ? "none" : "1px solid " + C.border }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+
+  return (
+    <div style={{ margin: "36px 20px 0", borderTop: "1px solid " + C.border, paddingTop: 28 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+        <div style={{ fontSize: 18 }}>💬</div>
+        <div>
+          <h3 style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: C.white }}>Questions & Discussion</h3>
+          <p style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{videoComments.length} question{videoComments.length !== 1 ? "s" : ""} · Ask anything about this lesson</p>
+        </div>
+      </div>
+
+      {/* Post a question */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
+        <Avatar name={user.name} isAdmin={false} />
+        <div style={{ flex: 1 }}>
+          <textarea value={text} onChange={e => setText(e.target.value)}
+            placeholder={"Ask a question or share your thoughts about this lesson…"}
+            style={{ width: "100%", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, fontFamily: D, fontSize: 13, lineHeight: 1.6, resize: "vertical", minHeight: 72, outline: "none" }}
+            onFocus={e => e.target.style.borderColor = C.gold}
+            onBlur={e => e.target.style.borderColor = C.border}
+          />
+          {text.trim() && (
+            <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setText("")} style={{ background: "transparent", color: C.grey, border: "1px solid " + C.border, borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+              <Btn onClick={submit} disabled={saving} sz="sm">{saving ? "Posting..." : "Post Question"}</Btn>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Comments list */}
+      {videoComments.length === 0 && (
+        <div style={{ textAlign: "center", padding: "32px 0", color: C.faint, fontSize: 13 }}>
+          No questions yet. Be the first to ask!
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {videoComments.map(c => {
+          const replies = getReplies(c.id);
+          const isOwn = c.userId === user.id;
+          return (
+            <div key={c.id}>
+              {/* Main comment */}
+              <div style={{ display: "flex", gap: 12 }}>
+                <Avatar name={c.userName} isAdmin={c.isAdmin} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: c.isAdmin ? C.gold : C.white }}>{c.userName}</span>
+                    {c.isAdmin && <span style={{ fontSize: 10, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "2px 8px", borderRadius: 20, fontWeight: 700, letterSpacing: ".06em" }}>COACH</span>}
+                    <span style={{ fontSize: 11, color: C.faint }}>{timeAgo(c.createdAt)}</span>
+                  </div>
+                  <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{c.text}</p>
+                  <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                    <button onClick={() => { setReplyTo(c); setReplyText(""); }}
+                      style={{ background: "transparent", color: C.grey, border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, letterSpacing: ".03em" }}>
+                      ↩ Reply
+                    </button>
+                    {isOwn && <button onClick={() => deleteComment(c.id)}
+                      style={{ background: "transparent", color: C.faint, border: "none", fontSize: 12, cursor: "pointer", padding: 0 }}>Delete</button>}
+                  </div>
+
+                  {/* Reply box */}
+                  {replyTo?.id === c.id && (
+                    <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+                      <Avatar name={user.name} isAdmin={false} size={28} />
+                      <div style={{ flex: 1 }}>
+                        <textarea value={replyText} onChange={e => setReplyText(e.target.value)}
+                          placeholder={"Reply to " + c.userName + "…"}
+                          autoFocus
+                          style={{ width: "100%", background: C.navy, border: "1.5px solid " + C.gold, borderRadius: 9, padding: "10px 12px", color: C.white, fontFamily: D, fontSize: 13, lineHeight: 1.5, resize: "vertical", minHeight: 56, outline: "none" }}
+                        />
+                        <div style={{ display: "flex", gap: 8, marginTop: 6, justifyContent: "flex-end" }}>
+                          <button onClick={() => { setReplyTo(null); setReplyText(""); }} style={{ background: "transparent", color: C.grey, border: "1px solid " + C.border, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                          <Btn onClick={submitReply} disabled={saving || !replyText.trim()} sz="sm">{saving ? "..." : "Reply"}</Btn>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Replies */}
+                  {replies.length > 0 && (
+                    <div style={{ marginTop: 14, paddingLeft: 16, borderLeft: "2px solid " + C.border, display: "flex", flexDirection: "column", gap: 14 }}>
+                      {replies.map(r => (
+                        <div key={r.id} style={{ display: "flex", gap: 10 }}>
+                          <Avatar name={r.userName} isAdmin={r.isAdmin} size={28} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: r.isAdmin ? C.gold : C.white }}>{r.userName}</span>
+                              {r.isAdmin && <span style={{ fontSize: 10, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>COACH</span>}
+                              <span style={{ fontSize: 11, color: C.faint }}>{timeAgo(r.createdAt)}</span>
+                            </div>
+                            <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.text}</p>
+                            {(r.userId === user.id) && (
+                              <button onClick={() => deleteComment(r.id)} style={{ background: "transparent", color: C.faint, border: "none", fontSize: 11, cursor: "pointer", padding: 0, marginTop: 4 }}>Delete</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /* ── STUDENT JOURNAL ─────────────────────────────────────────────────────── */
 function StudentJournal({ user, journals, addJournal, deleteJournal }) {
@@ -1449,6 +1627,7 @@ function App() {
   const [sections, setSections] = React.useState([]);
   const [videos,   setVideos]   = React.useState([]);
   const [journals, setJournals] = React.useState([]);
+  const [comments, setComments] = React.useState([]);
   const [screen,   setScreen]   = React.useState("login");
   const [me,       setMe]       = React.useState(null);
   const [loading,  setLoading]  = React.useState(true);
@@ -1483,6 +1662,8 @@ function App() {
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
+    const comData = await sb("comments?order=created_at.asc");
+    if (comData) setComments(comData.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, createdAt:x.created_at })));
     } catch(e) { console.error("loadAll error:", e); }
     if (showSpinner) setLoading(false);
   };
@@ -1547,6 +1728,17 @@ function App() {
     await sb("videos?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
     setVideos(prev => prev.filter(v => v.id !== id));
   };
+  const addCommentDB = async (c) => {
+    await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, created_at:c.createdAt } });
+    setComments(prev => [...prev, c]);
+  };
+  const deleteCommentDB = async (id) => {
+    await sb("comments?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    // Also delete replies
+    await sb("comments?parent_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setComments(prev => prev.filter(c => c.id !== id && c.parentId !== id));
+  };
+
   const addJournalDB = async (j) => {
     await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk, gain:j.gain, result:j.result, pnl:j.pnl, analysis:j.analysis, lesson:j.lesson, image:j.image, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
@@ -1603,7 +1795,7 @@ function App() {
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
       {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
