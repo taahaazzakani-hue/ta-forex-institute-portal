@@ -157,40 +157,42 @@ function detect(url) {
 const PC = { youtube: "#FF0000", vimeo: "#1AB7EA", zoom: "#2D8CFF", drive: C.gold };
 
 function CastButton({ url, title }) {
-  const [status, setStatus] = React.useState("idle"); // idle | casting | error | unsupported
+  const [status, setStatus] = React.useState("idle");
+  const [tip, setTip] = React.useState(false);
 
   const castToTV = async () => {
-    // Try Picture-in-Picture for native videos
-    const videoEls = document.querySelectorAll("video");
-    if (videoEls.length > 0) {
-      try {
-        await videoEls[0].requestPictureInPicture();
-        setStatus("casting");
-        videoEls[0].addEventListener("leavepictureinpicture", () => setStatus("idle"), { once: true });
-        return;
-      } catch(e) {}
+    // Try Picture-in-Picture on any video element on the page
+    const videoEls = Array.from(document.querySelectorAll("video"));
+    for (const v of videoEls) {
+      if (document.pictureInPictureEnabled && !v.disablePictureInPicture) {
+        try {
+          await v.requestPictureInPicture();
+          setStatus("pip");
+          v.addEventListener("leavepictureinpicture", () => setStatus("idle"), { once: true });
+          return;
+        } catch(e) {}
+      }
+      // Try Remote Playback (Chromecast / AirPlay native)
+      if (v.remote) {
+        try {
+          await v.remote.prompt();
+          setStatus("casting");
+          return;
+        } catch(e) {}
+      }
     }
-
-    // Try Remote Playback API (Chromecast / AirPlay)
-    if (videoEls.length > 0 && videoEls[0].remote) {
-      try {
-        await videoEls[0].remote.prompt();
-        setStatus("casting");
-        return;
-      } catch(e) {}
-    }
-
-    // Fallback — open in new tab so user can cast from there
-    window.open(url, "_blank");
-    setStatus("idle");
+    // Show instructions tip instead of opening a tab
+    setTip(true);
+    setTimeout(() => setTip(false), 5000);
   };
 
   return (
+<div style={{ position: "relative", display: "inline-block" }}>
     <button onClick={castToTV} title="Cast to TV" style={{
       display: "inline-flex", alignItems: "center", gap: 7,
-      background: status === "casting" ? C.goldDim : "rgba(255,255,255,.06)",
-      color: status === "casting" ? C.gold : C.grey,
-      border: "1px solid " + (status === "casting" ? C.gold + "50" : "rgba(255,255,255,.1)"),
+      background: (status !== "idle") ? C.goldDim : "rgba(255,255,255,.06)",
+      color: (status !== "idle") ? C.gold : C.grey,
+      border: "1px solid " + ((status !== "idle") ? C.gold + "50" : "rgba(255,255,255,.1)"),
       borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600,
       cursor: "pointer", transition: "all .2s", letterSpacing: ".03em"
     }}>
@@ -200,8 +202,19 @@ function CastButton({ url, title }) {
         <path d="M2 16a5 5 0 0 1 4 4"/>
         <line x1="2" y1="20" x2="2.01" y2="20"/>
       </svg>
-      {status === "casting" ? "Casting..." : "Cast to TV"}
+      {status === "pip" ? "▶ Pop Out" : status === "casting" ? "Casting..." : "🖥 Cast to TV"}
     </button>
+    {tip && (
+      <div style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "12px 14px", width: 260, zIndex: 100, fontSize: 12, color: C.dim, lineHeight: 1.7 }}>
+        <strong style={{ color: C.white, display: "block", marginBottom: 4 }}>How to cast to your TV:</strong>
+        📱 <strong>iPhone/iPad:</strong> Tap the AirPlay icon in your browser<br/>
+        🤖 <strong>Android:</strong> Tap ⋮ menu → Cast<br/>
+        💻 <strong>Chrome:</strong> Click ⋮ → Cast…<br/>
+        📺 <strong>Samsung TV:</strong> Use Smart View / Screen Mirror
+        <div style={{ position: "absolute", bottom: -6, right: 20, width: 10, height: 10, background: C.card, border: "1px solid " + C.border, transform: "rotate(45deg)", borderTop: "none", borderLeft: "none" }} />
+      </div>
+    )}
+  </div>
   );
 }
 
@@ -254,8 +267,20 @@ function VideoPlayer({ url, title }) {
 /* ── LOGIN ───────────────────────────────────────────────────────────────── */
 function LoginScreen({ onLogin, onRegister, onAdmin }) {
   const [tab, setTab] = useState("login");
-  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [msg, setMsg] = useState("");
-  const submit = () => tab === "login" ? onLogin(email, pass, setMsg) : onRegister(name, email, pass, setMsg);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem("tafx_saved_email") || ""; } catch { return ""; } });
+  const [pass, setPass] = useState("");
+  const [remember, setRemember] = useState(() => { try { return !!localStorage.getItem("tafx_saved_email"); } catch { return false; } });
+  const [msg, setMsg] = useState("");
+  const submit = () => {
+    if (tab === "login") {
+      if (remember) { try { localStorage.setItem("tafx_saved_email", email); } catch {} }
+      else { try { localStorage.removeItem("tafx_saved_email"); } catch {} }
+      onLogin(email, pass, setMsg);
+    } else {
+      onRegister(name, email, pass, setMsg);
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
@@ -283,6 +308,14 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
           {tab === "register" && <div><label>Full Name</label><input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>}
           <div><label>Email Address</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>
           <div><label>Password</label><input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && submit()} /></div>
+          {tab === "login" && (
+            <div onClick={() => setRemember(!remember)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, border: "2px solid " + (remember ? C.gold : C.faint), background: remember ? C.gold : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}>
+                {remember && <span style={{ color: "#08090E", fontSize: 11, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+              </div>
+              <span style={{ fontSize: 13, color: C.grey }}>Remember me</span>
+            </div>
+          )}
           {msg && <div style={{ background: `${C.red}12`, border: `1px solid ${C.red}35`, borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>{msg}</div>}
           <Btn onClick={submit} full sz="lg" style={{ marginTop: 4 }}>
             {tab === "login" ? "Sign In →" : "Request Access →"}
@@ -593,7 +626,10 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {!showJournal && view === "home" && (
         <div>
           {/* ── HERO ── */}
-          <div style={{ position: "relative", overflow: "hidden", background: `linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)` }}>
+          <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
+            {/* Background video loop */}
+            <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.08, pointerEvents: "none" }}
+              src="https://assets.mixkit.co/videos/preview/mixkit-trading-financial-chart-close-up-4486-large.mp4" />
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,.13) 0%, transparent 65%)", pointerEvents: "none" }} />
             <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
             {/* Decorative circle */}
