@@ -429,7 +429,7 @@ function VideosTab({ courses, sections, videos, setVideos }) {
 function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, journals, setJournals, onLogout }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -456,6 +456,7 @@ function AdminPanel({ users, setUsers, courses, setCourses, sections, setSection
         {tab === "content" && <CoursesTab courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} />}
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} setVideos={setVideos} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} setJournals={setJournals} />}
+        {tab === "membership" && <MembershipTab users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} />}
       </div>
     </div>
   );
@@ -479,6 +480,8 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
   const [showJournal, setShowJournal] = React.useState(false);
+  const userLevels = user.levels || [];
+  const accessibleCourses = courses.filter(c => !c.level || userLevels.includes(c.level) || userLevels.includes("Admin"));
   const cSecs    = course ? sections.filter(s => s.courseId === course.id) : [];
   const cVideos  = course ? videos.filter(v => v.courseId === course.id) : [];
 
@@ -548,7 +551,7 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
               {/* Stats bar */}
               <div className="fu" style={{ display: "flex", gap: 0, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 16, overflow: "hidden", animationDelay: ".18s", width: "100%", maxWidth: 500 }}>
                 {[
-                  { n: courses.length, l: "Courses", icon: "🎓" },
+                  { n: accessibleCourses.length, l: "Courses", icon: "🎓" },
                   { n: videos.length, l: "Lessons", icon: "▶" },
                   { n: "200+", l: "Traders", icon: "👥" },
                 ].map(({ n, l, icon }, i) => (
@@ -589,7 +592,7 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
                 {[
-                  { name: "Matteo", result: "Consistently profitable within 3 months", quote: "The structure and discipline I learned changed everything. I finally understand how the market moves.", stars: 5 },
+                  { name: "Matteo", result: "Private Mentorship Trader", quote: "The structure and discipline I learned changed everything. I finally understand how the market moves.", stars: 5 },
                   { name: "Anees", result: "Passed funded account challenge", quote: "TA FX gave me a real edge. The price action strategy is unlike anything else I've studied.", stars: 5 },
                   { name: "Lorelei", result: "First profitable month after 2 years of losses", quote: "I wish I found this course sooner. The community alone is worth every cent.", stars: 5 },
                   { name: "Adam", result: "Full-time trader within 6 months", quote: "Taaha's mentorship is unmatched. He actually cares about your success and it shows.", stars: 5 },
@@ -623,7 +626,7 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {courses.map((c, i) => {
+              {accessibleCourses.map((c, i) => {
                 const total = videos.filter(v => v.courseId === c.id).length;
                 const sects = sections.filter(s => s.courseId === c.id).length;
                 const colors = [
@@ -639,7 +642,10 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
                       <div style={{ width: 5, background: `linear-gradient(180deg,${C.goldLt},${C.gold})`, flexShrink: 0 }} />
                       <div style={{ flex: 1, padding: "24px 20px 24px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 6 }}>{c.title}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+                            <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white }}>{c.title}</div>
+                            {c.level && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ({"Advanced":"rgba(41,98,255,.15)","Private Mentorship":"rgba(201,168,76,.15)","Free":"rgba(76,184,128,.15)"})[c.level]||"transparent", color: ({"Advanced":"#6B9FFF","Private Mentorship":"#E6C86A","Free":"#4CB880"})[c.level]||C.grey, border: "1px solid " + ({"Advanced":"rgba(41,98,255,.4)","Private Mentorship":"rgba(201,168,76,.4)","Free":"rgba(76,184,128,.4)"})[c.level]||C.border }}>{c.level}</span>}
+                          </div>
                           {c.desc && <div style={{ fontSize: 13, color: C.grey, marginBottom: 14, lineHeight: 1.6 }}>{c.desc}</div>}
                           <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
                             <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{sects} section{sects !== 1 ? "s" : ""}</span>
@@ -1100,6 +1106,105 @@ function AdminJournalTab({ users, journals, setJournals }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+
+/* ── MEMBERSHIP TAB ──────────────────────────────────────────────────────── */
+const LEVELS = ["Advanced", "Private Mentorship", "Free"];
+const LEVEL_COLORS = {
+  "Advanced":           { bg: "rgba(41,98,255,.15)",  border: "rgba(41,98,255,.4)",  text: "#6B9FFF" },
+  "Private Mentorship": { bg: "rgba(201,168,76,.15)", border: "rgba(201,168,76,.4)", text: "#E6C86A" },
+  "Free":               { bg: "rgba(76,184,128,.15)", border: "rgba(76,184,128,.4)", text: "#4CB880" },
+};
+
+function MembershipTab({ users, setUsers, courses, setCourses }) {
+  const approved = users.filter(u => u.status === "approved");
+
+  const toggleLevel = (userId, level) => {
+    setUsers(users.map(u => {
+      if (u.id !== userId) return u;
+      const levels = u.levels || [];
+      return { ...u, levels: levels.includes(level) ? levels.filter(l => l !== level) : [...levels, level] };
+    }));
+  };
+
+  const setCourseLevel = (courseId, level) => {
+    setCourses(courses.map(c => c.id === courseId ? { ...c, level } : c));
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 24 }}>
+      {/* Course level assignment */}
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Course Access Levels</div>
+        <p style={{ fontSize: 13, color: C.grey, marginBottom: 20, lineHeight: 1.6 }}>Assign a membership level to each course. Only students with that level can see and access it.</p>
+        {courses.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No courses yet.</p>}
+        {courses.map(c => (
+          <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 10, background: C.bg, border: "1px solid " + C.border, marginBottom: 8, flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, color: C.white }}>{c.title}</div>
+              <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>
+                {c.level
+                  ? <span style={{ background: LEVEL_COLORS[c.level]?.bg, color: LEVEL_COLORS[c.level]?.text, border: "1px solid " + LEVEL_COLORS[c.level]?.border, padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{c.level}</span>
+                  : <span style={{ color: C.faint, fontSize: 11 }}>No level — visible to all approved members</span>}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {LEVELS.map(l => (
+                <button key={l} onClick={() => setCourseLevel(c.id, c.level === l ? null : l)} style={{
+                  padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all .15s",
+                  background: c.level === l ? LEVEL_COLORS[l]?.bg : "transparent",
+                  color: c.level === l ? LEVEL_COLORS[l]?.text : C.faint,
+                  border: "1px solid " + (c.level === l ? LEVEL_COLORS[l]?.border : C.border),
+                }}>{l}</button>
+              ))}
+              {c.level && <button onClick={() => setCourseLevel(c.id, null)} style={{ padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", background: "transparent", color: C.red, border: "1px solid " + C.red + "40" }}>✕ Remove</button>}
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* Student level assignment */}
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Student Memberships</div>
+        <p style={{ fontSize: 13, color: C.grey, marginBottom: 20, lineHeight: 1.6 }}>Toggle which membership levels each student has. A student can hold multiple levels.</p>
+        {approved.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No approved students yet.</p>}
+        {approved.map(u => (
+          <div key={u.id} style={{ padding: "16px", borderRadius: 12, background: C.bg, border: "1px solid " + C.border, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: C.white }}>{u.name}</div>
+                <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {(u.levels || []).length === 0
+                  ? <span style={{ fontSize: 11, color: C.faint }}>No levels assigned</span>
+                  : (u.levels || []).map(l => (
+                    <span key={l} style={{ background: LEVEL_COLORS[l]?.bg, color: LEVEL_COLORS[l]?.text, border: "1px solid " + LEVEL_COLORS[l]?.border, padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{l}</span>
+                  ))
+                }
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {LEVELS.map(l => {
+                const has = (u.levels || []).includes(l);
+                return (
+                  <button key={l} onClick={() => toggleLevel(u.id, l)} style={{
+                    padding: "8px 16px", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s",
+                    background: has ? LEVEL_COLORS[l]?.bg : C.card,
+                    color: has ? LEVEL_COLORS[l]?.text : C.grey,
+                    border: "1px solid " + (has ? LEVEL_COLORS[l]?.border : C.border),
+                  }}>
+                    {has ? "✓ " : "+ "}{l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </Card>
     </div>
   );
 }
