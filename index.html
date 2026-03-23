@@ -426,10 +426,10 @@ function VideosTab({ courses, sections, videos, setVideos }) {
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, onLogout }) {
+function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, journals, setJournals, onLogout }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -455,13 +455,14 @@ function AdminPanel({ users, setUsers, courses, setCourses, sections, setSection
         {tab === "users"   && <UsersTab   users={users} setUsers={setUsers} />}
         {tab === "content" && <CoursesTab courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} />}
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} setVideos={setVideos} />}
+        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} setJournals={setJournals} />}
       </div>
     </div>
   );
 }
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
-function Portal({ user, courses, sections, videos, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, setJournals, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -477,6 +478,7 @@ function Portal({ user, courses, sections, videos, onLogout }) {
   const backToCourse = () => { setVideo(null); setView("course"); };
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
+  const [showJournal, setShowJournal] = React.useState(false);
   const cSecs    = course ? sections.filter(s => s.courseId === course.id) : [];
   const cVideos  = course ? videos.filter(v => v.courseId === course.id) : [];
 
@@ -510,8 +512,11 @@ function Portal({ user, courses, sections, videos, onLogout }) {
         </div>
       )}
 
+      {/* ══ JOURNAL ══ */}
+      {showJournal && <StudentJournal user={user} journals={journals} setJournals={setJournals} />}
+
       {/* ══ HOME ══ */}
-      {view === "home" && (
+      {!showJournal && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: `linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)` }}>
@@ -660,7 +665,7 @@ function Portal({ user, courses, sections, videos, onLogout }) {
       )}
 
       {/* ══ COURSE ══ */}
-      {view === "course" && course && (
+      {!showJournal && view === "course" && course && (
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
           {/* Course header */}
           <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
@@ -732,7 +737,7 @@ function Portal({ user, courses, sections, videos, onLogout }) {
       )}
 
       {/* ══ PLAYER ══ */}
-      {view === "player" && video && (() => {
+      {!showJournal && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -794,6 +799,275 @@ function Portal({ user, courses, sections, videos, onLogout }) {
   );
 }
 
+
+/* ── STUDENT JOURNAL ─────────────────────────────────────────────────────── */
+function StudentJournal({ user, journals, setJournals }) {
+  const [title, setTitle] = React.useState("");
+  const [pair, setPair] = React.useState("");
+  const [direction, setDirection] = React.useState("Long");
+  const [entry, setEntry] = React.useState("");
+  const [exit, setExit] = React.useState("");
+  const [result, setResult] = React.useState("Win");
+  const [pnl, setPnl] = React.useState("");
+  const [analysis, setAnalysis] = React.useState("");
+  const [lesson, setLesson] = React.useState("");
+  const [view, setView] = React.useState("list"); // list | new | detail
+  const [selected, setSelected] = React.useState(null);
+  const [err, setErr] = React.useState("");
+
+  const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
+
+  const submit = () => {
+    if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, entryPrice: entry.trim(), exitPrice: exit.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
+    setJournals([...journals, entry_obj]);
+    setTitle(""); setPair(""); setDirection("Long"); setEntry(""); setExit(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setErr(""); setView("list");
+  };
+
+  const deleteEntry = id => setJournals(journals.filter(j => j.id !== id));
+
+  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
+
+  if (view === "new") return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+        <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back</button>
+        <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700 }}>New Trade Journal</h2>
+      </div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
+          <div><label>Direction</label>
+            <select value={direction} onChange={e => setDirection(e.target.value)}>
+              <option>Long</option><option>Short</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div><label>Entry Price</label><input value={entry} onChange={e => setEntry(e.target.value)} placeholder="1.2345" /></div>
+          <div><label>Exit Price</label><input value={exit} onChange={e => setExit(e.target.value)} placeholder="1.2400" /></div>
+          <div><label>P&L</label><input value={pnl} onChange={e => setPnl(e.target.value)} placeholder="+$120" /></div>
+        </div>
+        <div><label>Result</label>
+          <select value={result} onChange={e => setResult(e.target.value)}>
+            <option>Win</option><option>Loss</option><option>Break Even</option>
+          </select>
+        </div>
+        <div><label>Trade Analysis</label>
+          <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} placeholder="Describe your setup, why you took this trade, market structure, confluences, entry reasoning…" style={{ height: 130, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+        </div>
+        <div><label>Lesson Learned</label>
+          <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you? What would you do differently?" style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+        </div>
+        {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
+        <Btn onClick={submit} full sz="lg">Save Journal Entry</Btn>
+      </div>
+    </div>
+  );
+
+  if (view === "detail" && selected) {
+    const j = journals.find(x => x.id === selected);
+    if (!j) { setView("list"); return null; }
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+        <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20, display: "block" }}>← Back to Journal</button>
+        <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "28px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{j.title}</h2>
+              <div style={{ fontSize: 12, color: C.grey }}>{new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
+            </div>
+            <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginBottom: 22 }}>
+            {[["Pair", j.pair], ["Direction", j.direction], ["Entry", j.entryPrice||"—"], ["Exit", j.exitPrice||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
+              <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
+            <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
+          </div>
+          {j.lesson && <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Lesson Learned</div>
+            <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.lesson}</p>
+          </div>}
+          {j.adminComment && (
+            <div style={{ marginTop: 24, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.25)", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#08090E", fontWeight: 800 }}>T</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>Coach Taaha</div>
+                  <div style={{ fontSize: 11, color: C.grey }}>{new Date(j.adminCommentAt).toLocaleDateString("en-ZA", { year:"numeric", month:"short", day:"numeric" })}</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.adminComment}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Trade Journal</p>
+          <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>My Entries</h2>
+        </div>
+        <Btn onClick={() => setView("new")} sz="md">+ New Entry</Btn>
+      </div>
+      {myJournals.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 0" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: .3 }}>📓</div>
+          <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7 }}>No journal entries yet.<br />Start documenting your trades to track your growth.</p>
+          <Btn onClick={() => setView("new")} style={{ marginTop: 20 }}>Log Your First Trade</Btn>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {myJournals.map(j => (
+          <div key={j.id} style={{ background: C.card, border: "1.5px solid " + (j.adminComment ? "rgba(201,168,76,.35)" : C.border), borderRadius: 12, padding: "16px 18px", cursor: "pointer", position: "relative" }}
+            onClick={() => { setSelected(j.id); setView("detail"); }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
+            onMouseLeave={e => e.currentTarget.style.borderColor = j.adminComment ? "rgba(201,168,76,.35)" : C.border}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.title}</div>
+                <div style={{ display: "flex", gap: 10, fontSize: 12, color: C.grey, flexWrap: "wrap" }}>
+                  <span>{j.pair}</span>
+                  <span>·</span>
+                  <span>{j.direction}</span>
+                  {j.pnl && <><span>·</span><span style={{ color: j.result==="Win" ? C.green : j.result==="Loss" ? C.red : C.gold }}>{j.pnl}</span></>}
+                  <span>·</span>
+                  <span>{new Date(j.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{j.result}</span>
+                {j.adminComment && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>💬 COACH FEEDBACK</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN JOURNAL TAB ───────────────────────────────────────────────────── */
+function AdminJournalTab({ users, journals, setJournals }) {
+  const [selected, setSelected] = React.useState(null);
+  const [comment, setComment] = React.useState("");
+  const [filterUser, setFilterUser] = React.useState("all");
+
+  const approvedUsers = users.filter(u => u.status === "approved");
+  const filtered = (filterUser === "all" ? journals : journals.filter(j => j.userId === filterUser))
+    .sort((a,b) => b.createdAt - a.createdAt);
+
+  const j = selected ? journals.find(x => x.id === selected) : null;
+  const userName = j ? (users.find(u => u.id === j.userId)?.name || "Unknown") : "";
+
+  const submitComment = () => {
+    if (!comment.trim()) return;
+    setJournals(journals.map(x => x.id === selected ? { ...x, adminComment: comment.trim(), adminCommentAt: Date.now(), adminSeen: true } : x));
+    setComment(""); setSelected(null);
+  };
+
+  const markSeen = id => setJournals(journals.map(x => x.id === id ? { ...x, adminSeen: true } : x));
+
+  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
+
+  if (j) return (
+    <div>
+      <button onClick={() => { setSelected(null); setComment(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20, display: "block" }}>← Back to All Journals</button>
+      <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Entry by {userName}</div>
+            <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{j.title}</h3>
+            <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
+          </div>
+          <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 18 }}>
+          {[["Pair", j.pair], ["Direction", j.direction], ["Entry", j.entryPrice||"—"], ["Exit", j.exitPrice||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
+            <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 9, padding: "10px 12px" }}>
+              <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 3 }}>{k}</div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Analysis</div>
+          <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
+        </div>
+        {j.lesson && <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Lesson Learned</div>
+          <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.lesson}</p>
+        </div>}
+        {j.adminComment && (
+          <div style={{ background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.2)", borderRadius: 10, padding: "14px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 6 }}>Your Previous Comment:</div>
+            <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.adminComment}</p>
+          </div>
+        )}
+        <div style={{ marginTop: 20 }}>
+          <label>{j.adminComment ? "Update Your Comment" : "Add Coach Comment (only visible to this student)"}</label>
+          <textarea value={comment || j.adminComment || ""} onChange={e => setComment(e.target.value)}
+            placeholder="Write your feedback, advice or encouragement for this trade…"
+            style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
+          <Btn onClick={submitComment} sz="md">Send Comment to {userName}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase" }}>All Student Journals ({filtered.length})</div>
+        <select value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
+          <option value="all">All Students</option>
+          {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+      </div>
+      {filtered.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No journal entries yet.</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {filtered.map(j => {
+          const uname = users.find(u => u.id === j.userId)?.name || "Unknown";
+          return (
+            <div key={j.id} style={{ background: C.card, border: "1.5px solid " + (!j.adminSeen ? C.gold + "50" : C.border), borderRadius: 12, padding: "14px 16px", cursor: "pointer" }}
+              onClick={() => { setSelected(j.id); markSeen(j.id); setComment(j.adminComment || ""); }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
+              onMouseLeave={e => e.currentTarget.style.borderColor = !j.adminSeen ? C.gold + "50" : C.border}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                    {!j.adminSeen && <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.gold, display: "inline-block", flexShrink: 0 }} />}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.gold, letterSpacing: ".08em" }}>{uname}</span>
+                  </div>
+                  <div style={{ fontFamily: S, fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.title}</div>
+                  <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{j.pair} · {j.direction} · {new Date(j.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                  <span style={{ background: (j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold) + "20", color: (j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold), border: "1px solid " + (j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold) + "40", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{j.result}</span>
+                  {j.adminComment && <span style={{ fontSize: 10, color: C.grey }}>✓ Commented</span>}
+                  {!j.adminComment && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>Needs review</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ── PENDING / DECLINED ──────────────────────────────────────────────────── */
 function StatusScreen({ icon, title, color, msg, onLogout }) {
   return (
@@ -815,6 +1089,7 @@ function App() {
   const [courses,  setCourses]  = useStore("tafx_courses4", []);
   const [sections, setSections] = useStore("tafx_sections3",[]);
   const [videos,   setVideos]   = useStore("tafx_videos4",  []);
+  const [journals, setJournals] = useStore("tafx_journals",  []);
   const [screen,   setScreen]   = useState("login");
   const [me,       setMe]       = useState(null);
 
@@ -847,8 +1122,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} onLogout={logout} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} journals={journals} setJournals={setJournals} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} setJournals={setJournals} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
