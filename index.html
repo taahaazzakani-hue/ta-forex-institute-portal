@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TA Forex Institute — Member Portal</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <title>TA Forex Institute</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+  <style>body{margin:0;background:#07090F}</style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
 
 
 const ADMIN_PW = "TAForex2024!";
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 function useStore(key, def) {
-  const [val, set] = React.React.useState(() => {
-    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; }
-  });
+  const [val, set] = useState(() => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; } });
   const save = v => { set(v); try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
   return [val, save];
 }
@@ -188,8 +188,8 @@ function VideoPlayer({ url }) {
 
 /* ── LOGIN ───────────────────────────────────────────────────────────────── */
 function LoginScreen({ onLogin, onRegister, onAdmin }) {
-  const [tab, setTab] = React.useState("login");
-  const [name, setName] = React.useState(""); const [email, setEmail] = React.useState(""); const [pass, setPass] = React.useState(""); const [msg, setMsg] = React.useState("");
+  const [tab, setTab] = useState("login");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [msg, setMsg] = useState("");
   const submit = () => tab === "login" ? onLogin(email, pass, setMsg) : onRegister(name, email, pass, setMsg);
 
   return (
@@ -237,7 +237,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 }
 
 function AdminAuthScreen({ onBack, onEnter }) {
-  const [pass, setPass] = React.useState(""); const [err, setErr] = React.useState("");
+  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
   const go = () => pass === ADMIN_PW ? onEnter() : setErr("Incorrect password.");
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -303,8 +303,8 @@ function UsersTab({ users, setUsers }) {
 }
 
 function CoursesTab({ courses, setCourses, sections, setSections, videos, setVideos }) {
-  const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState("");
-  const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
+  const [cT, setCT] = useState(""); const [cD, setCD] = useState("");
+  const [sT, setST] = useState(""); const [sC, setSC] = useState("");
   const addCourse = () => { if (!cT.trim()) return; setCourses([...courses, { id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }]); setCT(""); setCD(""); };
   const delCourse = id => { setCourses(courses.filter(c => c.id !== id)); setSections(sections.filter(s => s.courseId !== id)); setVideos(videos.filter(v => v.courseId !== id)); };
   const addSec = () => { if (!sT.trim() || !sC) return; setSections([...sections, { id: uid(), courseId: sC, title: sT.trim() }]); setST(""); };
@@ -353,8 +353,8 @@ function CoursesTab({ courses, setCourses, sections, setSections, videos, setVid
 }
 
 function VideosTab({ courses, sections, videos, setVideos }) {
-  const [vT, setVT] = React.useState(""); const [vU, setVU] = React.useState(""); const [vD, setVD] = React.useState("");
-  const [vC, setVC] = React.useState(""); const [vS, setVS] = React.useState(""); const [vErr, setVErr] = React.useState("");
+  const [vT, setVT] = useState(""); const [vU, setVU] = useState(""); const [vD, setVD] = useState("");
+  const [vC, setVC] = useState(""); const [vS, setVS] = useState(""); const [vErr, setVErr] = useState("");
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
   const addVid = () => {
@@ -427,7 +427,7 @@ function VideosTab({ courses, sections, videos, setVideos }) {
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
 function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, onLogout }) {
-  const [tab, setTab] = React.useState("users");
+  const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }];
   return (
@@ -462,10 +462,10 @@ function AdminPanel({ users, setUsers, courses, setCourses, sections, setSection
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
 function Portal({ user, courses, sections, videos, onLogout }) {
-  const [view, setView]   = React.useState("home");
-  const [course, setCourse] = React.useState(null);
-  const [video, setVideo]   = React.useState(null);
-  const [openS, setOpenS]   = React.useState({});
+  const [view, setView]   = useState("home");
+  const [course, setCourse] = useState(null);
+  const [video, setVideo]   = useState(null);
+  const [openS, setOpenS]   = useState({});
 
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
@@ -752,8 +752,8 @@ function App() {
   const [courses,  setCourses]  = useStore("tafx_courses4", []);
   const [sections, setSections] = useStore("tafx_sections3",[]);
   const [videos,   setVideos]   = useStore("tafx_videos4",  []);
-  const [screen,   setScreen]   = React.useState("login");
-  const [me,       setMe]       = React.useState(null);
+  const [screen,   setScreen]   = useState("login");
+  const [me,       setMe]       = useState(null);
 
   const login = (email, pass, setMsg) => {
     const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
@@ -771,7 +771,7 @@ function App() {
 
   const logout = () => { setMe(null); setScreen("login"); };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (me && screen === "pending") {
       const u = users.find(u => u.id === me.id);
       if (u?.status === "approved") setScreen("portal");
@@ -792,8 +792,8 @@ function App() {
   );
 }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>
