@@ -812,6 +812,7 @@ function StudentJournal({ user, journals, setJournals }) {
   const [pnl, setPnl] = React.useState("");
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
+  const [image, setImage] = React.useState(null);
   const [view, setView] = React.useState("list"); // list | new | detail
   const [selected, setSelected] = React.useState(null);
   const [err, setErr] = React.useState("");
@@ -820,9 +821,9 @@ function StudentJournal({ user, journals, setJournals }) {
 
   const submit = () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, entryPrice: entry.trim(), exitPrice: exit.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, entryPrice: entry.trim(), exitPrice: exit.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
     setJournals([...journals, entry_obj]);
-    setTitle(""); setPair(""); setDirection("Long"); setEntry(""); setExit(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setErr(""); setView("list");
+    setTitle(""); setPair(""); setDirection("Long"); setEntry(""); setExit(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
   };
 
   const deleteEntry = id => setJournals(journals.filter(j => j.id !== id));
@@ -861,6 +862,28 @@ function StudentJournal({ user, journals, setJournals }) {
         <div><label>Lesson Learned</label>
           <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you? What would you do differently?" style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
         </div>
+        <div>
+          <label>Chart Screenshot (optional)</label>
+          <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 12, padding: "20px", textAlign: "center", background: C.navy, cursor: "pointer", transition: "border-color .2s", position: "relative" }}
+            onClick={() => document.getElementById("chart-upload").click()}
+            onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = C.gold; }}
+            onDragLeave={e => { e.currentTarget.style.borderColor = image ? C.gold : C.border; }}
+            onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file && file.type.startsWith("image/")) { const r = new FileReader(); r.onload = ev => setImage(ev.target.result); r.readAsDataURL(file); } }}>
+            <input id="chart-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (file) { const r = new FileReader(); r.onload = ev => setImage(ev.target.result); r.readAsDataURL(file); } }} />
+            {image ? (
+              <div>
+                <img src={image} alt="chart" style={{ maxWidth: "100%", maxHeight: 300, borderRadius: 8, display: "block", margin: "0 auto 12px" }} />
+                <button onClick={e => { e.stopPropagation(); setImage(null); }} style={{ background: C.red + "20", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✕ Remove Image</button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 32, marginBottom: 8, opacity: .5 }}>📸</div>
+                <p style={{ color: C.grey, fontSize: 13, marginBottom: 4 }}>Click or drag & drop your chart screenshot</p>
+                <p style={{ color: C.faint, fontSize: 11 }}>PNG, JPG, WEBP supported</p>
+              </div>
+            )}
+          </div>
+        </div>
         {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
         <Btn onClick={submit} full sz="lg">Save Journal Entry</Btn>
       </div>
@@ -893,6 +916,12 @@ function StudentJournal({ user, journals, setJournals }) {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
             <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
           </div>
+          {j.image && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshot</div>
+              <img src={j.image} alt="chart" style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block" }} />
+            </div>
+          )}
           {j.lesson && <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Lesson Learned</div>
             <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.lesson}</p>
@@ -1007,6 +1036,12 @@ function AdminJournalTab({ users, journals, setJournals }) {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Analysis</div>
           <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
         </div>
+        {j.image && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Chart Screenshot</div>
+            <img src={j.image} alt="chart" style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block" }} />
+          </div>
+        )}
         {j.lesson && <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Lesson Learned</div>
           <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.lesson}</p>
