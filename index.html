@@ -806,8 +806,8 @@ function StudentJournal({ user, journals, setJournals }) {
   const [title, setTitle] = React.useState("");
   const [pair, setPair] = React.useState("");
   const [direction, setDirection] = React.useState("Long");
-  const [entry, setEntry] = React.useState("");
-  const [exit, setExit] = React.useState("");
+  const [risk, setRisk] = React.useState("");
+  const [gain, setGain] = React.useState("");
   const [result, setResult] = React.useState("Win");
   const [pnl, setPnl] = React.useState("");
   const [analysis, setAnalysis] = React.useState("");
@@ -821,9 +821,9 @@ function StudentJournal({ user, journals, setJournals }) {
 
   const submit = () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, entryPrice: entry.trim(), exitPrice: exit.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
     setJournals([...journals, entry_obj]);
-    setTitle(""); setPair(""); setDirection("Long"); setEntry(""); setExit(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
+    setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
   };
 
   const deleteEntry = id => setJournals(journals.filter(j => j.id !== id));
@@ -847,8 +847,8 @@ function StudentJournal({ user, journals, setJournals }) {
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <div><label>Entry Price</label><input value={entry} onChange={e => setEntry(e.target.value)} placeholder="1.2345" /></div>
-          <div><label>Exit Price</label><input value={exit} onChange={e => setExit(e.target.value)} placeholder="1.2400" /></div>
+          <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
+          <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
           <div><label>P&L</label><input value={pnl} onChange={e => setPnl(e.target.value)} placeholder="+$120" /></div>
         </div>
         <div><label>Result</label>
@@ -905,7 +905,7 @@ function StudentJournal({ user, journals, setJournals }) {
             <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginBottom: 22 }}>
-            {[["Pair", j.pair], ["Direction", j.direction], ["Entry", j.entryPrice||"—"], ["Exit", j.exitPrice||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
+            {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
               <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{v}</div>
@@ -1025,7 +1025,7 @@ function AdminJournalTab({ users, journals, setJournals }) {
           <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 18 }}>
-          {[["Pair", j.pair], ["Direction", j.direction], ["Entry", j.entryPrice||"—"], ["Exit", j.exitPrice||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
+          {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
             <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 9, padding: "10px 12px" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 3 }}>{k}</div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>{v}</div>
