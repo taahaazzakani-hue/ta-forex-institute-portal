@@ -185,8 +185,8 @@ function VideoPlayer({ url }) {
 
 /* ── LOGIN ───────────────────────────────────────────────────────────────── */
 function LoginScreen({ onLogin, onRegister, onAdmin }) {
-  const [tab, setTab] = React.useState("login");
-  const [name, setName] = React.useState(""); const [email, setEmail] = React.useState(""); const [pass, setPass] = React.useState(""); const [msg, setMsg] = React.useState("");
+  const [tab, setTab] = useState("login");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [msg, setMsg] = useState("");
   const submit = () => tab === "login" ? onLogin(email, pass, setMsg) : onRegister(name, email, pass, setMsg);
 
   return (
@@ -234,7 +234,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 }
 
 function AdminAuthScreen({ onBack, onEnter }) {
-  const [pass, setPass] = React.useState(""); const [err, setErr] = React.useState("");
+  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
   const go = () => pass === ADMIN_PW ? onEnter() : setErr("Incorrect password.");
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -261,8 +261,15 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
   const approve = id => patchUser(id, { status: "approved" });
   const decline = id => patchUser(id, { status: "declined" });
   const delUser = id => deleteUser(id);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const refresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+        <button onClick={refresh} style={{ background: "transparent", color: refreshing ? C.faint : C.gold, border: "1px solid " + (refreshing ? C.faint : C.gold) + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", cursor: "pointer" }}>
+          {refreshing ? "Refreshing..." : "↻ Refresh"}
+        </button>
+      </div>
       {pending.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 12 }}>⚡ Awaiting Approval ({pending.length})</div>
@@ -422,7 +429,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
 function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
-  const [tab, setTab] = React.useState("users");
+  const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
   return (
@@ -459,10 +466,10 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
 function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, onLogout }) {
-  const [view, setView]   = React.useState("home");
-  const [course, setCourse] = React.useState(null);
-  const [video, setVideo]   = React.useState(null);
-  const [openS, setOpenS]   = React.useState({});
+  const [view, setView]   = useState("home");
+  const [course, setCourse] = useState(null);
+  const [video, setVideo]   = useState(null);
+  const [openS, setOpenS]   = useState({});
 
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
@@ -1355,7 +1362,7 @@ function App() {
 
   const logout = () => { setMe(null); setScreen("login"); };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (me && screen === "pending") {
       const u = users.find(u => u.id === me.id);
       if (u?.status === "approved") setScreen("portal");
