@@ -1650,20 +1650,20 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j] = await Promise.all([
+      const [u, c, sec, v, j, com] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
         sb("videos?order=created_at.asc"),
         sb("journals?order=created_at.desc"),
+        sb("comments?order=created_at.asc"),
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
-    const comData = await sb("comments?order=created_at.asc");
-    if (comData) setComments(comData.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, createdAt:x.created_at })));
+      if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, createdAt:x.created_at })));
     } catch(e) { console.error("loadAll error:", e); }
     if (showSpinner) setLoading(false);
   };
