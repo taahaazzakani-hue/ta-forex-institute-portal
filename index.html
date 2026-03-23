@@ -487,15 +487,16 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
       <Rule />
 
       {/* ── HEADER ── */}
-      <div style={{ position: "sticky", top: 0, zIndex: 100, background: `${C.surf}F0`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={goHome} />
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            <div style={{ width: 1, height: 30, background: C.border }} />
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{user.name}</div>
             </div>
-            <div style={{ width: 1, height: 30, background: C.border }} />
             <Btn v="outline" onClick={onLogout} sz="sm">Sign Out</Btn>
           </div>
         </div>
