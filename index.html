@@ -827,11 +827,16 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
 
   const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
-    setJournals([...journals, entry_obj]);
-    setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
+    setErr("Saving...");
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
+    try {
+      await addJournal(entry_obj);
+      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
+    } catch(e) {
+      setErr("Failed to save. Please try again.");
+    }
   };
 
   const deleteEntry = id => deleteJournal(id);
