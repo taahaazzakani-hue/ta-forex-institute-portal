@@ -876,8 +876,45 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             onClick={() => document.getElementById("chart-upload").click()}
             onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = C.gold; }}
             onDragLeave={e => { e.currentTarget.style.borderColor = image ? C.gold : C.border; }}
-            onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file && file.type.startsWith("image/")) { const r = new FileReader(); r.onload = ev => setImage(ev.target.result); r.readAsDataURL(file); } }}>
-            <input id="chart-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (file) { const r = new FileReader(); r.onload = ev => setImage(ev.target.result); r.readAsDataURL(file); } }} />
+            onDrop={e => {
+              e.preventDefault();
+              const file = e.dataTransfer.files[0];
+              if (!file || !file.type.startsWith("image/")) return;
+              const reader = new FileReader();
+              reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  const MAX = 1200;
+                  let w = img.width, h = img.height;
+                  if (w > MAX) { h = h * MAX / w; w = MAX; }
+                  canvas.width = w; canvas.height = h;
+                  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                  setImage(canvas.toDataURL("image/jpeg", 0.7));
+                };
+                img.src = ev.target.result;
+              };
+              reader.readAsDataURL(file);
+            }}>
+            <input id="chart-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  const MAX = 1200;
+                  let w = img.width, h = img.height;
+                  if (w > MAX) { h = h * MAX / w; w = MAX; }
+                  canvas.width = w; canvas.height = h;
+                  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                  setImage(canvas.toDataURL("image/jpeg", 0.7));
+                };
+                img.src = ev.target.result;
+              };
+              reader.readAsDataURL(file);
+            }} />
             {image ? (
               <div>
                 <img src={image} alt="chart" style={{ maxWidth: "100%", maxHeight: 300, borderRadius: 8, display: "block", margin: "0 auto 12px" }} />
