@@ -821,9 +821,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
   const [image, setImage] = React.useState(null);
-  const [view, setView] = React.useState("list"); // list | new | detail
+  const [view, setView] = React.useState("list"); // list | new | detail | edit
   const [selected, setSelected] = React.useState(null);
   const [err, setErr] = React.useState("");
+  const [editing, setEditing] = React.useState(null); // journal being edited
 
   const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
 
@@ -840,6 +841,26 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   };
 
   const deleteEntry = id => deleteJournal(id);
+
+  const openEdit = (j) => {
+    setEditing(j);
+    setTitle(j.title); setPair(j.pair); setDirection(j.direction);
+    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result);
+    setPnl(j.pnl||""); setAnalysis(j.analysis); setLesson(j.lesson||"");
+    setImage(j.image||null); setErr(""); setView("edit");
+  };
+
+  const saveEdit = async () => {
+    if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
+    setErr("Saving...");
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null };
+    try {
+      // Delete old and re-insert with updated data
+      await deleteJournal(editing.id);
+      await addJournal(updated);
+      setEditing(null); setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setSelected(updated.id); setView("detail");
+    } catch(e) { setErr("Failed to save. Please try again."); }
+  };
 
   const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
 
@@ -947,7 +968,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back to Journal</button>
-          <button onClick={() => { if (window.confirm && !window.confirm("Delete this journal entry?")) return; deleteEntry(j.id); setView("list"); }} style={{ background: C.red + "15", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>🗑 Delete Entry</button>
+<div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => openEdit(j)} style={{ background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✏ Edit</button>
+            <button onClick={() => { deleteEntry(j.id); setView("list"); }} style={{ background: C.red + "15", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>🗑 Delete</button>
+          </div>
         </div>
         <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "28px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
@@ -995,6 +1019,48 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       </div>
     );
   }
+
+  if (view === "edit" && editing) return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+        <button onClick={() => { setView("detail"); setEditing(null); setErr(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Cancel</button>
+        <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700 }}>Edit Journal Entry</h2>
+      </div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
+          <div><label>Direction</label><select value={direction} onChange={e => setDirection(e.target.value)}><option>Long</option><option>Short</option></select></div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
+          <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
+          <div><label>P&L</label><input value={pnl} onChange={e => setPnl(e.target.value)} placeholder="+$120" /></div>
+        </div>
+        <div><label>Result</label><select value={result} onChange={e => setResult(e.target.value)}><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
+        <div><label>Trade Analysis</label>
+          <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} style={{ height: 130, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+        </div>
+        <div><label>Lesson Learned</label>
+          <textarea value={lesson} onChange={e => setLesson(e.target.value)} style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+        </div>
+        <div>
+          <label>Chart Screenshot</label>
+          <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 12, padding: "16px", textAlign: "center", background: C.navy, cursor: "pointer" }} onClick={() => document.getElementById("chart-edit-upload").click()}>
+            <input id="chart-edit-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => { const img = new Image(); img.onload = () => { const canvas = document.createElement("canvas"); const MAX=1200; let w=img.width,h=img.height; if(w>MAX){h=h*MAX/w;w=MAX;} canvas.width=w;canvas.height=h; canvas.getContext("2d").drawImage(img,0,0,w,h); setImage(canvas.toDataURL("image/jpeg",0.7)); }; img.src=ev.target.result; }; reader.readAsDataURL(file); }} />
+            {image ? (
+              <div>
+                <img src={image} alt="chart" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, display: "block", margin: "0 auto 10px" }} />
+                <button onClick={e => { e.stopPropagation(); setImage(null); }} style={{ background: C.red+"20", color: C.red, border: "1px solid "+C.red+"40", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✕ Remove</button>
+              </div>
+            ) : <p style={{ color: C.grey, fontSize: 13 }}>Click to upload a chart screenshot</p>}
+          </div>
+        </div>
+        {err && <div style={{ color: err === "Saving..." ? C.gold : C.red, fontSize: 12 }}>{err}</div>}
+        <Btn onClick={saveEdit} full sz="lg">Save Changes</Btn>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
