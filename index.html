@@ -945,7 +945,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!j) { setView("list"); return null; }
     return (
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-        <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20, display: "block" }}>← Back to Journal</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back to Journal</button>
+          <button onClick={() => { if (window.confirm && !window.confirm("Delete this journal entry?")) return; deleteEntry(j.id); setView("list"); }} style={{ background: C.red + "15", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>🗑 Delete Entry</button>
+        </div>
         <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "28px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
             <div>
