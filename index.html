@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TA Forex Institute</title>
+  <title>TA Forex Institute — Member Portal</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
-  <style>body{margin:0;background:#07090F}</style>
+  <style>body{margin:0;background:#07090F;}</style>
 </head>
 <body>
   <div id="root"></div>
@@ -19,7 +19,7 @@ const ADMIN_PW = "TAForex2024!";
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 function useStore(key, def) {
-  const [val, set] = useState(() => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; } });
+  const [val, set] = React.useState(() => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; } });
   const save = v => { set(v); try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
   return [val, save];
 }
@@ -43,22 +43,22 @@ const C = {
   red:     "#D96060",
   green:   "#4CB880",
 };
-const S = "'Cormorant Garamond',Georgia,serif";
-const D = "'DM Sans',system-ui,sans-serif";
+const S = "'Cinzel',Georgia,serif";
+const D = "'Raleway',system-ui,sans-serif";
 
 /* ── GLOBAL CSS ──────────────────────────────────────────────────────────── */
 const GS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;600;700;900&family=Raleway:wght@300;400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%}
+html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%;letter-spacing:.01em}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:${C.gold};border-radius:4px}
 a{color:inherit;text-decoration:none}
-input,select,textarea{font-family:${D};font-size:14px;color:${C.white};background:${C.navy};border:1.5px solid ${C.border};border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+input,select,textarea{font-family:${D};letter-spacing:.02em;font-size:14px;color:${C.white};background:${C.navy};border:1.5px solid ${C.border};border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{border-color:${C.gold};box-shadow:0 0 0 3px ${C.goldDim}}
 input::placeholder,textarea::placeholder{color:${C.faint}}
 select option{background:${C.navy};color:${C.white}}
-button{font-family:${D};cursor:pointer;border:none;outline:none}
-label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.grey};margin-bottom:7px}
+button{font-family:${D};cursor:pointer;border:none;outline:none;letter-spacing:.05em}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:${C.grey};margin-bottom:7px;font-family:'Cinzel',serif}
 @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -513,50 +513,101 @@ function Portal({ user, courses, sections, videos, onLogout }) {
       {/* ══ HOME ══ */}
       {view === "home" && (
         <div>
-          {/* Hero banner */}
-          <div style={{ position: "relative", overflow: "hidden", padding: "72px 24px 60px", textAlign: "center",
-            background: `linear-gradient(180deg, ${C.navy} 0%, ${C.bg} 100%)` }}>
-            {/* Radial glow */}
-            <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,.08) 0%, transparent 70%)`, pointerEvents: "none" }} />
-            {/* Decorative lines */}
+          {/* ── HERO ── */}
+          <div style={{ position: "relative", overflow: "hidden", background: `linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)` }}>
+            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,.13) 0%, transparent 65%)", pointerEvents: "none" }} />
             <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}><Rule /></div>
+            {/* Decorative circle */}
+            <div style={{ position: "absolute", right: -80, top: -80, width: 400, height: 400, borderRadius: "50%", border: "1px solid rgba(201,168,76,.07)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", right: -40, top: -40, width: 280, height: 280, borderRadius: "50%", border: "1px solid rgba(201,168,76,.05)", pointerEvents: "none" }} />
 
-            <p className="fu" style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase", marginBottom: 18 }}>Member Portal</p>
+            <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 56px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div className="fu" style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+                <Logo w={180} />
+              </div>
 
-            <div className="fu" style={{ marginBottom: 20, animationDelay: ".08s", display:"flex", justifyContent:"center" }}>
-              <Logo w={200} />
+              <div className="fu" style={{ animationDelay: ".1s" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>Member Portal</p>
+                <h1 style={{ fontFamily: S, fontSize: "clamp(32px,6vw,58px)", fontWeight: 700, lineHeight: 1.1, marginBottom: 16 }}>
+                  Welcome back,<br />
+                  <em style={{ fontStyle: "italic", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    {user.name.split(" ")[0]}.
+                  </em>
+                </h1>
+                <p style={{ color: C.grey, fontSize: 15, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.8 }}>
+                  You've taken the first step toward financial freedom. Your courses, lessons and resources are all here — ready when you are.
+                </p>
+              </div>
+
+              {/* Stats bar */}
+              <div className="fu" style={{ display: "flex", gap: 0, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 16, overflow: "hidden", animationDelay: ".18s", width: "100%", maxWidth: 500 }}>
+                {[
+                  { n: courses.length, l: "Courses", icon: "🎓" },
+                  { n: videos.length, l: "Lessons", icon: "▶" },
+                  { n: "200+", l: "Traders", icon: "👥" },
+                ].map(({ n, l, icon }, i) => (
+                  <div key={l} style={{ flex: 1, padding: "20px 10px", textAlign: "center", borderRight: i < 2 ? "1px solid rgba(201,168,76,.12)" : "none" }}>
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+                    <div style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{n}</div>
+                    <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 4 }}>{l}</div>
+                  </div>
+                ))}
+              </div>
             </div>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}><Rule /></div>
+          </div>
 
-            <h1 className="fu" style={{ fontFamily: S, fontSize: "clamp(28px,5.5vw,48px)", fontWeight: 700, lineHeight: 1.15, marginBottom: 16, animationDelay: ".14s" }}>
-              Master the Markets.<br />
-              <em style={{ fontStyle: "italic", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                Unleash Your Potential.
-              </em>
-            </h1>
-
-            <p className="fu" style={{ color: C.grey, fontSize: 15, maxWidth: 420, margin: "0 auto", lineHeight: 1.75, animationDelay: ".2s" }}>
-              Welcome back, <strong style={{ color: C.dim }}>{user.name.split(" ")[0]}</strong>. Your course library is ready below.
-            </p>
-
-            {/* Stats row */}
-            <div className="fu" style={{ display: "flex", justifyContent: "center", gap: 40, marginTop: 36, animationDelay: ".26s" }}>
+          {/* ── WELCOME MESSAGE ── */}
+          <div style={{ background: `linear-gradient(135deg, #0D1B3E, #0F1520)`, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
               {[
-                { n: courses.length, l: "Courses" },
-                { n: sections.length, l: "Sections" },
-                { n: videos.length, l: "Lessons" },
-              ].map(({ n, l }) => (
-                <div key={l} style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: S, fontSize: 28, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{n}</div>
-                  <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 4 }}>{l}</div>
+                { icon: "🏆", title: "You're Among the Elite", body: "Less than 5% of traders commit to structured education. By being here, you've already separated yourself from the crowd." },
+                { icon: "📈", title: "Proven Strategy", body: "The TA FX methodology is built on real market experience — price action, structure and discipline that actually works." },
+                { icon: "🤝", title: "Community & Support", body: "Access to 200+ active traders, live classes twice a week, and direct mentorship from Taaha. You're never trading alone." },
+              ].map(({ icon, title, body }) => (
+                <div key={title} style={{ background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.1)", borderRadius: 14, padding: "22px 20px" }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>{icon}</div>
+                  <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, marginBottom: 8 }}>{title}</div>
+                  <div style={{ fontSize: 13, color: C.grey, lineHeight: 1.7 }}>{body}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Course cards */}
-          <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 16px 80px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", marginBottom: 20 }}>Your Courses</div>
+          {/* ── RESULTS / TESTIMONIALS ── */}
+          <div style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px" }}>
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Student Results</p>
+                <h2 style={{ fontFamily: S, fontSize: "clamp(24px,4vw,36px)", fontWeight: 700 }}>What Our Graduates Say</h2>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
+                {[
+                  { name: "Matteo", result: "Consistently profitable within 3 months", quote: "The structure and discipline I learned changed everything. I finally understand how the market moves.", stars: 5 },
+                  { name: "Anees", result: "Passed funded account challenge", quote: "TA FX gave me a real edge. The price action strategy is unlike anything else I've studied.", stars: 5 },
+                  { name: "Lorelei", result: "First profitable month after 2 years of losses", quote: "I wish I found this course sooner. The community alone is worth every cent.", stars: 5 },
+                  { name: "Adam", result: "Full-time trader within 6 months", quote: "Taaha's mentorship is unmatched. He actually cares about your success and it shows.", stars: 5 },
+                ].map(({ name, result, quote, stars }) => (
+                  <div key={name} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 20px", position: "relative" }}>
+                    <div style={{ color: C.gold, fontSize: 14, marginBottom: 10, letterSpacing: 2 }}>{"★".repeat(stars)}</div>
+                    <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.75, marginBottom: 16, fontStyle: "italic" }}>"{quote}"</p>
+                    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.white }}>{name}</div>
+                      <div style={{ fontSize: 12, color: C.gold, marginTop: 2 }}>{result}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── COURSES ── */}
+          <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 16px 80px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase" }}>Your Courses</span>
+              <div style={{ flex: 1, height: 1, background: C.border }} />
+            </div>
 
             {courses.length === 0 && (
               <div style={{ textAlign: "center", padding: "80px 0", color: C.grey }}>
@@ -569,28 +620,40 @@ function Portal({ user, courses, sections, videos, onLogout }) {
               {courses.map((c, i) => {
                 const total = videos.filter(v => v.courseId === c.id).length;
                 const sects = sections.filter(s => s.courseId === c.id).length;
+                const colors = [
+                  `linear-gradient(135deg,#1a3a6e,#0D1B3E)`,
+                  `linear-gradient(135deg,#1a2e1a,#0a1a0a)`,
+                  `linear-gradient(135deg,#3a1a1a,#1a0a0a)`,
+                  `linear-gradient(135deg,#2a1a3a,#100a1a)`,
+                ];
+                const bg = colors[i % colors.length];
                 return (
-                  <div key={c.id} className="fu" style={{ animationDelay: `${.25 + i * .07}s` }}>
-                    <Card hover onClick={() => openCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex" }}>
-                      {/* Gold left stripe */}
+                  <div key={c.id} className="fu" style={{ animationDelay: `${.2 + i * .07}s` }}>
+                    <Card hover onClick={() => openCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex", background: bg, border: `1px solid rgba(201,168,76,.18)` }}>
                       <div style={{ width: 5, background: `linear-gradient(180deg,${C.goldLt},${C.gold})`, flexShrink: 0 }} />
-                      <div style={{ flex: 1, padding: "22px 20px 22px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                      <div style={{ flex: 1, padding: "24px 20px 24px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: S, fontSize: 21, fontWeight: 700, color: C.white, marginBottom: 5 }}>{c.title}</div>
-                          {c.desc && <div style={{ fontSize: 13, color: C.grey, marginBottom: 12, lineHeight: 1.55 }}>{c.desc}</div>}
-                          <div style={{ display: "flex", gap: 20, fontSize: 12, color: C.grey }}>
-                            <span><span style={{ color: C.gold, marginRight: 5 }}>§</span>{sects} section{sects !== 1 ? "s" : ""}</span>
-                            <span><span style={{ color: C.gold, marginRight: 5 }}>▶</span>{total} lesson{total !== 1 ? "s" : ""}</span>
+                          <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 6 }}>{c.title}</div>
+                          {c.desc && <div style={{ fontSize: 13, color: C.grey, marginBottom: 14, lineHeight: 1.6 }}>{c.desc}</div>}
+                          <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
+                            <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{sects} section{sects !== 1 ? "s" : ""}</span>
+                            <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{total} lesson{total !== 1 ? "s" : ""}</span>
                           </div>
                         </div>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 18px ${C.goldDim}` }}>
-                          <span style={{ color: "#08090E", fontSize: 20, fontWeight: 900, marginLeft: 2 }}>›</span>
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 6px 24px rgba(201,168,76,.3)` }}>
+                          <span style={{ color: "#08090E", fontSize: 22, fontWeight: 900, marginLeft: 3 }}>›</span>
                         </div>
                       </div>
                     </Card>
                   </div>
                 );
               })}
+            </div>
+
+            {/* Bottom message */}
+            <div style={{ marginTop: 40, padding: "24px", background: "rgba(201,168,76,.05)", border: "1px solid rgba(201,168,76,.12)", borderRadius: 14, textAlign: "center" }}>
+              <p style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 6, fontStyle: "italic" }}>"The market rewards the prepared mind."</p>
+              <p style={{ fontSize: 12, color: C.grey }}>Keep learning. Keep growing. The results will follow.</p>
             </div>
           </div>
         </div>
