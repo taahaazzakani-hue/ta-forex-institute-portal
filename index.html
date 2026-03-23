@@ -18,11 +18,7 @@ const { useState, useEffect } = React;
 const ADMIN_PW = "TAForex2024!";
 const uid = () => Math.random().toString(36).slice(2, 9);
 
-function useStore(key, def) {
-  const [val, set] = React.useState(() => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; } catch { return def; } });
-  const save = v => { set(v); try { localStorage.setItem(key, JSON.stringify(v)); } catch {} };
-  return [val, save];
-}
+
 
 /* ── PALETTE ─────────────────────────────────────────────────────────────── */
 const C = {
@@ -60,6 +56,7 @@ select option{background:${C.navy};color:${C.white}}
 button{font-family:${D};cursor:pointer;border:none;outline:none;letter-spacing:.05em}
 label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:${C.grey};margin-bottom:7px;font-family:'Cinzel',serif}
 @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .fu{animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
@@ -188,8 +185,8 @@ function VideoPlayer({ url }) {
 
 /* ── LOGIN ───────────────────────────────────────────────────────────────── */
 function LoginScreen({ onLogin, onRegister, onAdmin }) {
-  const [tab, setTab] = useState("login");
-  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [msg, setMsg] = useState("");
+  const [tab, setTab] = React.useState("login");
+  const [name, setName] = React.useState(""); const [email, setEmail] = React.useState(""); const [pass, setPass] = React.useState(""); const [msg, setMsg] = React.useState("");
   const submit = () => tab === "login" ? onLogin(email, pass, setMsg) : onRegister(name, email, pass, setMsg);
 
   return (
@@ -237,7 +234,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 }
 
 function AdminAuthScreen({ onBack, onEnter }) {
-  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
+  const [pass, setPass] = React.useState(""); const [err, setErr] = React.useState("");
   const go = () => pass === ADMIN_PW ? onEnter() : setErr("Incorrect password.");
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -258,12 +255,12 @@ function AdminAuthScreen({ onBack, onEnter }) {
 }
 
 /* ── ADMIN TABS ─────────────────────────────────────────────────────────── */
-function UsersTab({ users, setUsers }) {
+function UsersTab({ users, patchUser, deleteUser, loadAll }) {
   const pending = users.filter(u => u.status === "pending");
   const rest    = users.filter(u => u.status !== "pending");
-  const approve = id => setUsers(users.map(u => u.id === id ? { ...u, status: "approved" } : u));
-  const decline = id => setUsers(users.map(u => u.id === id ? { ...u, status: "declined" } : u));
-  const delUser = id => setUsers(users.filter(u => u.id !== id));
+  const approve = id => patchUser(id, { status: "approved" });
+  const decline = id => patchUser(id, { status: "declined" });
+  const delUser = id => deleteUser(id);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {pending.length > 0 && (
@@ -302,13 +299,11 @@ function UsersTab({ users, setUsers }) {
   );
 }
 
-function CoursesTab({ courses, setCourses, sections, setSections, videos, setVideos }) {
-  const [cT, setCT] = useState(""); const [cD, setCD] = useState("");
-  const [sT, setST] = useState(""); const [sC, setSC] = useState("");
-  const addCourse = () => { if (!cT.trim()) return; setCourses([...courses, { id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }]); setCT(""); setCD(""); };
-  const delCourse = id => { setCourses(courses.filter(c => c.id !== id)); setSections(sections.filter(s => s.courseId !== id)); setVideos(videos.filter(v => v.courseId !== id)); };
-  const addSec = () => { if (!sT.trim() || !sC) return; setSections([...sections, { id: uid(), courseId: sC, title: sT.trim() }]); setST(""); };
-  const delSec = id => { setSections(sections.filter(s => s.id !== id)); setVideos(videos.filter(v => v.sectionId !== id)); };
+function CoursesTab({ courses, addCourse, deleteCourse, sections, addSection, deleteSection, videos }) {
+  const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState("");
+  const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
+  const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
+  const doAddSec = () => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim() }); setST(""); };
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <Card style={{ padding: 24 }}>
@@ -316,7 +311,7 @@ function CoursesTab({ courses, setCourses, sections, setSections, videos, setVid
         <div style={{ display: "grid", gap: 14 }}>
           <div><label>Course Title</label><input value={cT} onChange={e => setCT(e.target.value)} placeholder="e.g. Advanced Trading Masterclass" /></div>
           <div><label>Short Description</label><input value={cD} onChange={e => setCD(e.target.value)} placeholder="What students will learn…" /></div>
-          <Btn onClick={addCourse} style={{ justifySelf: "start" }}>Create Course</Btn>
+          <Btn onClick={doAddCourse} style={{ justifySelf: "start" }}>Create Course</Btn>
         </div>
       </Card>
       <Card style={{ padding: 24 }}>
@@ -324,7 +319,7 @@ function CoursesTab({ courses, setCourses, sections, setSections, videos, setVid
         <div style={{ display: "grid", gap: 14 }}>
           <div><label>Course</label><select value={sC} onChange={e => setSC(e.target.value)}><option value="">Select course…</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
           <div><label>Section Title</label><input value={sT} onChange={e => setST(e.target.value)} placeholder="e.g. Phase One – Core Concepts" /></div>
-          <Btn onClick={addSec} disabled={!sC || !sT.trim()} style={{ justifySelf: "start" }}>Add Section</Btn>
+          <Btn onClick={doAddSec} disabled={!sC || !sT.trim()} style={{ justifySelf: "start" }}>Add Section</Btn>
         </div>
       </Card>
       {courses.map(c => {
@@ -336,13 +331,13 @@ function CoursesTab({ courses, setCourses, sections, setSections, videos, setVid
                 <div style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{c.title}</div>
                 {c.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{c.desc}</div>}
               </div>
-              <Btn v="danger" onClick={() => delCourse(c.id)} sz="sm">Delete</Btn>
+              <Btn v="danger" onClick={() => deleteCourse(c.id)} sz="sm">Delete</Btn>
             </div>
             {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
             {cs.map(s => (
               <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border }}>
                 <div style={{ fontSize: 13 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
-                <Btn v="danger" onClick={() => delSec(s.id)} sz="sm">Delete</Btn>
+                <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
               </div>
             ))}
           </Card>
@@ -352,17 +347,17 @@ function CoursesTab({ courses, setCourses, sections, setSections, videos, setVid
   );
 }
 
-function VideosTab({ courses, sections, videos, setVideos }) {
-  const [vT, setVT] = useState(""); const [vU, setVU] = useState(""); const [vD, setVD] = useState("");
-  const [vC, setVC] = useState(""); const [vS, setVS] = useState(""); const [vErr, setVErr] = useState("");
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
+  const [vT, setVT] = React.useState(""); const [vU, setVU] = React.useState(""); const [vD, setVD] = React.useState("");
+  const [vC, setVC] = React.useState(""); const [vS, setVS] = React.useState(""); const [vErr, setVErr] = React.useState("");
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
   const addVid = () => {
     if (!vT.trim() || !vU.trim() || !vC || !vS) { setVErr("All fields are required."); return; }
-    setVideos([...videos, { id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() }]);
+    addVideo({ id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() });
     setVT(""); setVU(""); setVD(""); setVErr("");
   };
-  const delVid = id => setVideos(videos.filter(v => v.id !== id));
+  const delVid = id => deleteVideo(id);
   return (
     <div>
       <Card style={{ padding: 24, marginBottom: 28 }}>
@@ -426,8 +421,8 @@ function VideosTab({ courses, sections, videos, setVideos }) {
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, journals, setJournals, onLogout }) {
-  const [tab, setTab] = useState("users");
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
+  const [tab, setTab] = React.useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
   return (
@@ -452,22 +447,22 @@ function AdminPanel({ users, setUsers, courses, setCourses, sections, setSection
             </button>
           ))}
         </div>
-        {tab === "users"   && <UsersTab   users={users} setUsers={setUsers} />}
-        {tab === "content" && <CoursesTab courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} setVideos={setVideos} />}
-        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} setJournals={setJournals} />}
-        {tab === "membership" && <MembershipTab users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} />}
+        {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
+        {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} deleteSection={deleteSection} videos={videos} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
+        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
+        {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} />}
       </div>
     </div>
   );
 }
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
-function Portal({ user, courses, sections, videos, journals, setJournals, onLogout }) {
-  const [view, setView]   = useState("home");
-  const [course, setCourse] = useState(null);
-  const [video, setVideo]   = useState(null);
-  const [openS, setOpenS]   = useState({});
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, onLogout }) {
+  const [view, setView]   = React.useState("home");
+  const [course, setCourse] = React.useState(null);
+  const [video, setVideo]   = React.useState(null);
+  const [openS, setOpenS]   = React.useState({});
 
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
@@ -517,7 +512,7 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
       )}
 
       {/* ══ JOURNAL ══ */}
-      {showJournal && <StudentJournal user={user} journals={journals} setJournals={setJournals} />}
+      {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
 
       {/* ══ HOME ══ */}
       {!showJournal && view === "home" && (
@@ -808,7 +803,7 @@ function Portal({ user, courses, sections, videos, journals, setJournals, onLogo
 
 
 /* ── STUDENT JOURNAL ─────────────────────────────────────────────────────── */
-function StudentJournal({ user, journals, setJournals }) {
+function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [title, setTitle] = React.useState("");
   const [pair, setPair] = React.useState("");
   const [direction, setDirection] = React.useState("Long");
@@ -832,7 +827,7 @@ function StudentJournal({ user, journals, setJournals }) {
     setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
   };
 
-  const deleteEntry = id => setJournals(journals.filter(j => j.id !== id));
+  const deleteEntry = id => deleteJournal(id);
 
   const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
 
@@ -996,7 +991,7 @@ function StudentJournal({ user, journals, setJournals }) {
 }
 
 /* ── ADMIN JOURNAL TAB ───────────────────────────────────────────────────── */
-function AdminJournalTab({ users, journals, setJournals }) {
+function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
   const [selected, setSelected] = React.useState(null);
   const [comment, setComment] = React.useState("");
   const [filterUser, setFilterUser] = React.useState("all");
@@ -1010,11 +1005,11 @@ function AdminJournalTab({ users, journals, setJournals }) {
 
   const submitComment = () => {
     if (!comment.trim()) return;
-    setJournals(journals.map(x => x.id === selected ? { ...x, adminComment: comment.trim(), adminCommentAt: Date.now(), adminSeen: true } : x));
+    patchJournal(selected, { adminComment: comment.trim(), adminCommentAt: Date.now(), adminSeen: true });
     setComment(""); setSelected(null);
   };
 
-  const markSeen = id => setJournals(journals.map(x => x.id === id ? { ...x, adminSeen: true } : x));
+  const markSeen = id => patchJournal(id, { adminSeen: true });
 
   const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
 
@@ -1119,19 +1114,19 @@ const LEVEL_COLORS = {
   "Free":               { bg: "rgba(76,184,128,.15)", border: "rgba(76,184,128,.4)", text: "#4CB880" },
 };
 
-function MembershipTab({ users, setUsers, courses, setCourses }) {
+function MembershipTab({ users, patchUser, courses, patchCourse }) {
   const approved = users.filter(u => u.status === "approved");
 
   const toggleLevel = (userId, level) => {
-    setUsers(users.map(u => {
-      if (u.id !== userId) return u;
-      const levels = u.levels || [];
-      return { ...u, levels: levels.includes(level) ? levels.filter(l => l !== level) : [...levels, level] };
-    }));
+    const u = users.find(x => x.id === userId);
+    if (!u) return;
+    const levels = u.levels || [];
+    const newLevels = levels.includes(level) ? levels.filter(l => l !== level) : [...levels, level];
+    patchUser(userId, { levels: newLevels });
   };
 
   const setCourseLevel = (courseId, level) => {
-    setCourses(courses.map(c => c.id === courseId ? { ...c, level } : c));
+    patchCourse(courseId, { level: level || null });
   };
 
   return (
@@ -1226,31 +1221,141 @@ function StatusScreen({ icon, title, color, msg, onLogout }) {
 
 /* ── ROOT ────────────────────────────────────────────────────────────────── */
 function App() {
-  const [users,    setUsers]    = useStore("tafx_users",    []);
-  const [courses,  setCourses]  = useStore("tafx_courses4", []);
-  const [sections, setSections] = useStore("tafx_sections3",[]);
-  const [videos,   setVideos]   = useStore("tafx_videos4",  []);
-  const [journals, setJournals] = useStore("tafx_journals",  []);
-  const [screen,   setScreen]   = useState("login");
-  const [me,       setMe]       = useState(null);
+  const [users,    setUsers]    = React.useState([]);
+  const [courses,  setCourses]  = React.useState([]);
+  const [sections, setSections] = React.useState([]);
+  const [videos,   setVideos]   = React.useState([]);
+  const [journals, setJournals] = React.useState([]);
+  const [screen,   setScreen]   = React.useState("login");
+  const [me,       setMe]       = React.useState(null);
+  const [loading,  setLoading]  = React.useState(true);
 
-  const login = (email, pass, setMsg) => {
+  // ── Supabase helpers ──
+  const SB_URL = "https://qpjnzhmuwklvqmevlxjm.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwam56aG11d2tsdnFtZXZseGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjQ1ODUsImV4cCI6MjA4OTg0MDU4NX0.OlFw50GiD4vNzrLZ2-dFXVdAD8OxG1-g0xP_erR_n98";
+  const sb = async (path, opts={}) => {
+    const r = await fetch(SB_URL + "/rest/v1/" + path, {
+      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": opts.prefer || "return=representation", ...opts.headers },
+      method: opts.method || "GET",
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    if (!r.ok) { const e = await r.text(); console.error("SB error:", e); return null; }
+    const text = await r.text();
+    return text ? JSON.parse(text) : [];
+  };
+
+  // ── Load all data ──
+  const loadAll = async () => {
+    setLoading(true);
+    const [u, c, sec, v, j] = await Promise.all([
+      sb("users?order=created_at.asc"),
+      sb("courses?order=created_at.asc"),
+      sb("sections?select=*"),
+      sb("videos?order=created_at.asc"),
+      sb("journals?order=created_at.desc"),
+    ]);
+    if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at })));
+    if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
+    if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
+    if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
+    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
+    setLoading(false);
+  };
+  React.useEffect(() => { loadAll(); }, []);
+
+  // ── Setters that also persist to Supabase ──
+  const saveUsers = async (newUsers) => {
+    setUsers(newUsers);
+    // Upsert all - find changed user
+    for (const u of newUsers) {
+      await sb("users?id=eq." + u.id, { method: "PATCH", prefer: "return=minimal", body: { name:u.name, email:u.email, password:u.password, status:u.status, levels:u.levels||[] } });
+    }
+  };
+  const addUser = async (u) => {
+    await sb("users", { method: "POST", prefer: "return=minimal", body: { id:u.id, name:u.name, email:u.email, password:u.password, status:u.status, levels:[], created_at:u.createdAt } });
+    setUsers(prev => [...prev, u]);
+  };
+  const patchUser = async (id, patch) => {
+    await sb("users?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: patch });
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u));
+  };
+  const deleteUserDB = async (id) => {
+    await sb("users?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setUsers(prev => prev.filter(u => u.id !== id));
+  };
+  const saveCourses = async (newCourses) => { setCourses(newCourses); };
+  const addCourseDB = async (c) => {
+    await sb("courses", { method: "POST", prefer: "return=minimal", body: { id:c.id, title:c.title, description:c.desc||"", level:c.level||null, created_at:c.createdAt } });
+    setCourses(prev => [...prev, c]);
+  };
+  const patchCourse = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.level !== undefined) dbPatch.level = patch.level;
+    if (patch.title !== undefined) dbPatch.title = patch.title;
+    if (patch.desc !== undefined) dbPatch.description = patch.desc;
+    await sb("courses?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
+  };
+  const deleteCourseDB = async (id) => {
+    await sb("videos?course_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    await sb("sections?course_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    await sb("courses?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setCourses(prev => prev.filter(c => c.id !== id));
+    setSections(prev => prev.filter(s => s.courseId !== id));
+    setVideos(prev => prev.filter(v => v.courseId !== id));
+  };
+  const addSectionDB = async (s) => {
+    await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title } });
+    setSections(prev => [...prev, s]);
+  };
+  const deleteSectionDB = async (id) => {
+    await sb("videos?section_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    await sb("sections?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setSections(prev => prev.filter(s => s.id !== id));
+    setVideos(prev => prev.filter(v => v.sectionId !== id));
+  };
+  const addVideoDB = async (v) => {
+    await sb("videos", { method: "POST", prefer: "return=minimal", body: { id:v.id, course_id:v.courseId, section_id:v.sectionId, title:v.title, url:v.url, description:v.desc||"", created_at:v.createdAt } });
+    setVideos(prev => [...prev, v]);
+  };
+  const deleteVideoDB = async (id) => {
+    await sb("videos?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setVideos(prev => prev.filter(v => v.id !== id));
+  };
+  const addJournalDB = async (j) => {
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk, gain:j.gain, result:j.result, pnl:j.pnl, analysis:j.analysis, lesson:j.lesson, image:j.image, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    setJournals(prev => [j, ...prev]);
+  };
+  const deleteJournalDB = async (id) => {
+    await sb("journals?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setJournals(prev => prev.filter(j => j.id !== id));
+  };
+  const patchJournal = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.adminComment !== undefined) dbPatch.admin_comment = patch.adminComment;
+    if (patch.adminCommentAt !== undefined) dbPatch.admin_comment_at = patch.adminCommentAt;
+    if (patch.adminSeen !== undefined) dbPatch.admin_seen = patch.adminSeen;
+    await sb("journals?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setJournals(prev => prev.map(j => j.id === id ? { ...j, ...patch } : j));
+  };
+
+  const login = async (email, pass, setMsg) => {
     const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
     if (!u) { setMsg("Incorrect email or password."); return; }
     setMe(u);
     setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
   };
 
-  const register = (name, email, pass, setMsg) => {
+  const register = async (name, email, pass, setMsg) => {
     if (!name || !email || !pass) { setMsg("All fields are required."); return; }
     if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) { setMsg("An account with this email already exists."); return; }
-    const u = { id: uid(), name, email, password: pass, status: "pending", createdAt: Date.now() };
-    setUsers([...users, u]); setMe(u); setScreen("pending");
+    const u = { id: uid(), name, email, password: pass, status: "pending", levels: [], createdAt: Date.now() };
+    await addUser(u); setMe(u); setScreen("pending");
   };
 
   const logout = () => { setMe(null); setScreen("login"); };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (me && screen === "pending") {
       const u = users.find(u => u.id === me.id);
       if (u?.status === "approved") setScreen("portal");
@@ -1258,13 +1363,22 @@ function App() {
     }
   }, [users]);
 
+  if (loading) return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
+      <style>{GS}</style>
+      <Logo w={140} />
+      <div style={{ width:40, height:40, border:"3px solid " + C.border, borderTop:"3px solid " + C.gold, borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+      <p style={{ color:C.grey, fontSize:13, letterSpacing:".1em" }}>Loading portal...</p>
+    </div>
+  );
+
   return (
     <>
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} journals={journals} setJournals={setJournals} onLogout={logout} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} setJournals={setJournals} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
