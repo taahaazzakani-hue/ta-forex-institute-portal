@@ -156,29 +156,97 @@ function detect(url) {
 
 const PC = { youtube: "#FF0000", vimeo: "#1AB7EA", zoom: "#2D8CFF", drive: C.gold };
 
-function VideoPlayer({ url }) {
+function CastButton({ url, title }) {
+  const [status, setStatus] = React.useState("idle"); // idle | casting | error | unsupported
+
+  const castToTV = async () => {
+    // Try Picture-in-Picture for native videos
+    const videoEls = document.querySelectorAll("video");
+    if (videoEls.length > 0) {
+      try {
+        await videoEls[0].requestPictureInPicture();
+        setStatus("casting");
+        videoEls[0].addEventListener("leavepictureinpicture", () => setStatus("idle"), { once: true });
+        return;
+      } catch(e) {}
+    }
+
+    // Try Remote Playback API (Chromecast / AirPlay)
+    if (videoEls.length > 0 && videoEls[0].remote) {
+      try {
+        await videoEls[0].remote.prompt();
+        setStatus("casting");
+        return;
+      } catch(e) {}
+    }
+
+    // Fallback — open in new tab so user can cast from there
+    window.open(url, "_blank");
+    setStatus("idle");
+  };
+
+  return (
+    <button onClick={castToTV} title="Cast to TV" style={{
+      display: "inline-flex", alignItems: "center", gap: 7,
+      background: status === "casting" ? C.goldDim : "rgba(255,255,255,.06)",
+      color: status === "casting" ? C.gold : C.grey,
+      border: "1px solid " + (status === "casting" ? C.gold + "50" : "rgba(255,255,255,.1)"),
+      borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600,
+      cursor: "pointer", transition: "all .2s", letterSpacing: ".03em"
+    }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+        <path d="M2 12a9 9 0 0 1 8 8"/>
+        <path d="M2 16a5 5 0 0 1 4 4"/>
+        <line x1="2" y1="20" x2="2.01" y2="20"/>
+      </svg>
+      {status === "casting" ? "Casting..." : "Cast to TV"}
+    </button>
+  );
+}
+
+function VideoPlayer({ url, title }) {
   const p = detect(url);
   if (!p) return <div style={{ padding: 60, textAlign: "center", color: C.grey, background: "#000" }}>No video URL set.</div>;
-  if (p.type === "native") return <video controls src={p.src} style={{ width: "100%", display: "block", background: "#000", maxHeight: 500 }} />;
-  if (p.type === "iframe") return (
-    <div style={{ position: "relative", paddingBottom: "56.25%", background: "#000" }}>
-      <iframe src={p.src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-        allowFullScreen allow="autoplay; encrypted-media; picture-in-picture; fullscreen" title="lesson" />
+
+  if (p.type === "native") return (
+    <div style={{ background: "#000" }}>
+      <video controls src={p.src} style={{ width: "100%", display: "block", background: "#000", maxHeight: 500 }} id="ta-video" />
+      <div style={{ padding: "10px 16px", display: "flex", justifyContent: "flex-end", background: "#050508" }}>
+        <CastButton url={p.src} title={title} />
+      </div>
     </div>
   );
+
+  if (p.type === "iframe") return (
+    <div style={{ background: "#000" }}>
+      <div style={{ position: "relative", paddingBottom: "56.25%", background: "#000" }}>
+        <iframe src={p.src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+          allowFullScreen allow="autoplay; encrypted-media; picture-in-picture; fullscreen" title="lesson" id="ta-video-frame" />
+      </div>
+      <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#050508", borderTop: "1px solid " + C.border }}>
+        <span style={{ fontSize: 11, color: C.faint }}>💡 For best casting experience, use full screen then cast from your device</span>
+        <CastButton url={p.src} title={title} />
+      </div>
+    </div>
+  );
+
   const col = PC[p.platform] || C.gold;
   return (
     <div style={{ background: "#030508", padding: "56px 24px 64px", textAlign: "center" }}>
       <div style={{ width: 72, height: 72, borderRadius: "50%", background: col, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px", fontSize: 24, color: "#fff", fontWeight: 800 }}>▶</div>
       <p style={{ fontFamily: S, fontSize: 24, color: C.white, marginBottom: 8, fontWeight: 600 }}>Watch on {p.label}</p>
       <p style={{ color: C.grey, fontSize: 13, marginBottom: 30, lineHeight: 1.8, maxWidth: 380, margin: "0 auto 30px" }}>
-        This recording is hosted on {p.label}. Tap below to open it.
+        This recording is hosted on {p.label}. Open it then cast from your device.
       </p>
-      <a href={p.src} target="_blank" rel="noopener noreferrer"
-        style={{ display: "inline-flex", alignItems: "center", gap: 10, background: col, color: "#fff", padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
-        Open in {p.label} ↗
-      </a>
-      {p.platform === "zoom" && <p style={{ color: C.faint, fontSize: 11, marginTop: 20 }}>Download the Zoom recording and upload to Google Drive or Bunny.net for inline playback.</p>}
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <a href={p.src} target="_blank" rel="noopener noreferrer"
+          style={{ display: "inline-flex", alignItems: "center", gap: 10, background: col, color: "#fff", padding: "14px 28px", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+          Open in {p.label} ↗
+        </a>
+        <CastButton url={p.src} title={title} />
+      </div>
+      {p.platform === "zoom" && <p style={{ color: C.faint, fontSize: 11, marginTop: 20 }}>Download the Zoom recording and upload to Bunny.net for inline playback.</p>}
     </div>
   );
 }
@@ -755,7 +823,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
           <div style={{ maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
             {/* Player */}
             <div style={{ background: "#000", borderBottom: `1px solid ${C.border}` }}>
-              <VideoPlayer url={video.url} />
+              <VideoPlayer url={video.url} title={video.title} />
             </div>
 
             <div style={{ padding: "24px 20px 0" }}>
