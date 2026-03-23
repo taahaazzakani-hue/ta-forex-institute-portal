@@ -1,0 +1,781 @@
+import { useState, useEffect } from "react";
+
+const ADMIN_PW = "TAForex2024!";
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+function useStore(key, def) {
+  const [val, set] = useState(def);
+  useEffect(() => {
+    (async () => { try { const r = await window.storage.get(key, true); if (r) set(JSON.parse(r.value)); } catch {} })();
+  }, []);
+  const save = async v => { set(v); try { await window.storage.set(key, JSON.stringify(v), true); } catch {} };
+  return [val, save];
+}
+
+/* ── PALETTE ─────────────────────────────────────────────────────────────── */
+const C = {
+  bg:      "#07090F",
+  surf:    "#0B0F1A",
+  card:    "#0F1520",
+  cardHov: "#131B28",
+  border:  "#1A2236",
+  borderH: "#243050",
+  navy:    "#0D1730",
+  gold:    "#C9A84C",
+  goldLt:  "#E6C86A",
+  goldDim: "rgba(201,168,76,.12)",
+  white:   "#F3F0E6",
+  dim:     "#C4BFA8",
+  grey:    "#6478A0",
+  faint:   "#243050",
+  red:     "#D96060",
+  green:   "#4CB880",
+};
+const S = "'Cormorant Garamond',Georgia,serif";
+const D = "'DM Sans',system-ui,sans-serif";
+
+/* ── GLOBAL CSS ──────────────────────────────────────────────────────────── */
+const GS = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:${C.gold};border-radius:4px}
+a{color:inherit;text-decoration:none}
+input,select,textarea{font-family:${D};font-size:14px;color:${C.white};background:${C.navy};border:1.5px solid ${C.border};border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:${C.gold};box-shadow:0 0 0 3px ${C.goldDim}}
+input::placeholder,textarea::placeholder{color:${C.faint}}
+select option{background:${C.navy};color:${C.white}}
+button{font-family:${D};cursor:pointer;border:none;outline:none}
+label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:${C.grey};margin-bottom:7px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.fu{animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
+.fi{animation:fadeIn .4s ease both}
+`;
+
+/* ── LOGO ────────────────────────────────────────────────────────────────── */
+const LOGO_SRC = "data:image/jpeg;base64,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fiSW/Kh5izsIUj96qiDNAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//2Q==";
+const Logo = ({ w = 160, onClick }) => (
+  <img
+    src={LOGO_SRC}
+    onClick={onClick}
+    alt="TA Forex Institute"
+    style={{
+      width: w,
+      height: "auto",
+      display: "block",
+      cursor: onClick ? "pointer" : "default",
+      flexShrink: 0,
+      opacity: 1,
+      filter: "invert(1)",
+      backgroundColor: C.bg,
+      padding: 8,
+      borderRadius: 8,
+    }}
+  />
+);
+
+/* ── GOLD RULE ───────────────────────────────────────────────────────────── */
+const Rule = () => <div style={{ height: 1, background: `linear-gradient(90deg,transparent,${C.gold},transparent)` }} />;
+
+/* ── BUTTON ──────────────────────────────────────────────────────────────── */
+const Btn = ({ children, onClick, v = "gold", sz = "md", style, disabled, full }) => {
+  const bases = { borderRadius: 10, fontWeight: 600, letterSpacing: ".03em", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .18s", whiteSpace: "nowrap", opacity: disabled ? .45 : 1, cursor: disabled ? "not-allowed" : "pointer", ...(full && { width: "100%" }) };
+  const szs = { sm: { fontSize: 12, padding: "7px 14px" }, md: { fontSize: 13, padding: "11px 20px" }, lg: { fontSize: 15, padding: "14px 30px" } };
+  const vs = {
+    gold:    { background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, color: "#08090E", boxShadow: `0 6px 24px rgba(201,168,76,.28)` },
+    outline: { background: "transparent", color: C.gold, border: `1.5px solid rgba(201,168,76,.45)` },
+    ghost:   { background: "transparent", color: C.grey },
+    danger:  { background: "transparent", color: C.red, border: `1.5px solid rgba(217,96,96,.3)` },
+    navy:    { background: C.navy, color: C.white, border: `1.5px solid ${C.border}` },
+  };
+  return <button onClick={!disabled ? onClick : undefined} style={{ ...bases, ...szs[sz], ...vs[v], ...style }}>{children}</button>;
+};
+
+/* ── CARD ────────────────────────────────────────────────────────────────── */
+const Card = ({ children, style, onClick, hover }) => (
+  <div
+    onClick={onClick}
+    style={{ background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 14, transition: "background .2s, border-color .2s", cursor: onClick ? "pointer" : undefined, ...style }}
+    onMouseEnter={e => { if (hover) { e.currentTarget.style.background = C.cardHov; e.currentTarget.style.borderColor = C.borderH; } }}
+    onMouseLeave={e => { if (hover) { e.currentTarget.style.background = C.card; e.currentTarget.style.borderColor = C.border; } }}
+  >
+    {children}
+  </div>
+);
+
+const Badge = ({ status }) => {
+  const m = { approved: [C.green, "#081A0E"], pending: [C.gold, "#1A1200"], declined: [C.red, "#1A0808"] };
+  const [col, bg] = m[status] || [C.grey, C.card];
+  return <span style={{ background: bg, color: col, border: `1px solid ${col}30`, padding: "3px 11px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase" }}>{status}</span>;
+};
+
+const Divider = () => <div style={{ height: 1, background: C.border, margin: "20px 0" }} />;
+
+/* ── VIDEO DETECTION ─────────────────────────────────────────────────────── */
+function detect(url) {
+  if (!url) return null;
+  const u = url.trim();
+  // Handle any HTML that contains an iframe (e.g. Bunny wraps iframe in a <div>)
+  if (u.startsWith("<") && u.includes("<iframe")) {
+    const m = u.match(/src=["']([^"']+)["']/i);
+    return m ? { type: "iframe", src: m[1], platform: "bunny" } : null;
+  }
+  if (u.startsWith("<iframe") || u.startsWith("<IFRAME")) {
+    const m = u.match(/src=["']([^"']+)["']/i);
+    return m ? { type: "iframe", src: m[1], platform: "bunny" } : null;
+  }
+  if (u.includes("mediadelivery.net") || u.includes("bunnycdn.com") || u.includes("b-cdn.net"))
+    return { type: "iframe", src: u, platform: "bunny" };
+  if (u.includes("drive.google.com")) {
+    // Extract file ID and always build a clean /preview URL
+    const m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const src = m ? "https://drive.google.com/file/d/" + m[1] + "/preview" : u;
+    return { type: "iframe", src, platform: "drive" };
+  }
+  if (u.includes("youtube.com") || u.includes("youtu.be"))
+    return { type: "ext", src: u, platform: "youtube", label: "YouTube" };
+  if (u.includes("vimeo.com"))
+    return { type: "ext", src: u, platform: "vimeo", label: "Vimeo" };
+  if (u.includes("zoom.us") || u.includes("zoom.com"))
+    return { type: "ext", src: u, platform: "zoom", label: "Zoom" };
+  if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(u))
+    return { type: "native", src: u, platform: "file" };
+  return { type: "iframe", src: u, platform: "embed" };
+}
+
+const PC = { youtube: "#FF0000", vimeo: "#1AB7EA", zoom: "#2D8CFF", drive: C.gold };
+
+function VideoPlayer({ url }) {
+  const p = detect(url);
+  if (!p) return <div style={{ padding: 60, textAlign: "center", color: C.grey, background: "#000" }}>No video URL set.</div>;
+  if (p.type === "native") return <video controls src={p.src} style={{ width: "100%", display: "block", background: "#000", maxHeight: 500 }} />;
+  if (p.type === "iframe") return (
+    <div style={{ position: "relative", paddingBottom: "56.25%", background: "#000" }}>
+      <iframe src={p.src} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+        allowFullScreen allow="autoplay; encrypted-media; picture-in-picture; fullscreen" title="lesson" />
+    </div>
+  );
+  const col = PC[p.platform] || C.gold;
+  return (
+    <div style={{ background: "#030508", padding: "56px 24px 64px", textAlign: "center" }}>
+      <div style={{ width: 72, height: 72, borderRadius: "50%", background: col, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px", fontSize: 24, color: "#fff", fontWeight: 800 }}>▶</div>
+      <p style={{ fontFamily: S, fontSize: 24, color: C.white, marginBottom: 8, fontWeight: 600 }}>Watch on {p.label}</p>
+      <p style={{ color: C.grey, fontSize: 13, marginBottom: 30, lineHeight: 1.8, maxWidth: 380, margin: "0 auto 30px" }}>
+        This recording is hosted on {p.label}. Tap below to open it.
+      </p>
+      <a href={p.src} target="_blank" rel="noopener noreferrer"
+        style={{ display: "inline-flex", alignItems: "center", gap: 10, background: col, color: "#fff", padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+        Open in {p.label} ↗
+      </a>
+      {p.platform === "zoom" && <p style={{ color: C.faint, fontSize: 11, marginTop: 20 }}>Download the Zoom recording and upload to Google Drive or Bunny.net for inline playback.</p>}
+    </div>
+  );
+}
+
+/* ── LOGIN ───────────────────────────────────────────────────────────────── */
+function LoginScreen({ onLogin, onRegister, onAdmin }) {
+  const [tab, setTab] = useState("login");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [msg, setMsg] = useState("");
+  const submit = () => tab === "login" ? onLogin(email, pass, setMsg) : onRegister(name, email, pass, setMsg);
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
+      {/* Deep navy radial glow */}
+      <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 90% 55% at 50% -5%, rgba(13,23,48,.9) 0%, transparent 65%)`, pointerEvents: "none" }} />
+      {/* Gold top line */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
+
+      <div className="fu" style={{ marginBottom: 48 }}><Logo w={190} /></div>
+
+      <Card className="fu" style={{ width: "100%", maxWidth: 420, padding: 32, borderRadius: 18, animationDelay: ".1s" }}>
+        {/* Tab switcher */}
+        <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 4, marginBottom: 28, gap: 3 }}>
+          {["login", "register"].map(t => (
+            <button key={t} onClick={() => { setTab(t); setMsg(""); }}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", transition: "all .2s",
+                background: tab === t ? `linear-gradient(135deg,${C.goldLt},${C.gold})` : "transparent",
+                color: tab === t ? "#08090E" : C.grey }}>
+              {t === "login" ? "Sign In" : "Register"}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {tab === "register" && <div><label>Full Name</label><input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>}
+          <div><label>Email Address</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>
+          <div><label>Password</label><input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && submit()} /></div>
+          {msg && <div style={{ background: `${C.red}12`, border: `1px solid ${C.red}35`, borderRadius: 8, padding: "10px 14px", color: C.red, fontSize: 13 }}>{msg}</div>}
+          <Btn onClick={submit} full sz="lg" style={{ marginTop: 4 }}>
+            {tab === "login" ? "Sign In →" : "Request Access →"}
+          </Btn>
+          {tab === "register" && <p style={{ fontSize: 12, color: C.grey, textAlign: "center", lineHeight: 1.7 }}>Your request will be reviewed by the admin before access is granted.</p>}
+        </div>
+
+        <Divider />
+        <button onClick={onAdmin} style={{ background: "transparent", color: C.faint, fontSize: 11, width: "100%", letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 600, padding: "4px 0" }}>
+          ⚙ Admin Login
+        </button>
+      </Card>
+
+      <p style={{ marginTop: 28, fontSize: 11, color: C.faint, letterSpacing: ".05em" }}>© {new Date().getFullYear()} TA Forex Institute Pty Ltd</p>
+    </div>
+  );
+}
+
+function AdminAuthScreen({ onBack, onEnter }) {
+  const [pass, setPass] = useState(""); const [err, setErr] = useState("");
+  const go = () => pass === ADMIN_PW ? onEnter() : setErr("Incorrect password.");
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <Card style={{ width: "100%", maxWidth: 380, padding: 36, borderRadius: 18 }}>
+        <div style={{ marginBottom: 28 }}><Logo w={180} /></div>
+        <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Admin Access</h2>
+        <p style={{ color: C.grey, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>Enter your admin password to manage the portal.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div><label>Admin Password</label><input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && go()} /></div>
+          {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
+          <Btn onClick={go} full sz="lg">Continue →</Btn>
+        </div>
+        <Divider />
+        <Btn v="ghost" onClick={onBack} sz="sm" style={{ fontSize: 12 }}>← Back to Login</Btn>
+      </Card>
+    </div>
+  );
+}
+
+/* ── ADMIN TABS ─────────────────────────────────────────────────────────── */
+function UsersTab({ users, setUsers }) {
+  const pending = users.filter(u => u.status === "pending");
+  const rest    = users.filter(u => u.status !== "pending");
+  const approve = id => setUsers(users.map(u => u.id === id ? { ...u, status: "approved" } : u));
+  const decline = id => setUsers(users.map(u => u.id === id ? { ...u, status: "declined" } : u));
+  const delUser = id => setUsers(users.filter(u => u.id !== id));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {pending.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 12 }}>⚡ Awaiting Approval ({pending.length})</div>
+          {pending.map(u => (
+            <Card key={u.id} style={{ padding: "16px 18px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{u.name}</div>
+                <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{u.email}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn onClick={() => approve(u.id)} sz="sm">✓ Approve</Btn>
+                <Btn v="danger" onClick={() => decline(u.id)} sz="sm">✗ Decline</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 10 }}>All Members ({rest.length})</div>
+      {rest.map(u => (
+        <Card key={u.id} style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>{u.name} <Badge status={u.status} /></div>
+            <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{u.email}</div>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {u.status === "declined" && <Btn onClick={() => approve(u.id)} sz="sm">Approve</Btn>}
+            {u.status === "approved" && <Btn v="danger" onClick={() => decline(u.id)} sz="sm">Revoke</Btn>}
+            <Btn v="ghost" onClick={() => delUser(u.id)} sz="sm" style={{ color: C.faint }}>Delete</Btn>
+          </div>
+        </Card>
+      ))}
+      {users.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No registered users yet.</p>}
+    </div>
+  );
+}
+
+function CoursesTab({ courses, setCourses, sections, setSections, videos, setVideos }) {
+  const [cT, setCT] = useState(""); const [cD, setCD] = useState("");
+  const [sT, setST] = useState(""); const [sC, setSC] = useState("");
+  const addCourse = () => { if (!cT.trim()) return; setCourses([...courses, { id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }]); setCT(""); setCD(""); };
+  const delCourse = id => { setCourses(courses.filter(c => c.id !== id)); setSections(sections.filter(s => s.courseId !== id)); setVideos(videos.filter(v => v.courseId !== id)); };
+  const addSec = () => { if (!sT.trim() || !sC) return; setSections([...sections, { id: uid(), courseId: sC, title: sT.trim() }]); setST(""); };
+  const delSec = id => { setSections(sections.filter(s => s.id !== id)); setVideos(videos.filter(v => v.sectionId !== id)); };
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>+ New Course</div>
+        <div style={{ display: "grid", gap: 14 }}>
+          <div><label>Course Title</label><input value={cT} onChange={e => setCT(e.target.value)} placeholder="e.g. Advanced Trading Masterclass" /></div>
+          <div><label>Short Description</label><input value={cD} onChange={e => setCD(e.target.value)} placeholder="What students will learn…" /></div>
+          <Btn onClick={addCourse} style={{ justifySelf: "start" }}>Create Course</Btn>
+        </div>
+      </Card>
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>+ Add Section / Phase</div>
+        <div style={{ display: "grid", gap: 14 }}>
+          <div><label>Course</label><select value={sC} onChange={e => setSC(e.target.value)}><option value="">Select course…</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
+          <div><label>Section Title</label><input value={sT} onChange={e => setST(e.target.value)} placeholder="e.g. Phase One – Core Concepts" /></div>
+          <Btn onClick={addSec} disabled={!sC || !sT.trim()} style={{ justifySelf: "start" }}>Add Section</Btn>
+        </div>
+      </Card>
+      {courses.map(c => {
+        const cs = sections.filter(s => s.courseId === c.id);
+        return (
+          <Card key={c.id} style={{ padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: cs.length ? 16 : 0 }}>
+              <div>
+                <div style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{c.title}</div>
+                {c.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{c.desc}</div>}
+              </div>
+              <Btn v="danger" onClick={() => delCourse(c.id)} sz="sm">Delete</Btn>
+            </div>
+            {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
+            {cs.map(s => (
+              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border }}>
+                <div style={{ fontSize: 13 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
+                <Btn v="danger" onClick={() => delSec(s.id)} sz="sm">Delete</Btn>
+              </div>
+            ))}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function VideosTab({ courses, sections, videos, setVideos }) {
+  const [vT, setVT] = useState(""); const [vU, setVU] = useState(""); const [vD, setVD] = useState("");
+  const [vC, setVC] = useState(""); const [vS, setVS] = useState(""); const [vErr, setVErr] = useState("");
+  const fSecs = sections.filter(s => s.courseId === vC);
+  const detected = vU.trim() ? detect(vU) : null;
+  const addVid = () => {
+    if (!vT.trim() || !vU.trim() || !vC || !vS) { setVErr("All fields are required."); return; }
+    setVideos([...videos, { id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() }]);
+    setVT(""); setVU(""); setVD(""); setVErr("");
+  };
+  const delVid = id => setVideos(videos.filter(v => v.id !== id));
+  return (
+    <div>
+      <Card style={{ padding: 24, marginBottom: 28 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>+ Add Video Lesson</div>
+        <div style={{ display: "grid", gap: 14 }}>
+          <div><label>Course</label><select value={vC} onChange={e => { setVC(e.target.value); setVS(""); }}><option value="">Select course…</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
+          <div><label>Section</label><select value={vS} onChange={e => setVS(e.target.value)} disabled={!vC}><option value="">Select section…</option>{fSecs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
+          <div><label>Lesson Title</label><input value={vT} onChange={e => setVT(e.target.value)} placeholder="e.g. Market Structure Explained" /></div>
+          <div>
+            <label>Video URL or Embed Code</label>
+            <textarea value={vU} onChange={e => setVU(e.target.value)}
+              placeholder={"Paste any of:\n• Bunny.net <iframe> embed code  → plays inline ✓\n• Google Drive /preview link  → plays inline ✓\n• Direct .mp4 link  → plays inline ✓\n• Zoom cloud recording link  → opens in Zoom\n• YouTube link  → opens in YouTube"}
+              style={{ height: 110, resize: "vertical", lineHeight: 1.65, background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13 }} />
+            {detected && (
+              <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, fontSize: 12, border: "1px solid", ...(detected.type === "iframe" || detected.type === "native" ? { background: "#081A0E", borderColor: C.green + "40", color: C.green } : { background: "#0A1020", borderColor: C.gold + "40", color: C.gold }) }}>
+                {(detected.type === "iframe" || detected.type === "native") ? "✓ Will play directly inside the portal" : "↗ Will open in " + detected.label}
+              </div>
+            )}
+          </div>
+          <div><label>Description (optional)</label><input value={vD} onChange={e => setVD(e.target.value)} placeholder="Brief summary of this lesson…" /></div>
+          {vErr && <div style={{ color: C.red, fontSize: 12 }}>{vErr}</div>}
+          <Btn onClick={addVid} style={{ justifySelf: "start" }}>Add Video</Btn>
+        </div>
+      </Card>
+      {courses.map(c => {
+        const cv = videos.filter(v => v.courseId === c.id);
+        if (!cv.length) return null;
+        return (
+          <div key={c.id} style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{c.title}</div>
+            {sections.filter(s => s.courseId === c.id).map(s => {
+              const sv = videos.filter(v => v.sectionId === s.id);
+              if (!sv.length) return null;
+              return (
+                <div key={s.id} style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{s.title}</div>
+                  {sv.map(v => {
+                    const dv = detect(v.url);
+                    return (
+                      <div key={v.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <span style={{ color: dv && dv.type === "ext" ? C.gold : C.green, marginRight: 7, fontSize: 11 }}>{dv && dv.type === "ext" ? "↗" : "▶"}</span>
+                            {v.title}
+                            {dv && <span style={{ marginLeft: 8, fontSize: 10, color: C.grey }}>({dv.platform})</span>}
+                          </div>
+                          {v.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
+                        </div>
+                        <Btn v="danger" onClick={() => delVid(v.id)} sz="sm" style={{ flexShrink: 0 }}>Delete</Btn>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
+function AdminPanel({ users, setUsers, courses, setCourses, sections, setSections, videos, setVideos, onLogout }) {
+  const [tab, setTab] = useState("users");
+  const pending = users.filter(u => u.status === "pending");
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }];
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg }}>
+      <Rule />
+      <div style={{ background: C.surf, borderBottom: "1px solid " + C.border, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <Logo w={110} />
+          <div style={{ width: 1, height: 28, background: C.border }} />
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase" }}>Admin Panel</span>
+        </div>
+        <Btn v="outline" onClick={onLogout} sz="sm">Sign Out</Btn>
+      </div>
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 16px" }}>
+        <div style={{ display: "flex", background: C.surf, border: "1px solid " + C.border, borderRadius: 12, padding: 5, gap: 4, marginBottom: 28 }}>
+          {TABS.map(t => (
+            <button key={t.k} onClick={() => setTab(t.k)} style={{ flex: 1, padding: "10px 4px", borderRadius: 9, fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", position: "relative", transition: "all .2s",
+              background: tab === t.k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
+              color: tab === t.k ? "#08090E" : C.grey }}>
+              {t.l}
+              {t.badge > 0 && <span style={{ position: "absolute", top: 5, right: 7, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.badge}</span>}
+            </button>
+          ))}
+        </div>
+        {tab === "users"   && <UsersTab   users={users} setUsers={setUsers} />}
+        {tab === "content" && <CoursesTab courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} setVideos={setVideos} />}
+      </div>
+    </div>
+  );
+}
+
+/* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
+function Portal({ user, courses, sections, videos, onLogout }) {
+  const [view, setView]   = useState("home");
+  const [course, setCourse] = useState(null);
+  const [video, setVideo]   = useState(null);
+  const [openS, setOpenS]   = useState({});
+
+  const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
+  const openCourse = c => {
+    setCourse(c); setVideo(null); setView("course");
+    const o = {}; sections.filter(s => s.courseId === c.id).forEach(s => o[s.id] = true);
+    setOpenS(o);
+  };
+  const play = v => { setVideo(v); setView("player"); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const backToCourse = () => { setVideo(null); setView("course"); };
+  const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
+
+  const cSecs    = course ? sections.filter(s => s.courseId === course.id) : [];
+  const cVideos  = course ? videos.filter(v => v.courseId === course.id) : [];
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg }}>
+      <Rule />
+
+      {/* ── HEADER ── */}
+      <div style={{ position: "sticky", top: 0, zIndex: 100, background: `${C.surf}F0`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Logo w={100} onClick={goHome} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{user.name}</div>
+            </div>
+            <div style={{ width: 1, height: 30, background: C.border }} />
+            <Btn v="outline" onClick={onLogout} sz="sm">Sign Out</Btn>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BREADCRUMB ── */}
+      {view !== "home" && (
+        <div style={{ background: C.surf, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ maxWidth: 920, margin: "0 auto", padding: "10px 20px", display: "flex", alignItems: "center", gap: 8, fontSize: 12, flexWrap: "wrap" }}>
+            <span onClick={goHome} style={{ color: C.gold, cursor: "pointer", fontWeight: 600 }}>Home</span>
+            {course && <><span style={{ color: C.faint }}>›</span><span onClick={backToCourse} style={{ color: view === "player" ? C.gold : C.white, cursor: view === "player" ? "pointer" : "default", fontWeight: 500 }}>{course.title}</span></>}
+            {video && <><span style={{ color: C.faint }}>›</span><span style={{ color: C.grey, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{video.title}</span></>}
+          </div>
+        </div>
+      )}
+
+      {/* ══ HOME ══ */}
+      {view === "home" && (
+        <div>
+          {/* Hero banner */}
+          <div style={{ position: "relative", overflow: "hidden", padding: "72px 24px 60px", textAlign: "center",
+            background: `linear-gradient(180deg, ${C.navy} 0%, ${C.bg} 100%)` }}>
+            {/* Radial glow */}
+            <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,.08) 0%, transparent 70%)`, pointerEvents: "none" }} />
+            {/* Decorative lines */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}><Rule /></div>
+
+            <p className="fu" style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase", marginBottom: 18 }}>Member Portal</p>
+
+            <div className="fu" style={{ marginBottom: 20, animationDelay: ".08s", display:"flex", justifyContent:"center" }}>
+              <Logo w={200} />
+            </div>
+
+            <h1 className="fu" style={{ fontFamily: S, fontSize: "clamp(28px,5.5vw,48px)", fontWeight: 700, lineHeight: 1.15, marginBottom: 16, animationDelay: ".14s" }}>
+              Master the Markets.<br />
+              <em style={{ fontStyle: "italic", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Unleash Your Potential.
+              </em>
+            </h1>
+
+            <p className="fu" style={{ color: C.grey, fontSize: 15, maxWidth: 420, margin: "0 auto", lineHeight: 1.75, animationDelay: ".2s" }}>
+              Welcome back, <strong style={{ color: C.dim }}>{user.name.split(" ")[0]}</strong>. Your course library is ready below.
+            </p>
+
+            {/* Stats row */}
+            <div className="fu" style={{ display: "flex", justifyContent: "center", gap: 40, marginTop: 36, animationDelay: ".26s" }}>
+              {[
+                { n: courses.length, l: "Courses" },
+                { n: sections.length, l: "Sections" },
+                { n: videos.length, l: "Lessons" },
+              ].map(({ n, l }) => (
+                <div key={l} style={{ textAlign: "center" }}>
+                  <div style={{ fontFamily: S, fontSize: 28, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{n}</div>
+                  <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 4 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Course cards */}
+          <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 16px 80px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", marginBottom: 20 }}>Your Courses</div>
+
+            {courses.length === 0 && (
+              <div style={{ textAlign: "center", padding: "80px 0", color: C.grey }}>
+                <div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📚</div>
+                <p>No courses available yet. Check back soon.</p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {courses.map((c, i) => {
+                const total = videos.filter(v => v.courseId === c.id).length;
+                const sects = sections.filter(s => s.courseId === c.id).length;
+                return (
+                  <div key={c.id} className="fu" style={{ animationDelay: `${.25 + i * .07}s` }}>
+                    <Card hover onClick={() => openCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex" }}>
+                      {/* Gold left stripe */}
+                      <div style={{ width: 5, background: `linear-gradient(180deg,${C.goldLt},${C.gold})`, flexShrink: 0 }} />
+                      <div style={{ flex: 1, padding: "22px 20px 22px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: S, fontSize: 21, fontWeight: 700, color: C.white, marginBottom: 5 }}>{c.title}</div>
+                          {c.desc && <div style={{ fontSize: 13, color: C.grey, marginBottom: 12, lineHeight: 1.55 }}>{c.desc}</div>}
+                          <div style={{ display: "flex", gap: 20, fontSize: 12, color: C.grey }}>
+                            <span><span style={{ color: C.gold, marginRight: 5 }}>§</span>{sects} section{sects !== 1 ? "s" : ""}</span>
+                            <span><span style={{ color: C.gold, marginRight: 5 }}>▶</span>{total} lesson{total !== 1 ? "s" : ""}</span>
+                          </div>
+                        </div>
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 4px 18px ${C.goldDim}` }}>
+                          <span style={{ color: "#08090E", fontSize: 20, fontWeight: 900, marginLeft: 2 }}>›</span>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ COURSE ══ */}
+      {view === "course" && course && (
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
+          {/* Course header */}
+          <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".15em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Course</div>
+            <h2 style={{ fontFamily: S, fontSize: 30, fontWeight: 700, marginBottom: 8, lineHeight: 1.2 }}>{course.title}</h2>
+            {course.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.65, marginBottom: 14 }}>{course.desc}</p>}
+            <div style={{ display: "flex", gap: 20, fontSize: 12, color: C.grey }}>
+              <span>{cSecs.length} section{cSecs.length !== 1 ? "s" : ""}</span>
+              <span>{cVideos.length} lesson{cVideos.length !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
+
+          {cSecs.length === 0 && <p style={{ color: C.grey }}>No content yet.</p>}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {cSecs.map((s, si) => {
+              const sv = videos.filter(v => v.sectionId === s.id);
+              const open = openS[s.id] !== false;
+              return (
+                <div key={s.id} style={{ border: `1.5px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+                  {/* Section header */}
+                  <div onClick={() => toggleS(s.id)} style={{ padding: "16px 20px", background: C.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none" }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Section {si + 1}</div>
+                      <div style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: C.white }}>{s.title}</div>
+                      <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
+                    </div>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.bg, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "transform .25s", transform: open ? "rotate(180deg)" : "none", flexShrink: 0 }}>
+                      <span style={{ color: C.gold, fontSize: 14 }}>∨</span>
+                    </div>
+                  </div>
+
+                  {/* Lesson list */}
+                  {open && (
+                    <div style={{ background: `${C.card}AA` }}>
+                      {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No videos in this section yet.</div>}
+                      {sv.map((v, vi) => {
+                        const dv = detect(v.url);
+                        const isExt = dv?.type === "ext";
+                        return (
+                          <div key={v.id} onClick={() => play(v)}
+                            style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, borderTop: `1px solid ${C.border}`, cursor: "pointer", transition: "background .15s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = C.cardHov}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            {/* Number badge */}
+                            <div style={{ width: 38, height: 38, borderRadius: 9, background: C.goldDim, border: `1px solid ${C.gold}28`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <span style={{ fontFamily: S, fontSize: 16, color: C.gold, fontWeight: 700 }}>{vi + 1}</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                              {v.desc && <div style={{ fontSize: 12, color: C.grey, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{v.desc}</div>}
+                            </div>
+                            {isExt
+                              ? <div style={{ fontSize: 11, color: C.grey, flexShrink: 0, whiteSpace: "nowrap" }}>Opens in {dv.label} ↗</div>
+                              : <div style={{ width: 34, height: 34, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <span style={{ color: "#08090E", fontSize: 12, marginLeft: 2 }}>▶</span>
+                                </div>
+                            }
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══ PLAYER ══ */}
+      {view === "player" && video && (() => {
+        const sec     = sections.find(s => s.id === video.sectionId);
+        const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
+        const idx     = secVids.findIndex(v => v.id === video.id);
+        const next    = secVids[idx + 1] || null;
+        return (
+          <div style={{ maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
+            {/* Player */}
+            <div style={{ background: "#000", borderBottom: `1px solid ${C.border}` }}>
+              <VideoPlayer url={video.url} />
+            </div>
+
+            <div style={{ padding: "24px 20px 0" }}>
+              {sec && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>}
+              <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, marginBottom: 10, lineHeight: 1.2 }}>{video.title}</h2>
+              {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75 }}>{video.desc}</p>}
+            </div>
+
+            {/* Up next */}
+            {next && (
+              <div style={{ margin: "28px 20px 0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.grey, textTransform: "uppercase", marginBottom: 12 }}>Up Next</div>
+                <Card hover onClick={() => play(next)} style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 9, background: C.goldDim, border: `1px solid ${C.gold}28`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontFamily: S, fontSize: 16, color: C.gold, fontWeight: 700 }}>{idx + 2}</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{next.title}</div>
+                    {next.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{next.desc}</div>}
+                  </div>
+                  <span style={{ color: C.gold, fontSize: 24, flexShrink: 0 }}>›</span>
+                </Card>
+              </div>
+            )}
+
+            {/* Lesson list */}
+            {secVids.length > 1 && (
+              <div style={{ margin: "28px 20px 0" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.grey, textTransform: "uppercase", marginBottom: 12 }}>Lessons — {sec?.title}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {secVids.map((v, i) => {
+                    const active = v.id === video.id;
+                    return (
+                      <div key={v.id} onClick={() => play(v)} style={{ padding: "12px 16px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "all .15s",
+                        background: active ? C.goldDim : "transparent",
+                        border: `1px solid ${active ? C.gold + "45" : C.border}` }}>
+                        <span style={{ width: 22, textAlign: "center", fontFamily: S, fontSize: 14, color: active ? C.gold : C.faint, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                        <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? C.gold : C.white, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</span>
+                        {active && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700, flexShrink: 0, letterSpacing: ".06em" }}>▶ PLAYING</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+/* ── PENDING / DECLINED ──────────────────────────────────────────────────── */
+function StatusScreen({ icon, title, color, msg, onLogout }) {
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ marginBottom: 40 }}><Logo w={180} /></div>
+      <Card style={{ width: "100%", maxWidth: 420, padding: 40, borderRadius: 18, textAlign: "center" }}>
+        <div style={{ fontSize: 50, marginBottom: 18 }}>{icon}</div>
+        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color, marginBottom: 12 }}>{title}</h2>
+        <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75, marginBottom: 28 }}>{msg}</p>
+        <Btn v="outline" onClick={onLogout} full>Sign Out</Btn>
+      </Card>
+    </div>
+  );
+}
+
+/* ── ROOT ────────────────────────────────────────────────────────────────── */
+export default function App() {
+  const [users,    setUsers]    = useStore("tafx_users",    []);
+  const [courses,  setCourses]  = useStore("tafx_courses4", []);
+  const [sections, setSections] = useStore("tafx_sections3",[]);
+  const [videos,   setVideos]   = useStore("tafx_videos4",  []);
+  const [screen,   setScreen]   = useState("login");
+  const [me,       setMe]       = useState(null);
+
+  const login = (email, pass, setMsg) => {
+    const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
+    if (!u) { setMsg("Incorrect email or password."); return; }
+    setMe(u);
+    setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
+  };
+
+  const register = (name, email, pass, setMsg) => {
+    if (!name || !email || !pass) { setMsg("All fields are required."); return; }
+    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) { setMsg("An account with this email already exists."); return; }
+    const u = { id: uid(), name, email, password: pass, status: "pending", createdAt: Date.now() };
+    setUsers([...users, u]); setMe(u); setScreen("pending");
+  };
+
+  const logout = () => { setMe(null); setScreen("login"); };
+
+  useEffect(() => {
+    if (me && screen === "pending") {
+      const u = users.find(u => u.id === me.id);
+      if (u?.status === "approved") setScreen("portal");
+      if (u?.status === "declined") setScreen("declined");
+    }
+  }, [users]);
+
+  return (
+    <>
+      <style>{GS}</style>
+      {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
+      {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
+      {screen === "admin"     && <AdminPanel users={users} setUsers={setUsers} courses={courses} setCourses={setCourses} sections={sections} setSections={setSections} videos={videos} setVideos={setVideos} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} onLogout={logout} />}
+      {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
+      {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
+    </>
+  );
+}
