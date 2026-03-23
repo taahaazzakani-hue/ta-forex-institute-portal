@@ -913,17 +913,17 @@ function StudentJournal({ user, journals, setJournals }) {
             ))}
           </div>
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
             <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
           </div>
           {j.image && (
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshot</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshot</div>
               <img src={j.image} alt="chart" style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block" }} />
             </div>
           )}
           {j.lesson && <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Lesson Learned</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Lesson Learned</div>
             <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.lesson}</p>
           </div>}
           {j.adminComment && (
@@ -947,7 +947,7 @@ function StudentJournal({ user, journals, setJournals }) {
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Trade Journal</p>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.white, textTransform: "uppercase", marginBottom: 4 }}>Trade Journal</p>
           <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>My Entries</h2>
         </div>
         <Btn onClick={() => setView("new")} sz="md">+ New Entry</Btn>
@@ -1018,7 +1018,7 @@ function AdminJournalTab({ users, journals, setJournals }) {
       <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Entry by {userName}</div>
+            <div style={{ fontSize: 11, color: C.white, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Entry by {userName}</div>
             <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{j.title}</h3>
             <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
           </div>
@@ -1033,17 +1033,17 @@ function AdminJournalTab({ users, journals, setJournals }) {
           ))}
         </div>
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Analysis</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Analysis</div>
           <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
         </div>
         {j.image && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Chart Screenshot</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Chart Screenshot</div>
             <img src={j.image} alt="chart" style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block" }} />
           </div>
         )}
         {j.lesson && <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Lesson Learned</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Lesson Learned</div>
           <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.lesson}</p>
         </div>}
         {j.adminComment && (
@@ -1066,7 +1066,7 @@ function AdminJournalTab({ users, journals, setJournals }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase" }}>All Student Journals ({filtered.length})</div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase" }}>All Student Journals ({filtered.length})</div>
         <select value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
           <option value="all">All Students</option>
           {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
