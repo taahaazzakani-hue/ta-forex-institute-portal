@@ -632,7 +632,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
@@ -2201,7 +2201,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
