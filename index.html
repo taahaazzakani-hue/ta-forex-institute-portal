@@ -518,38 +518,19 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   );
 }
 
-function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideo }) {
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
   const [vT, setVT] = React.useState("");
   const [vU, setVU] = React.useState("");
   const [vD, setVD] = React.useState("");
   const [vC, setVC] = React.useState("");
   const [vS, setVS] = React.useState("");
   const [vErr, setVErr] = React.useState("");
-  const [moveVid, setMoveVid] = React.useState(null);
-  const [moveSec, setMoveSec] = React.useState("");
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
   const addVid = () => {
     if (!vT.trim() || !vU.trim() || !vC || !vS) { setVErr("All fields are required."); return; }
     addVideo({ id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() });
     setVT(""); setVU(""); setVD(""); setVErr("");
-  };
-  const doMove = (vid) => {
-    if (!moveSec) return;
-    const sec = sections.find(s => s.id === moveSec);
-    if (!sec) return;
-    patchVideo(vid.id, { sectionId: moveSec, courseId: sec.courseId });
-    setMoveVid(null); setMoveSec("");
-  };
-  const moveUp = (vid, sv) => {
-    const idx = sv.findIndex(x => x.id === vid.id);
-    if (idx <= 0) return;
-    patchVideo(vid.id, { createdAt: sv[idx - 1].createdAt - 1 });
-  };
-  const moveDown = (vid, sv) => {
-    const idx = sv.findIndex(x => x.id === vid.id);
-    if (idx >= sv.length - 1) return;
-    patchVideo(vid.id, { createdAt: sv[idx + 1].createdAt + 1 });
   };
   return (
     <div>
@@ -586,41 +567,15 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
               return (
                 <div key={sec.id} style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>
-                  {sv.map(vid => {
-                    const dv = detect(vid.url);
-                    return (
-                      <div key={vid.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              <span style={{ color: dv && dv.type === "ext" ? C.gold : C.green, marginRight: 6, fontSize: 11 }}>{dv && dv.type === "ext" ? "ext" : "play"}</span>
-                              {vid.title}
-                            </div>
-                            {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
-                          </div>
-                          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
-                            <button onClick={() => moveUp(vid, sv)} style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 5, color: C.grey, width: 26, height: 26, cursor: "pointer", fontSize: 14 }}>↑</button>
-                            <button onClick={() => moveDown(vid, sv)} style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 5, color: C.grey, width: 26, height: 26, cursor: "pointer", fontSize: 14 }}>↓</button>
-                            <Btn v="outline" onClick={() => setMoveVid(moveVid === vid.id ? null : vid.id)} sz="sm" style={{ fontSize: 11 }}>Move</Btn>
-                            <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
-                          </div>
-                        </div>
-                        {moveVid === vid.id && (
-                          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                            <select value={moveSec} onChange={e => setMoveSec(e.target.value)} style={{ flex: 1, minWidth: 150, padding: "6px 10px", borderRadius: 8, fontSize: 12 }}>
-                              <option value="">Move to section...</option>
-                              {sections.map(s => {
-                                const c = courses.find(x => x.id === s.courseId);
-                                return <option key={s.id} value={s.id}>{c ? c.title + " - " : ""}{s.title}</option>;
-                              })}
-                            </select>
-                            <Btn onClick={() => doMove(vid)} disabled={!moveSec} sz="sm">Confirm</Btn>
-                            <Btn v="outline" onClick={() => { setMoveVid(null); setMoveSec(""); }} sz="sm">Cancel</Btn>
-                          </div>
-                        )}
+                  {sv.map(vid => (
+                    <div key={vid.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
+                        {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
                       </div>
-                    );
-                  })}
+                      <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
+                    </div>
+                  ))}
                 </div>
               );
             })}
@@ -632,7 +587,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
@@ -660,7 +615,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         </div>
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} />}
       </div>
@@ -2201,7 +2156,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
