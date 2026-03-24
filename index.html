@@ -589,6 +589,119 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
 }
 
 /* ── STUDENT PORTAL ──────────────────────────────────────────────────────── */
+
+/* ── SUBSCRIBE PAGE ──────────────────────────────────────────────────────── */
+function SubscribePage({ user }) {
+  const MERCHANT_ID = "34251665";
+  const RETURN_URL  = window.location.origin;
+  const CANCEL_URL  = window.location.origin;
+  const NOTIFY_URL  = "https://qpjnzhmuwklvqmevlxjm.supabase.co/functions/v1/payfast-webhook";
+
+  const plans = [
+    {
+      name: "Private Mentorship",
+      price: 800,
+      color: C.gold,
+      colorBg: "rgba(201,168,76,.08)",
+      colorBorder: "rgba(201,168,76,.3)",
+      features: [
+        "Direct 1-on-1 mentorship with Taaha",
+        "All Private Mentorship course content",
+        "Weekly live trading sessions",
+        "Priority support & feedback",
+        "Access to private trading community",
+        "Monthly debit order — cancel anytime",
+      ],
+      itemName: "TA Forex Private Mentorship",
+    },
+  ];
+
+  const subscribe = (plan) => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "https://www.payfast.co.za/eng/process";
+    form.target = "_blank";
+
+    const fields = {
+      merchant_id:      MERCHANT_ID,
+      merchant_key:     "zti3m0fkd4jhz",
+      return_url:       RETURN_URL,
+      cancel_url:       CANCEL_URL,
+      notify_url:       NOTIFY_URL,
+      name_first:       user.name.split(" ")[0] || user.name,
+      name_last:        user.name.split(" ").slice(1).join(" ") || "",
+      email_address:    user.email,
+      m_payment_id:     user.id + "_" + Date.now(),
+      amount:           plan.price.toFixed(2),
+      item_name:        plan.itemName,
+      subscription_type: "1",
+      billing_date:     new Date().toISOString().split("T")[0],
+      recurring_amount:  plan.price.toFixed(2),
+      frequency:        "3",
+      cycles:           "0",
+      custom_str1:      user.id,
+      custom_str2:      plan.name,
+    };
+
+    Object.entries(fields).forEach(([k, v]) => {
+      const input = document.createElement("input");
+      input.type = "hidden"; input.name = k; input.value = v;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 16px 80px" }}>
+      <div style={{ marginBottom: 32 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Membership</p>
+        <h2 style={{ fontFamily: S, fontSize: 30, fontWeight: 700, marginBottom: 8 }}>Upgrade Your Account</h2>
+        <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7 }}>Choose a plan to unlock premium content and direct coaching access.</p>
+      </div>
+
+      {plans.map(plan => (
+        <div key={plan.name} style={{ background: plan.colorBg, border: "1.5px solid " + plan.colorBorder, borderRadius: 16, padding: "28px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+            <div>
+              <div style={{ fontFamily: S, fontSize: 24, fontWeight: 700, color: C.white, marginBottom: 4 }}>{plan.name}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontFamily: S, fontSize: 38, fontWeight: 700, color: plan.color }}>R{plan.price}</span>
+                <span style={{ color: C.grey, fontSize: 14 }}>/ month</span>
+              </div>
+              <div style={{ fontSize: 12, color: C.grey, marginTop: 4 }}>Billed monthly · Cancel anytime</div>
+            </div>
+            <Btn onClick={() => subscribe(plan)} sz="lg" style={{ background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", color: "#08090E", fontWeight: 800, padding: "14px 32px", fontSize: 15, boxShadow: "0 8px 32px rgba(201,168,75,.35)" }}>
+              Subscribe Now →
+            </Btn>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 10 }}>
+            {plan.features.map(f => (
+              <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: plan.color + "25", border: "1px solid " + plan.color + "50", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  <span style={{ color: plan.color, fontSize: 11, fontWeight: 900 }}>✓</span>
+                </div>
+                <span style={{ fontSize: 13, color: C.dim, lineHeight: 1.5 }}>{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div style={{ marginTop: 24, padding: "18px 20px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ fontSize: 24, flexShrink: 0 }}>🔒</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.white, marginBottom: 2 }}>Secure Payment via PayFast</div>
+          <div style={{ fontSize: 12, color: C.grey, lineHeight: 1.6 }}>Payments are processed securely by PayFast. Your card details are never stored on this portal. You'll be redirected to PayFast's secure checkout to complete your subscription.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
@@ -606,6 +719,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
   const [showJournal, setShowJournal] = React.useState(false);
+  const [showSubscribe, setShowSubscribe] = React.useState(false);
   const userLevels = user.levels || [];
   const accessibleCourses = courses.filter(c => {
     if (!c.level) return true; // no level restriction = visible to all approved members
@@ -621,9 +735,10 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ── HEADER ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); }} />
+          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
             <div style={{ width: 1, height: 30, background: C.border }} />
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
@@ -647,6 +762,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
+      {showSubscribe && <SubscribePage user={user} />}
 
       {/* ══ HOME ══ */}
       {!showJournal && view === "home" && (
