@@ -597,7 +597,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
                           </div>
                           {v.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
                         </div>
-                        <div style={{ display: "flex", gap: 4", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                           <button onClick={() => moveUp(v, sv)} title="Move Up" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button>
                           <button onClick={() => moveDown(v, sv)} title="Move Down" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↓</button>
                           <Btn v="outline" onClick={() => { setMoveVid(v.id); setMoveSec(""); }} sz="sm" style={{ fontSize: 11 }}>Move</Btn>
