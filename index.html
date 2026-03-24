@@ -519,9 +519,14 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
 }
 
 function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideo }) {
-  const [vT, setVT] = React.useState(""); const [vU, setVU] = React.useState(""); const [vD, setVD] = React.useState("");
-  const [vC, setVC] = React.useState(""); const [vS, setVS] = React.useState(""); const [vErr, setVErr] = React.useState("");
-  const [moveVid, setMoveVid] = React.useState(null); const [moveSec, setMoveSec] = React.useState("");
+  const [vT, setVT] = React.useState("");
+  const [vU, setVU] = React.useState("");
+  const [vD, setVD] = React.useState("");
+  const [vC, setVC] = React.useState("");
+  const [vS, setVS] = React.useState("");
+  const [vErr, setVErr] = React.useState("");
+  const [moveVid, setMoveVid] = React.useState(null);
+  const [moveSec, setMoveSec] = React.useState("");
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
   const addVid = () => {
@@ -529,90 +534,88 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
     addVideo({ id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() });
     setVT(""); setVU(""); setVD(""); setVErr("");
   };
-  const delVid = id => deleteVideo(id);
-  const doMove = (v) => {
+  const doMove = (vid) => {
     if (!moveSec) return;
     const sec = sections.find(s => s.id === moveSec);
     if (!sec) return;
-    patchVideo(v.id, { sectionId: moveSec, courseId: sec.courseId });
+    patchVideo(vid.id, { sectionId: moveSec, courseId: sec.courseId });
     setMoveVid(null); setMoveSec("");
   };
-  const moveUp = (v, sv) => {
-    const idx = sv.findIndex(x => x.id === v.id);
-    if (idx === 0) return;
-    const other = sv[idx - 1];
-    patchVideo(v.id, { createdAt: other.createdAt - 1 });
+  const moveUp = (vid, sv) => {
+    const idx = sv.findIndex(x => x.id === vid.id);
+    if (idx <= 0) return;
+    patchVideo(vid.id, { createdAt: sv[idx - 1].createdAt - 1 });
   };
-  const moveDown = (v, sv) => {
-    const idx = sv.findIndex(x => x.id === v.id);
-    if (idx === sv.length - 1) return;
-    const other = sv[idx + 1];
-    patchVideo(v.id, { createdAt: other.createdAt + 1 });
+  const moveDown = (vid, sv) => {
+    const idx = sv.findIndex(x => x.id === vid.id);
+    if (idx >= sv.length - 1) return;
+    patchVideo(vid.id, { createdAt: sv[idx + 1].createdAt + 1 });
   };
   return (
     <div>
       <Card style={{ padding: 24, marginBottom: 28 }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>+ Add Video Lesson</div>
         <div style={{ display: "grid", gap: 14 }}>
-          <div><label>Course</label><select value={vC} onChange={e => { setVC(e.target.value); setVS(""); }}><option value="">Select course…</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
-          <div><label>Section</label><select value={vS} onChange={e => setVS(e.target.value)} disabled={!vC}><option value="">Select section…</option>{fSecs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
+          <div><label>Course</label><select value={vC} onChange={e => { setVC(e.target.value); setVS(""); }}><option value="">Select course</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
+          <div><label>Section</label><select value={vS} onChange={e => setVS(e.target.value)} disabled={!vC}><option value="">Select section</option>{fSecs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
           <div><label>Lesson Title</label><input value={vT} onChange={e => setVT(e.target.value)} placeholder="e.g. Market Structure Explained" /></div>
           <div>
             <label>Video URL or Embed Code</label>
-            <textarea value={vU} onChange={e => setVU(e.target.value)}
-              placeholder={"Paste any of:\n• Bunny.net <iframe> embed code  → plays inline ✓\n• Google Drive /preview link  → plays inline ✓\n• Direct .mp4 link  → plays inline ✓\n• Zoom cloud recording link  → opens in Zoom\n• YouTube link  → opens in YouTube"}
-              style={{ height: 110, resize: "vertical", lineHeight: 1.65, background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13 }} />
+            <textarea value={vU} onChange={e => setVU(e.target.value)} placeholder="Paste Bunny.net embed, Google Drive link, .mp4 URL, YouTube or Zoom link"
+              style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
             {detected && (
-              <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, fontSize: 12, border: "1px solid", ...(detected.type === "iframe" || detected.type === "native" ? { background: "#081A0E", borderColor: C.green + "40", color: C.green } : { background: "#0A1020", borderColor: C.gold + "40", color: C.gold }) }}>
-                {(detected.type === "iframe" || detected.type === "native") ? "✓ Will play directly inside the portal" : "↗ Will open in " + detected.label}
+              <div style={{ marginTop: 6, padding: "7px 12px", borderRadius: 8, fontSize: 12, background: (detected.type === "iframe" || detected.type === "native") ? "#081A0E" : "#0A1020", color: (detected.type === "iframe" || detected.type === "native") ? C.green : C.gold, border: "1px solid " + ((detected.type === "iframe" || detected.type === "native") ? C.green + "40" : C.gold + "40") }}>
+                {(detected.type === "iframe" || detected.type === "native") ? "Will play directly inside the portal" : "Will open in " + detected.label}
               </div>
             )}
           </div>
-          <div><label>Description (optional)</label><input value={vD} onChange={e => setVD(e.target.value)} placeholder="Brief summary of this lesson…" /></div>
+          <div><label>Description (optional)</label><input value={vD} onChange={e => setVD(e.target.value)} placeholder="Brief summary" /></div>
           {vErr && <div style={{ color: C.red, fontSize: 12 }}>{vErr}</div>}
           <Btn onClick={addVid} style={{ justifySelf: "start" }}>Add Video</Btn>
         </div>
       </Card>
-      {courses.map(c => {
-        const cv = videos.filter(v => v.courseId === c.id);
-        if (!cv.length) return null;
+      {courses.map(course => {
+        const courseVids = videos.filter(v => v.courseId === course.id);
+        if (!courseVids.length) return null;
         return (
-          <div key={c.id} style={{ marginBottom: 24 }}>
-            <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{c.title}</div>
-            {sections.filter(s => s.courseId === c.id).map(s => {
-              const sv = videos.filter(v => v.sectionId === s.id);
+          <div key={course.id} style={{ marginBottom: 28 }}>
+            <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{course.title}</div>
+            {sections.filter(s => s.courseId === course.id).map(sec => {
+              const sv = videos.filter(v => v.sectionId === sec.id);
               if (!sv.length) return null;
               return (
-                <div key={s.id} style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{s.title}</div>
-                  {sv.map(v => {
-                    const dv = detect(v.url);
+                <div key={sec.id} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>
+                  {sv.map(vid => {
+                    const dv = detect(vid.url);
                     return (
-                      <div key={v.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div key={vid.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              <span style={{ color: dv && dv.type === "ext" ? C.gold : C.green, marginRight: 7, fontSize: 11 }}>{dv && dv.type === "ext" ? "↗" : "▶"}</span>
-                              {v.title}
-                              {dv && <span style={{ marginLeft: 8, fontSize: 10, color: C.grey }}>({dv.platform})</span>}
+                              <span style={{ color: dv && dv.type === "ext" ? C.gold : C.green, marginRight: 6, fontSize: 11 }}>{dv && dv.type === "ext" ? "ext" : "play"}</span>
+                              {vid.title}
                             </div>
-                            {v.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
+                            {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
                           </div>
-                          <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
-                            <button onClick={() => moveUp(v, sv)} title="Move Up" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button>
-                            <button onClick={() => moveDown(v, sv)} title="Move Down" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↓</button>
-                            <Btn v="outline" onClick={() => { setMoveVid(moveVid === v.id ? null : v.id); setMoveSec(""); }} sz="sm" style={{ fontSize: 11 }}>Move</Btn>
-                            <Btn v="danger" onClick={() => delVid(v.id)} sz="sm">Delete</Btn>
+                          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                            <button onClick={() => moveUp(vid, sv)} style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 5, color: C.grey, width: 26, height: 26, cursor: "pointer", fontSize: 14 }}>↑</button>
+                            <button onClick={() => moveDown(vid, sv)} style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 5, color: C.grey, width: 26, height: 26, cursor: "pointer", fontSize: 14 }}>↓</button>
+                            <Btn v="outline" onClick={() => setMoveVid(moveVid === vid.id ? null : vid.id)} sz="sm" style={{ fontSize: 11 }}>Move</Btn>
+                            <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
                           </div>
                         </div>
-                        {moveVid === v.id && (
-                          <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                            <select value={moveSec} onChange={e => setMoveSec(e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", borderRadius: 8, fontSize: 12 }}>
-                              <option value="">Move to section…</option>
-                              {sections.map(s => <option key={s.id} value={s.id}>{courses.find(c => c.id === s.courseId)?.title} › {s.title}</option>)}
+                        {moveVid === vid.id && (
+                          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <select value={moveSec} onChange={e => setMoveSec(e.target.value)} style={{ flex: 1, minWidth: 150, padding: "6px 10px", borderRadius: 8, fontSize: 12 }}>
+                              <option value="">Move to section...</option>
+                              {sections.map(s => {
+                                const c = courses.find(x => x.id === s.courseId);
+                                return <option key={s.id} value={s.id}>{c ? c.title + " - " : ""}{s.title}</option>;
+                              })}
                             </select>
-                            <Btn onClick={() => doMove(v)} disabled={!moveSec} sz="sm">Confirm</Btn>
-                            <Btn v="outline" onClick={() => setMoveVid(null)} sz="sm">Cancel</Btn>
+                            <Btn onClick={() => doMove(vid)} disabled={!moveSec} sz="sm">Confirm</Btn>
+                            <Btn v="outline" onClick={() => { setMoveVid(null); setMoveSec(""); }} sz="sm">Cancel</Btn>
                           </div>
                         )}
                       </div>
