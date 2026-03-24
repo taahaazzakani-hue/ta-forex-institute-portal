@@ -159,31 +159,47 @@ const PC = { youtube: "#FF0000", vimeo: "#1AB7EA", zoom: "#2D8CFF", drive: C.gol
 function CastButton({ url, title }) {
   const [status, setStatus] = React.useState("idle");
   const [tip, setTip] = React.useState(false);
+  const [castAvailable, setCastAvailable] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check if Cast API is available (Chromecast)
+    const checkCast = () => {
+      if (window.chrome && window.chrome.cast) setCastAvailable(true);
+    };
+    window.__onGCastApiAvailable = (isAvailable) => { if (isAvailable) setCastAvailable(true); };
+    const script = document.createElement("script");
+    script.src = "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1";
+    script.onload = checkCast;
+    document.head.appendChild(script);
+    // Also check AirPlay
+    const vid = document.createElement("video");
+    if (vid.webkitShowPlaybackTargetPicker) setCastAvailable(true);
+  }, []);
 
   const castToTV = async () => {
-    // Try Picture-in-Picture on any video element on the page
     const videoEls = Array.from(document.querySelectorAll("video"));
+    // Try AirPlay (Safari/iOS)
     for (const v of videoEls) {
-      if (document.pictureInPictureEnabled && !v.disablePictureInPicture) {
-        try {
-          await v.requestPictureInPicture();
-          setStatus("pip");
-          v.addEventListener("leavepictureinpicture", () => setStatus("idle"), { once: true });
-          return;
-        } catch(e) {}
-      }
-      // Try Remote Playback (Chromecast / AirPlay native)
-      if (v.remote) {
-        try {
-          await v.remote.prompt();
-          setStatus("casting");
-          return;
-        } catch(e) {}
+      if (v.webkitShowPlaybackTargetPicker) {
+        v.webkitShowPlaybackTargetPicker();
+        setStatus("casting");
+        return;
       }
     }
-    // Show instructions tip instead of opening a tab
+    // Try Remote Playback API
+    for (const v of videoEls) {
+      if (v.remote && v.remote.state !== "disconnected") {
+        try { await v.remote.prompt(); setStatus("casting"); return; } catch(e) {}
+      }
+    }
+    // Try Picture-in-Picture
+    for (const v of videoEls) {
+      if (document.pictureInPictureEnabled && !v.disablePictureInPicture) {
+        try { await v.requestPictureInPicture(); setStatus("pip"); v.addEventListener("leavepictureinpicture", () => setStatus("idle"), { once: true }); return; } catch(e) {}
+      }
+    }
     setTip(true);
-    setTimeout(() => setTip(false), 5000);
+    setTimeout(() => setTip(false), 6000);
   };
 
   return (
@@ -284,12 +300,12 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-      {/* Background video */}
-      <video autoPlay muted loop playsInline
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.35, pointerEvents: "none", zIndex: 0 }}>
-        <source src="https://assets.mixkit.co/videos/preview/mixkit-stock-market-chart-analysis-closeup-4802-large.mp4" type="video/mp4" />
-        <source src="https://assets.mixkit.co/videos/preview/mixkit-trading-financial-chart-close-up-4486-large.mp4" type="video/mp4" />
-      </video>
+      {/* Background video — Bunny.net hosted */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.3 }}>
+        <iframe src="https://player.mediadelivery.net/embed/623010/f181e5fa-b002-405b-9ee0-fb2d02538c11?autoplay=true&loop=true&muted=true&preload=true&responsive=true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none", transform: "scale(1.05)" }}
+          allow="autoplay; encrypted-media" />
+      </div>
       {/* Rich dark gradient overlay — keeps text readable */}
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(7,9,15,.82) 0%, rgba(10,18,40,.85) 50%, rgba(7,9,15,.9) 100%)", pointerEvents: "none", zIndex: 1 }} />
       {/* Gold shimmer lines */}
@@ -430,11 +446,15 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
   );
 }
 
-function CoursesTab({ courses, addCourse, deleteCourse, sections, addSection, deleteSection, videos }) {
+function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, addSection, deleteSection, patchSection, videos }) {
   const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState("");
   const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
+  const [editCourse, setEditCourse] = React.useState(null); const [editCourseTitle, setEditCourseTitle] = React.useState("");
+  const [editSection, setEditSection] = React.useState(null); const [editSectionTitle, setEditSectionTitle] = React.useState("");
   const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
   const doAddSec = () => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim() }); setST(""); };
+  const saveCourseEdit = () => { if (editCourse && editCourseTitle.trim()) { patchCourse(editCourse, { title: editCourseTitle.trim() }); setEditCourse(null); } };
+  const saveSectionEdit = () => { if (editSection && editSectionTitle.trim()) { patchSection(editSection, { title: editSectionTitle.trim() }); setEditSection(null); } };
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <Card style={{ padding: 24 }}>
@@ -458,17 +478,37 @@ function CoursesTab({ courses, addCourse, deleteCourse, sections, addSection, de
         return (
           <Card key={c.id} style={{ padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: cs.length ? 16 : 0 }}>
-              <div>
-                <div style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{c.title}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {editCourse === c.id
+                  ? <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input value={editCourseTitle} onChange={e => setEditCourseTitle(e.target.value)} style={{ flex: 1, padding: "8px 12px", borderRadius: 8 }} onKeyDown={e => e.key === "Enter" && saveCourseEdit()} autoFocus />
+                      <Btn onClick={saveCourseEdit} sz="sm">Save</Btn>
+                      <Btn v="ghost" onClick={() => setEditCourse(null)} sz="sm">Cancel</Btn>
+                    </div>
+                  : <div style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{c.title}</div>
+                }
                 {c.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{c.desc}</div>}
               </div>
-              <Btn v="danger" onClick={() => deleteCourse(c.id)} sz="sm">Delete</Btn>
+              <div style={{ display: "flex", gap: 6 }}>
+                <Btn v="outline" onClick={() => { setEditCourse(c.id); setEditCourseTitle(c.title); }} sz="sm">✏ Edit</Btn>
+                <Btn v="danger" onClick={() => deleteCourse(c.id)} sz="sm">Delete</Btn>
+              </div>
             </div>
             {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
             {cs.map(s => (
-              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border }}>
-                <div style={{ fontSize: 13 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
-                <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
+              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border, gap: 8 }}>
+                {editSection === s.id
+                  ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
+                      <input value={editSectionTitle} onChange={e => setEditSectionTitle(e.target.value)} style={{ flex: 1, padding: "6px 10px", borderRadius: 7, fontSize: 13 }} onKeyDown={e => e.key === "Enter" && saveSectionEdit()} autoFocus />
+                      <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
+                      <Btn v="ghost" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
+                    </div>
+                  : <div style={{ fontSize: 13, flex: 1 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
+                }
+                {editSection !== s.id && <div style={{ display: "flex", gap: 5 }}>
+                  <Btn v="outline" onClick={() => { setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">✏</Btn>
+                  <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
+                </div>}
               </div>
             ))}
           </Card>
@@ -478,9 +518,10 @@ function CoursesTab({ courses, addCourse, deleteCourse, sections, addSection, de
   );
 }
 
-function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideo }) {
   const [vT, setVT] = React.useState(""); const [vU, setVU] = React.useState(""); const [vD, setVD] = React.useState("");
   const [vC, setVC] = React.useState(""); const [vS, setVS] = React.useState(""); const [vErr, setVErr] = React.useState("");
+  const [moveVid, setMoveVid] = React.useState(null); const [moveSec, setMoveSec] = React.useState("");
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
   const addVid = () => {
@@ -489,6 +530,25 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
     setVT(""); setVU(""); setVD(""); setVErr("");
   };
   const delVid = id => deleteVideo(id);
+  const doMove = (v) => {
+    if (!moveSec) return;
+    const sec = sections.find(s => s.id === moveSec);
+    if (!sec) return;
+    patchVideo(v.id, { sectionId: moveSec, courseId: sec.courseId });
+    setMoveVid(null); setMoveSec("");
+  };
+  const moveUp = (v, sv) => {
+    const idx = sv.findIndex(x => x.id === v.id);
+    if (idx === 0) return;
+    const other = sv[idx - 1];
+    patchVideo(v.id, { createdAt: other.createdAt - 1 });
+  };
+  const moveDown = (v, sv) => {
+    const idx = sv.findIndex(x => x.id === v.id);
+    if (idx === sv.length - 1) return;
+    const other = sv[idx + 1];
+    patchVideo(v.id, { createdAt: other.createdAt + 1 });
+  };
   return (
     <div>
       <Card style={{ padding: 24, marginBottom: 28 }}>
@@ -537,7 +597,22 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
                           </div>
                           {v.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
                         </div>
-                        <Btn v="danger" onClick={() => delVid(v.id)} sz="sm" style={{ flexShrink: 0 }}>Delete</Btn>
+                        <div style={{ display: "flex", gap: 4", alignItems: "center" }}>
+                          <button onClick={() => moveUp(v, sv)} title="Move Up" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button>
+                          <button onClick={() => moveDown(v, sv)} title="Move Down" style={{ background: C.faint, border: "none", borderRadius: 5, color: C.white, width: 24, height: 24, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>↓</button>
+                          <Btn v="outline" onClick={() => { setMoveVid(v.id); setMoveSec(""); }} sz="sm" style={{ fontSize: 11 }}>Move</Btn>
+                          <Btn v="danger" onClick={() => delVid(v.id)} sz="sm" style={{ flexShrink: 0 }}>Delete</Btn>
+                        </div>
+                        {moveVid === v.id && (
+                          <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <select value={moveSec} onChange={e => setMoveSec(e.target.value)} style={{ flex: 1, minWidth: 160, padding: "6px 10px", borderRadius: 8, fontSize: 12 }}>
+                              <option value="">Move to section…</option>
+                              {sections.map(s => <option key={s.id} value={s.id}>{courses.find(c=>c.id===s.courseId)?.title} › {s.title}</option>)}
+                            </select>
+                            <Btn onClick={() => doMove(v)} disabled={!moveSec} sz="sm">Confirm</Btn>
+                            <Btn v="ghost" onClick={() => setMoveVid(null)} sz="sm">Cancel</Btn>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -552,7 +627,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
@@ -579,8 +654,8 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
           ))}
         </div>
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
-        {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} deleteSection={deleteSection} videos={videos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
+        {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} />}
       </div>
@@ -592,6 +667,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
 
 /* ── SUBSCRIBE PAGE ──────────────────────────────────────────────────────── */
 function SubscribePage({ user }) {
+  const alreadySubscribed = (user.levels || []).includes("Private Mentorship");
   const MERCHANT_ID = "34251665";
   const RETURN_URL  = window.location.origin;
   const CANCEL_URL  = window.location.origin;
@@ -600,7 +676,7 @@ function SubscribePage({ user }) {
   const plans = [
     {
       name: "Private Mentorship",
-      price: 800,
+      price: 828,
       color: C.gold,
       colorBg: "rgba(201,168,76,.08)",
       colorBorder: "rgba(201,168,76,.3)",
@@ -674,9 +750,14 @@ function SubscribePage({ user }) {
               </div>
               <div style={{ fontSize: 12, color: C.grey, marginTop: 4 }}>Billed monthly · Cancel anytime</div>
             </div>
-            <Btn onClick={() => subscribe(plan)} sz="lg" style={{ background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", color: "#08090E", fontWeight: 800, padding: "14px 32px", fontSize: 15, boxShadow: "0 8px 32px rgba(201,168,75,.35)" }}>
-              Subscribe Now →
-            </Btn>
+{alreadySubscribed
+              ? <div style={{ background: C.green + "15", border: "1px solid " + C.green + "40", borderRadius: 10, padding: "12px 20px", color: C.green, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  ✓ You are already subscribed
+                </div>
+              : <Btn onClick={() => subscribe(plan)} sz="lg" style={{ background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", color: "#08090E", fontWeight: 800, padding: "14px 32px", fontSize: 15, boxShadow: "0 8px 32px rgba(201,168,75,.35)" }}>
+                  Subscribe Now →
+                </Btn>
+            }
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 10 }}>
@@ -703,6 +784,45 @@ function SubscribePage({ user }) {
   );
 }
 
+
+/* ── COURSES PANEL (quick view from header) ─────────────────────────────── */
+function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Your Access</p>
+        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>My Courses</h2>
+      </div>
+      {courses.length === 0 && <div style={{ textAlign: "center", padding: "60px 0", color: C.grey }}><div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📚</div><p>No courses available for your membership level.</p></div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {courses.map(c => {
+          const total = videos.filter(v => v.courseId === c.id).length;
+          const sects = sections.filter(s => s.courseId === c.id).length;
+          return (
+            <Card key={c.id} hover onClick={() => onSelectCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex" }}>
+              <div style={{ width: 5, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", flexShrink: 0 }} />
+              <div style={{ flex: 1, padding: "18px 18px 18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: C.white, marginBottom: 4 }}>{c.title}</div>
+                  {c.desc && <div style={{ fontSize: 12, color: C.grey, marginBottom: 8 }}>{c.desc}</div>}
+                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: C.grey }}>
+                    <span>{sects} section{sects !== 1 ? "s" : ""}</span>
+                    <span>{total} lesson{total !== 1 ? "s" : ""}</span>
+                    {c.level && <span style={{ color: C.gold }}>• {c.level}</span>}
+                  </div>
+                </div>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ color: "#08090E", fontSize: 18, fontWeight: 900, marginLeft: 2 }}>›</span>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
@@ -721,6 +841,9 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
   const [showJournal, setShowJournal] = React.useState(false);
   const [showSubscribe, setShowSubscribe] = React.useState(false);
+  const [showCourses, setShowCourses] = React.useState(false);
+  const [completed, setCompleted] = React.useState(() => { try { return JSON.parse(localStorage.getItem("tafx_completed_" + user.id) || "{}"); } catch { return {}; } });
+  const toggleComplete = (videoId) => { const n = { ...completed, [videoId]: !completed[videoId] }; setCompleted(n); try { localStorage.setItem("tafx_completed_" + user.id, JSON.stringify(n)); } catch {} };
   const userLevels = user.levels || [];
   const accessibleCourses = courses.filter(c => {
     if (!c.level) return true; // no level restriction = visible to all approved members
@@ -736,10 +859,11 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ── HEADER ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); }} />
+          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
+<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
+            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
             <div style={{ width: 1, height: 30, background: C.border }} />
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
@@ -764,9 +888,10 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
       {showSubscribe && <SubscribePage user={user} />}
+      {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
 
       {/* ══ HOME ══ */}
-      {!showJournal && view === "home" && (
+      {!showJournal && !showCourses && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
@@ -797,7 +922,13 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
                 </p>
               </div>
 
-              {/* Stats bar */}
+              {/* Forex Factory link */}
+              <a href="https://www.forexfactory.com/calendar?day=today" target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(217,96,96,.12)", border: "1px solid rgba(217,96,96,.35)", borderRadius: 10, padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "#E88080", textDecoration: "none", marginBottom: 20, letterSpacing: ".03em" }}>
+                🔴 View Today's Red Folder USD News — Forex Factory
+              </a>
+
+            {/* Stats bar */}
               <div className="fu" style={{ display: "flex", gap: 0, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 16, overflow: "hidden", animationDelay: ".18s", width: "100%", maxWidth: 500 }}>
                 {[
                   { n: accessibleCourses.length, l: "Courses", icon: "🎓" },
@@ -921,7 +1052,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ COURSE ══ */}
-      {!showJournal && view === "course" && course && (
+      {!showJournal && !showCourses && view === "course" && course && (
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
           {/* Course header */}
           <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
@@ -993,7 +1124,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ PLAYER ══ */}
-      {!showJournal && view === "player" && video && (() => {
+      {!showJournal && !showCourses && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -1043,8 +1174,11 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
                         background: active ? C.goldDim : "transparent",
                         border: `1px solid ${active ? C.gold + "45" : C.border}` }}>
                         <span style={{ width: 22, textAlign: "center", fontFamily: S, fontSize: 14, color: active ? C.gold : C.faint, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-                        <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? C.gold : C.white, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</span>
+                        <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? C.gold : (completed[v.id] ? C.green : C.white), flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: completed[v.id] && !active ? "line-through" : "none", opacity: completed[v.id] && !active ? 0.65 : 1 }}>{v.title}</span>
                         {active && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700, flexShrink: 0, letterSpacing: ".06em" }}>▶ PLAYING</span>}
+                        {!active && <div onClick={e => { e.stopPropagation(); toggleComplete(v.id); }} style={{ width: 20, height: 20, borderRadius: 5, border: "2px solid " + (completed[v.id] ? C.green : C.faint), background: completed[v.id] ? C.green : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
+                          {completed[v.id] && <span style={{ color: "#fff", fontSize: 10, fontWeight: 900 }}>✓</span>}
+                        </div>}
                       </div>
                     );
                   })}
@@ -1063,8 +1197,10 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 /* ── VIDEO COMMENTS / Q&A ───────────────────────────────────────────────── */
 function VideoComments({ videoId, videoTitle, user, comments, addComment, deleteComment }) {
   const [text, setText] = React.useState("");
-  const [replyTo, setReplyTo] = React.useState(null); // { id, userName }
+  const [timestamp, setTimestamp] = React.useState("");
+  const [replyTo, setReplyTo] = React.useState(null);
   const [replyText, setReplyText] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState("all"); // all | timestamped
   const [saving, setSaving] = React.useState(false);
 
   const videoComments = comments.filter(c => c.videoId === videoId && !c.parentId)
@@ -1076,8 +1212,8 @@ function VideoComments({ videoId, videoTitle, user, comments, addComment, delete
   const submit = async () => {
     if (!text.trim()) return;
     setSaving(true);
-    await addComment({ id: uid(), videoId, userId: user.id, userName: user.name, text: text.trim(), parentId: null, isAdmin: false, createdAt: Date.now() });
-    setText(""); setSaving(false);
+    await addComment({ id: uid(), videoId, userId: user.id, userName: user.name, text: text.trim(), parentId: null, isAdmin: false, timestamp: timestamp.trim() || null, createdAt: Date.now() });
+    setText(""); setTimestamp(""); setSaving(false);
   };
 
   const submitReply = async () => {
@@ -1124,6 +1260,10 @@ function VideoComments({ videoId, videoTitle, user, comments, addComment, delete
             onFocus={e => e.target.style.borderColor = C.gold}
             onBlur={e => e.target.style.borderColor = C.border}
           />
+          <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
+            <input value={timestamp} onChange={e => setTimestamp(e.target.value)} placeholder="Timestamp (e.g. 2:45)" style={{ width: 120, padding: "7px 10px", borderRadius: 8, fontSize: 12, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: C.faint }}>optional</span>
+          </div>
           {text.trim() && (
             <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setText("")} style={{ background: "transparent", color: C.grey, border: "1px solid " + C.border, borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
@@ -1133,15 +1273,22 @@ function VideoComments({ videoId, videoTitle, user, comments, addComment, delete
         </div>
       </div>
 
+      {/* Tab selector */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, background: C.bg, borderRadius: 9, padding: 3 }}>
+        {[["all", "All Comments"], ["timestamped", "⏱ Timestamped"]].map(([k, l]) => (
+          <button key={k} onClick={() => setActiveTab(k)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 700, background: activeTab === k ? C.goldDim : "transparent", color: activeTab === k ? C.gold : C.grey, border: "none", cursor: "pointer" }}>{l}</button>
+        ))}
+      </div>
+
       {/* Comments list */}
-      {videoComments.length === 0 && (
+      {videoComments.filter(c => activeTab === "timestamped" ? c.timestamp : true).length === 0 && (
         <div style={{ textAlign: "center", padding: "32px 0", color: C.faint, fontSize: 13 }}>
           No questions yet. Be the first to ask!
         </div>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {videoComments.map(c => {
+        {videoComments.filter(c => activeTab === "timestamped" ? c.timestamp : true).map(c => {
           const replies = getReplies(c.id);
           const isOwn = c.userId === user.id;
           return (
@@ -1154,6 +1301,7 @@ function VideoComments({ videoId, videoTitle, user, comments, addComment, delete
                     <span style={{ fontWeight: 700, fontSize: 14, color: c.isAdmin ? C.gold : C.white }}>{c.userName}</span>
                     {c.isAdmin && <span style={{ fontSize: 10, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "2px 8px", borderRadius: 20, fontWeight: 700, letterSpacing: ".06em" }}>COACH</span>}
                     <span style={{ fontSize: 11, color: C.faint }}>{timeAgo(c.createdAt)}</span>
+                    {c.timestamp && <span style={{ fontSize: 11, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "1px 8px", borderRadius: 20, fontWeight: 700, cursor: "pointer" }}>⏱ {c.timestamp}</span>}
                   </div>
                   <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{c.text}</p>
                   <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
@@ -1786,7 +1934,7 @@ function App() {
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
-      if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, createdAt:x.created_at })));
+      if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
     } catch(e) { console.error("loadAll error:", e); }
     if (showSpinner) setLoading(false);
   };
@@ -1837,11 +1985,25 @@ function App() {
     await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title } });
     setSections(prev => [...prev, s]);
   };
+  const patchSectionDB = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.title) dbPatch.title = patch.title;
+    await sb("sections?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setSections(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
   const deleteSectionDB = async (id) => {
     await sb("videos?section_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
     await sb("sections?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
     setSections(prev => prev.filter(s => s.id !== id));
     setVideos(prev => prev.filter(v => v.sectionId !== id));
+  };
+  const patchVideo = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.sectionId !== undefined) dbPatch.section_id = patch.sectionId;
+    if (patch.courseId !== undefined) dbPatch.course_id = patch.courseId;
+    if (patch.createdAt !== undefined) dbPatch.created_at = patch.createdAt;
+    await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v));
   };
   const addVideoDB = async (v) => {
     await sb("videos", { method: "POST", prefer: "return=minimal", body: { id:v.id, course_id:v.courseId, section_id:v.sectionId, title:v.title, url:v.url, description:v.desc||"", created_at:v.createdAt } });
@@ -1852,7 +2014,7 @@ function App() {
     setVideos(prev => prev.filter(v => v.id !== id));
   };
   const addCommentDB = async (c) => {
-    await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, created_at:c.createdAt } });
+    await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
   };
   const deleteCommentDB = async (id) => {
@@ -1917,7 +2079,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
