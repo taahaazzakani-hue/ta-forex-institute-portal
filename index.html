@@ -388,7 +388,7 @@ function AdminAuthScreen({ onBack, onEnter }) {
           <Btn onClick={go} full sz="lg">Continue →</Btn>
         </div>
         <Divider />
-        <Btn v="ghost" onClick={onBack} sz="sm" style={{ fontSize: 12 }}>← Back to Login</Btn>
+        <Btn v="outline" onClick={onBack} sz="sm" style={{ fontSize: 12 }}>← Back to Login</Btn>
       </Card>
     </div>
   );
@@ -437,7 +437,7 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
           <div style={{ display: "flex", gap: 6 }}>
             {u.status === "declined" && <Btn onClick={() => approve(u.id)} sz="sm">Approve</Btn>}
             {u.status === "approved" && <Btn v="danger" onClick={() => decline(u.id)} sz="sm">Revoke</Btn>}
-            <Btn v="ghost" onClick={() => delUser(u.id)} sz="sm" style={{ color: C.faint }}>Delete</Btn>
+            <Btn v="outline" onClick={() => delUser(u.id)} sz="sm" style={{ color: C.faint }}>Delete</Btn>
           </div>
         </Card>
       ))}
@@ -483,7 +483,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
                   ? <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <input value={editCourseTitle} onChange={e => setEditCourseTitle(e.target.value)} style={{ flex: 1, padding: "8px 12px", borderRadius: 8 }} onKeyDown={e => e.key === "Enter" && saveCourseEdit()} autoFocus />
                       <Btn onClick={saveCourseEdit} sz="sm">Save</Btn>
-                      <Btn v="ghost" onClick={() => setEditCourse(null)} sz="sm">Cancel</Btn>
+                      <Btn v="outline" onClick={() => setEditCourse(null)} sz="sm">Cancel</Btn>
                     </div>
                   : <div style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{c.title}</div>
                 }
@@ -501,7 +501,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
                   ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
                       <input value={editSectionTitle} onChange={e => setEditSectionTitle(e.target.value)} style={{ flex: 1, padding: "6px 10px", borderRadius: 7, fontSize: 13 }} onKeyDown={e => e.key === "Enter" && saveSectionEdit()} autoFocus />
                       <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
-                      <Btn v="ghost" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
+                      <Btn v="outline" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
                     </div>
                   : <div style={{ fontSize: 13, flex: 1 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
                 }
@@ -612,7 +612,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
                               {sections.map(s => <option key={s.id} value={s.id}>{courses.find(c => c.id === s.courseId)?.title} › {s.title}</option>)}
                             </select>
                             <Btn onClick={() => doMove(v)} disabled={!moveSec} sz="sm">Confirm</Btn>
-                            <Btn v="ghost" onClick={() => setMoveVid(null)} sz="sm">Cancel</Btn>
+                            <Btn v="outline" onClick={() => setMoveVid(null)} sz="sm">Cancel</Btn>
                           </div>
                         )}
                       </div>
