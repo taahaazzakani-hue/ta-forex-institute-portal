@@ -7,7 +7,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
-  <style>body{margin:0;background:#07090F;}</style>
+  <style>body{margin:0;background:#07090F;}input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer;}</style>
 </head>
 <body>
   <div id="root"></div>
@@ -857,6 +857,189 @@ function PartnersSection() {
   );
 }
 
+
+/* ── RISK CALCULATOR ─────────────────────────────────────────────────────── */
+function RiskCalculator() {
+  const [instrument, setInstrument] = React.useState("NAS/US30");
+  const [accountSize, setAccountSize] = React.useState("10000");
+  const [usdZar, setUsdZar] = React.useState("18.50");
+
+  // Risk inputs
+  const [riskPips, setRiskPips] = React.useState("");
+  const [riskLots, setRiskLots] = React.useState("");
+
+  // Profit inputs
+  const [profitPips, setProfitPips] = React.useState("");
+  const [profitLots, setProfitLots] = React.useState("");
+
+  const INSTRUMENTS = {
+    "NAS/US30":  { multiplier: 1,   label: "NAS / US30",  pip: "index points", color: "#6B9FFF", icon: "📊" },
+    "Gold":      { multiplier: 100, label: "Gold (XAUUSD)", pip: "pips",        color: "#E6C86A", icon: "🥇" },
+    "Currency":  { multiplier: 1,   label: "Currency Pairs", pip: "pips",       color: "#4CB880", icon: "💱", isCurrency: true },
+  };
+
+  const inst = INSTRUMENTS[instrument];
+  const acc  = parseFloat(accountSize) || 0;
+  const rate = parseFloat(usdZar)      || 18.5;
+  const rP   = parseFloat(riskPips)    || 0;
+  const rL   = parseFloat(riskLots)    || 0;
+  const prP  = parseFloat(profitPips)  || 0;
+  const prL  = parseFloat(profitLots)  || 0;
+
+  // Calculations — Currency pairs: risk = pips * lots * 10 (per standard lot = $10/pip)
+  const riskUSD  = inst.isCurrency ? rP * rL : rP * rL * inst.multiplier;
+  const riskZAR  = riskUSD * rate;
+  const riskPct  = acc > 0 ? (riskZAR / acc) * 100 : 0;
+  const accAfterSL = acc - riskZAR;
+
+  const profitUSD = inst.isCurrency ? prP * prL : prP * prL * inst.multiplier;
+  const profitZAR = profitUSD * rate;
+  const profitPct = acc > 0 ? (profitZAR / acc) * 100 : 0;
+  const accAfterTP = acc + profitZAR;
+
+  const rrRatio = riskZAR > 0 ? (profitZAR / riskZAR).toFixed(2) : "—";
+  const riskColor = riskPct > 3 ? C.red : riskPct > 1.5 ? C.gold : C.green;
+
+  const fmt = (n, decimals = 2) => n.toLocaleString("en-ZA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+  return (
+    <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
+        <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Risk Calculator</h2>
+        <p style={{ color: C.grey, fontSize: 14 }}>Calculate your risk and reward before entering a trade.</p>
+      </div>
+
+      {/* Instrument selector */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {Object.entries(INSTRUMENTS).map(([key, val]) => (
+          <button key={key} onClick={() => setInstrument(key)} style={{
+            flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all .2s", border: "1.5px solid",
+            background: instrument === key ? val.color + "18" : C.card,
+            color: instrument === key ? val.color : C.grey,
+            borderColor: instrument === key ? val.color + "60" : C.border,
+          }}>
+            {val.icon} {val.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Account & Rate */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+        <Card style={{ padding: 18 }}>
+          <label>Account Size (ZAR)</label>
+          <input value={accountSize} onChange={e => setAccountSize(e.target.value)} placeholder="e.g. 10000" type="number" />
+        </Card>
+        <Card style={{ padding: 18 }}>
+          <label>USD/ZAR Exchange Rate</label>
+          <input value={usdZar} onChange={e => setUsdZar(e.target.value)} placeholder="e.g. 18.50" type="number" step="0.01" />
+        </Card>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {/* Risk Section */}
+        <Card style={{ padding: 20, border: "1.5px solid " + C.red + "30", background: "rgba(217,96,96,.04)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.red, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 14 }}>🛑 Risk / Stop Loss</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label>Risk ({inst.pip})</label>
+              <input value={riskPips} onChange={e => setRiskPips(e.target.value)} placeholder="e.g. 50" type="number" step="0.1" />
+            </div>
+            <div>
+              <label>Lot Size</label>
+              <input value={riskLots} onChange={e => setRiskLots(e.target.value)} placeholder="e.g. 0.10" type="number" step="0.01" />
+            </div>
+          </div>
+
+          {riskUSD > 0 && (
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Risk (USD)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.red }}>${fmt(riskUSD)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Risk (ZAR)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.red }}>R{fmt(riskZAR)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: riskColor + "15", borderRadius: 9, border: "1px solid " + riskColor + "40" }}>
+                <span style={{ fontSize: 12, color: C.grey }}>% of Account</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: riskColor }}>{riskPct.toFixed(2)}%</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Balance After SL</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>R{fmt(accAfterSL)}</span>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Profit Section */}
+        <Card style={{ padding: 20, border: "1.5px solid " + C.green + "30", background: "rgba(76,184,128,.04)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.green, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 14 }}>✅ Profit / Take Profit</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label>Profit ({inst.pip})</label>
+              <input value={profitPips} onChange={e => setProfitPips(e.target.value)} placeholder="e.g. 150" type="number" step="0.1" />
+            </div>
+            <div>
+              <label>Lot Size</label>
+              <input value={profitLots} onChange={e => setProfitLots(e.target.value)} placeholder="e.g. 0.10" type="number" step="0.01" />
+            </div>
+          </div>
+
+          {profitUSD > 0 && (
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Profit (USD)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${fmt(profitUSD)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Profit (ZAR)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>R{fmt(profitZAR)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(76,184,128,.12)", borderRadius: 9, border: "1px solid " + C.green + "40" }}>
+                <span style={{ fontSize: 12, color: C.grey }}>% of Account</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: C.green }}>{profitPct.toFixed(2)}%</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+                <span style={{ fontSize: 12, color: C.grey }}>Balance After TP</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>R{fmt(accAfterTP)}</span>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* R:R Summary */}
+      {riskUSD > 0 && profitUSD > 0 && (
+        <Card style={{ marginTop: 16, padding: 20, border: "1.5px solid " + C.gold + "40", background: C.goldDim }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, textAlign: "center" }}>
+            <div>
+              <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Risk : Reward</div>
+              <div style={{ fontFamily: S, fontSize: 28, fontWeight: 700, color: parseFloat(rrRatio) >= 2 ? C.green : parseFloat(rrRatio) >= 1 ? C.gold : C.red }}>1 : {rrRatio}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Total Risk</div>
+              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.red }}>R{fmt(riskZAR)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Total Profit</div>
+              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.green }}>R{fmt(profitZAR)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Account Risk</div>
+              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: riskColor }}>{riskPct.toFixed(2)}%</div>
+            </div>
+          </div>
+          {riskPct > 2 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>⚠️ You are risking more than 2% of your account. Consider reducing your lot size.</div>}
+          {parseFloat(rrRatio) > 0 && parseFloat(rrRatio) < 1.5 && <div style={{ marginTop: 10, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk:Reward is below 1:1.5. Look for a better setup.</div>}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
@@ -913,6 +1096,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const [showJournal, setShowJournal] = React.useState(false);
   const [showSubscribe, setShowSubscribe] = React.useState(false);
   const [showCourses, setShowCourses] = React.useState(false);
+  const [showCalc, setShowCalc] = React.useState(false);
   const [completed, setCompleted] = React.useState(() => { try { return JSON.parse(localStorage.getItem("tafx_completed_" + user.id) || "{}"); } catch { return {}; } });
   const toggleComplete = (videoId) => { const n = { ...completed, [videoId]: !completed[videoId] }; setCompleted(n); try { localStorage.setItem("tafx_completed_" + user.id, JSON.stringify(n)); } catch {} };
   const userLevels = user.levels || [];
@@ -930,11 +1114,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ── HEADER ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); }} />
+          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
-            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
+<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
+            <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
+            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
             <div style={{ width: 1, height: 30, background: C.border }} />
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
@@ -959,10 +1144,11 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
       {showSubscribe && <SubscribePage user={user} />}
+      {showCalc && <RiskCalculator />}
       {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
 
       {/* ══ HOME ══ */}
-      {!showJournal && !showCourses && view === "home" && (
+      {!showJournal && !showCourses && !showCalc && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
@@ -1129,7 +1315,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ COURSE ══ */}
-      {!showJournal && !showCourses && view === "course" && course && (
+      {!showJournal && !showCourses && !showCalc && view === "course" && course && (
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
           {/* Course header */}
           <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
@@ -1201,7 +1387,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ PLAYER ══ */}
-      {!showJournal && !showCourses && view === "player" && video && (() => {
+      {!showJournal && !showCourses && !showCalc && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -1591,17 +1777,19 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [selected, setSelected] = React.useState(null);
   const [err, setErr] = React.useState("");
   const [editing, setEditing] = React.useState(null);
-  const [tradeType, setTradeType] = React.useState("Live Trade"); // Live Trade | Backtest
+  const [tradeType, setTradeType] = React.useState("Live Trade");
+  const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
 
   const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
 
   const submit = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, tradeType, createdAt: Date.now(), adminComment: null, adminCommentAt: null, adminSeen: false };
+    const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, tradeType, tradeDate, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try {
       await addJournal(entry_obj);
-      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setView("list");
+      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setView("list");
     } catch(e) {
       setErr("Failed to save. Please try again.");
     }
@@ -1614,6 +1802,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setTitle(j.title); setPair(j.pair); setDirection(j.direction);
     setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result);
     setPnl(j.pnl||""); setAnalysis(j.analysis); setLesson(j.lesson||"");
+    setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
     setImage(j.image||null); setErr(""); setView("edit");
   };
 
@@ -1651,6 +1840,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             ))}
           </div>
         </div>
+        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
         <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
@@ -1758,7 +1948,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             <div>
               <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{j.title}</h2>
               {j.tradeType && <span style={{ display: "inline-block", background: j.tradeType === "Backtest" ? C.goldDim : "rgba(46,204,113,.12)", color: j.tradeType === "Backtest" ? C.gold : C.green, border: "1px solid " + (j.tradeType === "Backtest" ? C.gold : C.green) + "40", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>{j.tradeType}</span>}
-              <div style={{ fontSize: 12, color: C.grey }}>{new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
+              <div style={{ fontSize: 12, color: C.grey }}>{j.tradeDate ? new Date(j.tradeDate + "T12:00:00").toLocaleDateString("en-ZA", { weekday:"long", year:"numeric", month:"long", day:"numeric" }) : new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
             </div>
             <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
           </div>
@@ -1821,6 +2011,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             ))}
           </div>
         </div>
+        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
         <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
@@ -1890,7 +2081,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                   <span>{j.direction}</span>
                   {j.pnl && <><span>·</span><span style={{ color: j.result==="Win" ? C.green : j.result==="Loss" ? C.red : C.gold }}>{j.pnl}</span></>}
                   <span>·</span>
-                  <span>{new Date(j.createdAt).toLocaleDateString()}</span>
+                  <span>{j.tradeDate ? new Date(j.tradeDate + "T12:00:00").toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric" }) : new Date(j.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
