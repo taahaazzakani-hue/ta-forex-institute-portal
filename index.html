@@ -864,6 +864,37 @@ function RiskCalculator() {
   const [instrument, setInstrument] = React.useState("NAS/US30");
   const [accountSize, setAccountSize] = React.useState("10000");
   const [usdZar, setUsdZar] = React.useState("18.50");
+  const [rateLoading, setRateLoading] = React.useState(true);
+  const [rateError, setRateError] = React.useState(false);
+
+  React.useEffect(() => {
+    const fetchRate = async () => {
+      setRateLoading(true);
+      try {
+        // Use exchangerate-api (free, no key needed for basic)
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await res.json();
+        if (data && data.rates && data.rates.ZAR) {
+          setUsdZar(data.rates.ZAR.toFixed(2));
+          setRateError(false);
+        } else {
+          setRateError(true);
+        }
+      } catch(e) {
+        // Fallback to another free API
+        try {
+          const res2 = await fetch("https://api.frankfurter.app/latest?from=USD&to=ZAR");
+          const data2 = await res2.json();
+          if (data2 && data2.rates && data2.rates.ZAR) {
+            setUsdZar(data2.rates.ZAR.toFixed(2));
+            setRateError(false);
+          } else { setRateError(true); }
+        } catch { setRateError(true); }
+      }
+      setRateLoading(false);
+    };
+    fetchRate();
+  }, []);
 
   // Risk inputs
   const [riskPips, setRiskPips] = React.useState("");
@@ -888,15 +919,18 @@ function RiskCalculator() {
   const prL  = parseFloat(profitLots)  || 0;
 
   // Calculations — Currency pairs: risk = pips * lots * 10 (per standard lot = $10/pip)
+  const isFunded = accountType === "Funded";
   const riskUSD  = inst.isCurrency ? rP * rL : rP * rL * inst.multiplier;
   const riskZAR  = riskUSD * rate;
-  const riskPct  = acc > 0 ? (riskZAR / acc) * 100 : 0;
-  const accAfterSL = acc - riskZAR;
+  const riskAmt  = isFunded ? riskUSD : riskZAR;
+  const riskPct  = acc > 0 ? (riskAmt / acc) * 100 : 0;
+  const accAfterSL = acc - riskAmt;
 
   const profitUSD = inst.isCurrency ? prP * prL : prP * prL * inst.multiplier;
   const profitZAR = profitUSD * rate;
-  const profitPct = acc > 0 ? (profitZAR / acc) * 100 : 0;
-  const accAfterTP = acc + profitZAR;
+  const profitAmt = isFunded ? profitUSD : profitZAR;
+  const profitPct = acc > 0 ? (profitAmt / acc) * 100 : 0;
+  const accAfterTP = acc + profitAmt;
 
   const rrRatio = riskZAR > 0 ? (profitZAR / riskZAR).toFixed(2) : "—";
   const riskColor = accountType === "HFM"
@@ -950,15 +984,23 @@ function RiskCalculator() {
       </div>
 
       {/* Account & Rate */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isFunded ? "1fr" : "1fr 1fr", gap: 12, marginBottom: 20 }}>
         <Card style={{ padding: 18 }}>
-          <label>Account Size (ZAR)</label>
-          <input value={accountSize} onChange={e => setAccountSize(e.target.value)} placeholder="e.g. 10000" type="number" />
+          <label>Account Size ({accountType === "Funded" ? "USD" : "ZAR"})</label>
+          <input value={accountSize} onChange={e => setAccountSize(e.target.value)} placeholder={accountType === "Funded" ? "e.g. 10000" : "e.g. 10000"} type="number" />
         </Card>
-        <Card style={{ padding: 18 }}>
-          <label>USD/ZAR Exchange Rate</label>
+        {!isFunded && <Card style={{ padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+            <label style={{ margin: 0 }}>USD/ZAR Exchange Rate</label>
+            {rateLoading
+              ? <span style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>⟳ Fetching live rate…</span>
+              : rateError
+              ? <span style={{ fontSize: 10, color: C.red, fontWeight: 700 }}>⚠ Could not fetch — manual</span>
+              : <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>✓ Live rate</span>
+            }
+          </div>
           <input value={usdZar} onChange={e => setUsdZar(e.target.value)} placeholder="e.g. 18.50" type="number" step="0.01" />
-        </Card>
+        </Card>}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -982,17 +1024,17 @@ function RiskCalculator() {
                 <span style={{ fontSize: 12, color: C.grey }}>Risk (USD)</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.red }}>${fmt(riskUSD)}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+              {!isFunded && <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
                 <span style={{ fontSize: 12, color: C.grey }}>Risk (ZAR)</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.red }}>R{fmt(riskZAR)}</span>
-              </div>
+              </div>}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: riskColor + "15", borderRadius: 9, border: "1px solid " + riskColor + "40" }}>
                 <span style={{ fontSize: 12, color: C.grey }}>% of Account</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: riskColor }}>{riskPct.toFixed(2)}%</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
                 <span style={{ fontSize: 12, color: C.grey }}>Balance After SL</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>R{fmt(accAfterSL)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>{isFunded ? "$" : "R"}{fmt(accAfterSL)}</span>
               </div>
             </div>
           )}
@@ -1018,17 +1060,17 @@ function RiskCalculator() {
                 <span style={{ fontSize: 12, color: C.grey }}>Profit (USD)</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${fmt(profitUSD)}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
+              {!isFunded && <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
                 <span style={{ fontSize: 12, color: C.grey }}>Profit (ZAR)</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>R{fmt(profitZAR)}</span>
-              </div>
+              </div>}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "rgba(76,184,128,.12)", borderRadius: 9, border: "1px solid " + C.green + "40" }}>
                 <span style={{ fontSize: 12, color: C.grey }}>% of Account</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: C.green }}>{profitPct.toFixed(2)}%</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: C.bg, borderRadius: 9, border: "1px solid " + C.border }}>
                 <span style={{ fontSize: 12, color: C.grey }}>Balance After TP</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>R{fmt(accAfterTP)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dim }}>{isFunded ? "$" : "R"}{fmt(accAfterTP)}</span>
               </div>
             </div>
           )}
@@ -1045,11 +1087,11 @@ function RiskCalculator() {
             </div>
             <div>
               <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Total Risk</div>
-              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.red }}>R{fmt(riskZAR)}</div>
+              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.red }}>{isFunded ? "$" : "R"}{fmt(isFunded ? riskUSD : riskZAR)}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Total Profit</div>
-              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.green }}>R{fmt(profitZAR)}</div>
+              <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.green }}>{isFunded ? "$" : "R"}{fmt(isFunded ? profitUSD : profitZAR)}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>Account Risk</div>
