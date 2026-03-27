@@ -860,6 +860,7 @@ function PartnersSection() {
 
 /* ── RISK CALCULATOR ─────────────────────────────────────────────────────── */
 function RiskCalculator() {
+  const [accountType, setAccountType] = React.useState("HFM"); // HFM | Funded
   const [instrument, setInstrument] = React.useState("NAS/US30");
   const [accountSize, setAccountSize] = React.useState("10000");
   const [usdZar, setUsdZar] = React.useState("18.50");
@@ -898,17 +899,40 @@ function RiskCalculator() {
   const accAfterTP = acc + profitZAR;
 
   const rrRatio = riskZAR > 0 ? (profitZAR / riskZAR).toFixed(2) : "—";
-  const riskColor = riskPct > 3 ? C.red : riskPct > 1.5 ? C.gold : C.green;
+  const riskColor = accountType === "HFM"
+    ? (riskPct > 10 ? C.red : riskPct > 5 ? C.gold : C.green)
+    : (riskPct > 1.5 ? C.red : riskPct > 1 ? C.gold : C.green);
 
   const fmt = (n, decimals = 2) => n.toLocaleString("en-ZA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
   return (
     <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 24 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
         <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Risk Calculator</h2>
         <p style={{ color: C.grey, fontSize: 14 }}>Calculate your risk and reward before entering a trade.</p>
+      </div>
+
+      {/* Account Type Toggle */}
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ marginBottom: 10, display: "block" }}>Account Type</label>
+        <div style={{ display: "flex", background: C.bg, borderRadius: 12, padding: 4, gap: 4, border: "1px solid " + C.border, maxWidth: 360 }}>
+          {[
+            { key: "HFM", label: "🏦 HFM Account", color: "#6B9FFF", limit: "Max 10% risk" },
+            { key: "Funded", label: "🏆 Funded Account", color: C.gold, limit: "Max 1.5% risk" },
+          ].map(t => (
+            <button key={t.key} onClick={() => setAccountType(t.key)} style={{
+              flex: 1, padding: "10px 14px", borderRadius: 9, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
+              background: accountType === t.key ? t.color + "20" : "transparent",
+              color: accountType === t.key ? t.color : C.grey,
+              outline: accountType === t.key ? "1.5px solid " + t.color + "50" : "none",
+            }}>
+              <div>{t.label}</div>
+              <div style={{ fontSize: 10, fontWeight: 500, marginTop: 2, opacity: 0.8 }}>{t.limit}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Instrument selector */}
@@ -1032,7 +1056,10 @@ function RiskCalculator() {
               <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: riskColor }}>{riskPct.toFixed(2)}%</div>
             </div>
           </div>
-          {riskPct > 2 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>⚠️ You are risking more than 2% of your account. Consider reducing your lot size.</div>}
+          {accountType === "HFM" && riskPct > 10 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>⚠️ You are risking more than 10% of your HFM account. Reduce your lot size.</div>}
+          {accountType === "HFM" && riskPct > 5 && riskPct <= 10 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk is above 5% — be cautious with your HFM account.</div>}
+          {accountType === "Funded" && riskPct > 1.5 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>🚨 DANGER — Over 1.5% risk on a funded account. You risk breaching your drawdown rules.</div>}
+          {accountType === "Funded" && riskPct > 1 && riskPct <= 1.5 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Approaching 1.5% funded account risk limit. Consider reducing size.</div>}
           {parseFloat(rrRatio) > 0 && parseFloat(rrRatio) < 1.5 && <div style={{ marginTop: 10, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk:Reward is below 1:1.5. Look for a better setup.</div>}
         </Card>
       )}
@@ -2102,6 +2129,7 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
   const [comment, setComment] = React.useState("");
   const [filterUser, setFilterUser] = React.useState("all");
   const [refreshing, setRefreshing] = React.useState(false);
+  const [showCalendar, setShowCalendar] = React.useState(false);
   const doRefresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
 
   const approvedUsers = users.filter(u => u.status === "approved");
@@ -2176,14 +2204,27 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase" }}>All Student Journals ({filtered.length})</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button onClick={doRefresh} style={{ background: "transparent", color: refreshing ? C.faint : C.gold, border: "1px solid " + (refreshing ? C.faint : C.gold) + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{refreshing ? "Refreshing..." : "↻ Refresh"}</button>
-        <select value={filterUser} onChange={e => setFilterUser(e.target.value)} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
-          <option value="all">All Students</option>
-          {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={doRefresh} style={{ background: "transparent", color: refreshing ? C.faint : C.gold, border: "1px solid " + (refreshing ? C.faint : C.gold) + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{refreshing ? "Refreshing..." : "↻ Refresh"}</button>
+          <select value={filterUser} onChange={e => { setFilterUser(e.target.value); setShowCalendar(false); }} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
+            <option value="all">All Students</option>
+            {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          {filterUser !== "all" && (
+            <button onClick={() => setShowCalendar(p => !p)} style={{ background: showCalendar ? C.goldDim : "transparent", color: C.gold, border: "1px solid " + C.gold + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+              📅 {showCalendar ? "Hide Calendar" : "View P&L Calendar"}
+            </button>
+          )}
         </div>
       </div>
+      {showCalendar && filterUser !== "all" && (
+        <div style={{ marginBottom: 28, background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "24px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.gold, marginBottom: 4 }}>
+            {approvedUsers.find(u => u.id === filterUser)?.name || ""} — P&L Calendar
+          </div>
+          <PnlCalendar journals={journals} userId={filterUser} />
+        </div>
+      )}
       {filtered.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No journal entries yet.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.map(j => {
