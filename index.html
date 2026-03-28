@@ -1716,7 +1716,9 @@ function PnlCalendar({ journals, userId }) {
 
   const getDayData = (day) => {
     const trades = myJournals.filter(j => {
-      const jd = new Date(j.createdAt);
+      // Use tradeDate if set, otherwise fall back to createdAt
+      const dateStr = j.tradeDate;
+      const jd = dateStr ? new Date(dateStr + "T12:00:00") : new Date(j.createdAt);
       return jd.getFullYear() === year && jd.getMonth() === month && jd.getDate() === day;
     });
     const pnl = trades.reduce((sum, j) => sum + (parsePnl(j.pnl) || 0), 0);
