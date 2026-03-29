@@ -618,7 +618,6 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
-        {tab === "homework"   && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmissions={hwSubmissions} patchHwSubmission={patchHwSubmission} users={users} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
       </div>
     </div>
@@ -1113,20 +1112,20 @@ function RiskCalculator() {
 
 
 /* ── STUDENT HOMEWORK ────────────────────────────────────────────────────── */
-function StudentHomework({ user, homework, hwSubmissions, addHwSubmission }) {
+function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
   const [selected, setSelected] = React.useState(null);
   const [text, setText] = React.useState("");
   const [image, setImage] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState("");
 
-  const mySubmissions = hwSubmissions.filter(s => s.userId === user.id);
+  const mySubmissions = (hwSubmits||[]).filter(s => s.userId === user.id);
   const getSubmission = (hwId) => mySubmissions.find(s => s.homeworkId === hwId);
 
   const submit = async () => {
     if (!text.trim()) { setErr("Please write your submission."); return; }
     setSaving(true);
-    await addHwSubmission({ id: uid(), homeworkId: selected.id, userId: user.id, userName: user.name, text: text.trim(), image: image || null, createdAt: Date.now() });
+    await addHwSubmit({ id: uid(), homeworkId: selected.id, userId: user.id, userName: user.name, text: text.trim(), image: image || null, createdAt: Date.now() });
     setText(""); setImage(null); setSelected(null); setSaving(false);
   };
 
@@ -1212,7 +1211,7 @@ function StudentHomework({ user, homework, hwSubmissions, addHwSubmission }) {
 }
 
 /* ── ADMIN HOMEWORK TAB ──────────────────────────────────────────────────── */
-function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmissions, patchHwSubmission, users }) {
+function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, users }) {
   const [title, setTitle] = React.useState("");
   const [desc, setDesc] = React.useState("");
   const [dueDate, setDueDate] = React.useState("");
@@ -1227,7 +1226,7 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmissions
   };
 
   if (selectedSub) {
-    const sub = hwSubmissions.find(s => s.id === selectedSub);
+    const sub = hwSubmits.find(s => s.id === selectedSub);
     const uname = users.find(u => u.id === sub?.userId)?.name || "Unknown";
     return (
       <div>
@@ -1240,14 +1239,14 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmissions
           <label>{sub?.feedback ? "Update Feedback" : "Add Feedback"}</label>
           <textarea value={feedback || sub?.feedback || ""} onChange={e => setFeedback(e.target.value)} placeholder="Write your feedback for this student…"
             style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
-          <Btn onClick={() => { patchHwSubmission(selectedSub, { feedback: feedback.trim(), feedbackAt: Date.now() }); setSelectedSub(null); setFeedback(""); }} sz="md">Send Feedback to {uname}</Btn>
+          <Btn onClick={() => { patchHwSubmit(selectedSub, { feedback: feedback.trim(), feedbackAt: Date.now() }); setSelectedSub(null); setFeedback(""); }} sz="md">Send Feedback to {uname}</Btn>
         </Card>
       </div>
     );
   }
 
   if (selected) {
-    const subs = hwSubmissions.filter(s => s.homeworkId === selected.id);
+    const subs = hwSubmits.filter(s => s.homeworkId === selected.id);
     return (
       <div>
         <button onClick={() => setSelected(null)} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back to Homework</button>
@@ -1279,7 +1278,7 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmissions
         </div>
       </Card>
       {homework.map(h => {
-        const subs = hwSubmissions.filter(s => s.homeworkId === h.id);
+        const subs = hwSubmits.filter(s => s.homeworkId === h.id);
         const pending = subs.filter(s => !s.feedback).length;
         return (
           <Card key={h.id} style={{ padding: "16px 20px" }}>
@@ -1372,12 +1371,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due < Date.now();
   });
   const notifications = [
@@ -1430,12 +1429,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due < Date.now();
   });
   const notifications = [
@@ -1468,12 +1467,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
     return hasPM && !submitted && due && due < Date.now();
   });
   const notifications = [
@@ -1527,7 +1526,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
-      {showHomework && hasPM && <StudentHomework user={user} homework={homework} hwSubmissions={hwSubmissions} addHwSubmission={addHwSubmission} />}
+      {showHomework && hasPM && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
       {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
@@ -2152,14 +2151,14 @@ function PnlCalendar({ journals, userId }) {
 
 
 /* ── STUDENT HOMEWORK ───────────────────────────────────────────────────── */
-function StudentHomework({ user, homework, hwSubmits, addHwSubmit }) {
+function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
   const [selected, setSelected] = React.useState(null);
   const [text, setText] = React.useState("");
   const [image, setImage] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState("");
 
-  const mySubmissions = hwSubmits.filter(s => s.userId === user.id);
+  const mySubmissions = (hwSubmits||[]).filter(s => s.userId === user.id);
   const hasSubmitted = (hwId) => mySubmissions.some(s => s.homeworkId === hwId);
   const getSubmission = (hwId) => mySubmissions.find(s => s.homeworkId === hwId);
 
@@ -3188,11 +3187,11 @@ function App() {
     setHomework(prev => prev.filter(h => h.id !== id));
     setHwSubmissions(prev => prev.filter(s => s.homeworkId !== id));
   };
-  const addHwSubmissionDB = async (s) => {
+  const addHwSubmitDB = async (s) => {
     await sb("homework_submissions", { method: "POST", prefer: "return=minimal", body: { id:s.id, homework_id:s.homeworkId, user_id:s.userId, user_name:s.userName, text:s.text, image:s.image||null, feedback:null, feedback_at:null, created_at:s.createdAt } });
     setHwSubmissions(prev => [s, ...prev]);
   };
-  const patchHwSubmission = async (id, patch) => {
+  const patchHwSubmit = async (id, patch) => {
     const dbPatch = {};
     if (patch.feedback !== undefined) dbPatch.feedback = patch.feedback;
     if (patch.feedbackAt !== undefined) dbPatch.feedback_at = patch.feedbackAt;
