@@ -1230,87 +1230,21 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
             <div style={{ position: "relative" }}>
               <button onClick={() => setShowNotif(p => !p)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, position: "relative" }}>
                 <span style={{ fontSize: 20 }}>🔔</span>
-                {(() => {
-                  const userLevels = user.levels || [];
-  const hasPM = userLevels.includes("Private Mentorship");
-  
-  // Notifications
-  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const myJournals = journals.filter(j => j.userId === user.id);
-  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
-  const pendingHW = homework.filter(h => {
-    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due > Date.now();
-  });
-  const overdueHW = homework.filter(h => {
-    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due < Date.now();
-  });
-  const notifications = [
-    ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
-    ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
-    ...(notJournaledWeek ? [{ type: "journal", msg: "You have not journalled in over a week", urgent: false }] : []),
-  ];
-  const [showNotifs, setShowNotifs] = React.useState(false);
-                  const myVideos = courses.filter(c => !c.level || userLevels.includes(c.level)).flatMap(c => videos.filter(v => v.courseId === c.id));
-                  const recentVideos = myVideos.filter(v => Date.now() - v.createdAt < 7*24*60*60*1000);
-                  const dueHw = homework.filter(h => h.dueDate && new Date(h.dueDate) > new Date() && !hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id));
-                  const myJournals = journals.filter(j => j.userId === user.id);
-                  const lastJournal = myJournals.length ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
-                  const noJournalWeek = lastJournal < Date.now() - 7*24*60*60*1000;
-                  const count = recentVideos.length + dueHw.length + (noJournalWeek && myJournals.length > 0 ? 1 : 0);
-                  return count > 0 ? <span style={{ position: "absolute", top: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{count}</span> : null;
-                })()}
+                {notifications.length > 0 && <span style={{ position: "absolute", top: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifications.length}</span>}
               </button>
               {showNotif && (
                 <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: "0 8px 32px rgba(0,0,0,.5)", zIndex: 999, overflow: "hidden" }}>
                   <div style={{ padding: "14px 16px", borderBottom: "1px solid " + C.border, fontFamily: S, fontSize: 14, fontWeight: 700 }}>Notifications</div>
                   <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                    {(() => {
-                      const userLevels = user.levels || [];
-  const hasPM = userLevels.includes("Private Mentorship");
-  
-  // Notifications
-  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const myJournals = journals.filter(j => j.userId === user.id);
-  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
-  const pendingHW = homework.filter(h => {
-    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due > Date.now();
-  });
-  const overdueHW = homework.filter(h => {
-    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-    const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due < Date.now();
-  });
-  const notifications = [
-    ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
-    ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
-    ...(notJournaledWeek ? [{ type: "journal", msg: "You have not journalled in over a week", urgent: false }] : []),
-  ];
-  const [showNotifs, setShowNotifs] = React.useState(false);
-                      const myVideos = courses.filter(c => !c.level || userLevels.includes(c.level)).flatMap(c => videos.filter(v => v.courseId === c.id));
-                      const recentVideos = myVideos.filter(v => Date.now() - v.createdAt < 7*24*60*60*1000);
-                      const dueHw = homework.filter(h => h.dueDate && new Date(h.dueDate) > new Date() && !hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id));
-                      const myJournals = journals.filter(j => j.userId === user.id);
-                      const lastJournal = myJournals.length ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
-                      const noJournalWeek = lastJournal < Date.now() - 7*24*60*60*1000 && myJournals.length > 0;
-                      const notifs = [
-                        ...recentVideos.map(v => ({ icon: "▶", text: "New video: " + v.title, color: C.gold })),
-                        ...dueHw.map(h => ({ icon: "📚", text: "Homework due: " + h.title + (h.dueDate ? " (" + new Date(h.dueDate).toLocaleDateString() + ")" : ""), color: "#FF7096" })),
-                        ...(noJournalWeek ? [{ icon: "📓", text: "You have not journalled in over a week!", color: C.red }] : []),
-                      ];
-                      if (!notifs.length) return <div style={{ padding: "20px 16px", color: C.grey, fontSize: 13, textAlign: "center" }}>You are all caught up! 🎉</div>;
-                      return notifs.map((n, i) => (
+                    {notifications.length === 0
+                      ? <div style={{ padding: "20px 16px", color: C.grey, fontSize: 13, textAlign: "center" }}>You are all caught up!</div>
+                      : notifications.map((n, i) => (
                         <div key={i} style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <span style={{ fontSize: 16, flexShrink: 0 }}>{n.icon}</span>
-                          <span style={{ fontSize: 13, color: C.dim, lineHeight: 1.5 }}>{n.text}</span>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}>{n.urgent ? "🚨" : n.type === "hw" ? "📚" : n.type === "video" ? "▶" : "📓"}</span>
+                          <span style={{ fontSize: 13, color: n.urgent ? C.red : C.dim, lineHeight: 1.5 }}>{n.msg}</span>
                         </div>
-                      ));
-                    })()}
+                      ))
+                    }
                   </div>
                 </div>
               )}
