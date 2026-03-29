@@ -587,10 +587,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "membership", l: "Membership" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -617,7 +617,9 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
-        {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} />}
+        {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
+        {tab === "homework"   && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmissions={hwSubmissions} patchHwSubmission={patchHwSubmission} users={users} />}
+        {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
       </div>
     </div>
   );
@@ -1109,6 +1111,196 @@ function RiskCalculator() {
   );
 }
 
+
+/* ── STUDENT HOMEWORK ────────────────────────────────────────────────────── */
+function StudentHomework({ user, homework, hwSubmissions, addHwSubmission }) {
+  const [selected, setSelected] = React.useState(null);
+  const [text, setText] = React.useState("");
+  const [image, setImage] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState("");
+
+  const mySubmissions = hwSubmissions.filter(s => s.userId === user.id);
+  const getSubmission = (hwId) => mySubmissions.find(s => s.homeworkId === hwId);
+
+  const submit = async () => {
+    if (!text.trim()) { setErr("Please write your submission."); return; }
+    setSaving(true);
+    await addHwSubmission({ id: uid(), homeworkId: selected.id, userId: user.id, userName: user.name, text: text.trim(), image: image || null, createdAt: Date.now() });
+    setText(""); setImage(null); setSelected(null); setSaving(false);
+  };
+
+  const now = Date.now();
+
+  if (selected) {
+    const sub = getSubmission(selected.id);
+    const dueTs = selected.dueDate ? new Date(selected.dueDate + "T23:59:59").getTime() : null;
+    const isOverdue = dueTs && dueTs < now;
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+        <button onClick={() => { setSelected(null); setText(""); setImage(null); setErr(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back</button>
+        <Card style={{ padding: 24 }}>
+          <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{selected.title}</h2>
+          {selected.dueDate && <div style={{ fontSize: 12, color: isOverdue ? C.red : C.gold, fontWeight: 700, marginBottom: 12 }}>{isOverdue ? "⚠ Overdue — " : "📅 Due: "}{new Date(selected.dueDate + "T00:00:00").toLocaleDateString("en-ZA", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}</div>}
+          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, marginBottom: 20, whiteSpace: "pre-wrap" }}>{selected.description}</p>
+
+          {sub ? (
+            <div>
+              <div style={{ background: "rgba(76,184,128,.08)", border: "1px solid " + C.green + "40", borderRadius: 12, padding: 18, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: C.green, fontWeight: 700, marginBottom: 8 }}>✓ Submitted {new Date(sub.createdAt).toLocaleDateString()}</div>
+                <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{sub.text}</p>
+                {sub.image && <img src={sub.image} alt="submission" style={{ width: "100%", borderRadius: 8, marginTop: 12, border: "1px solid " + C.border, cursor: "zoom-in" }} onClick={() => { document.getElementById("tafx-zoom-overlay").style.display="flex"; document.getElementById("tafx-zoom-img").src=sub.image; }} />}
+              </div>
+              {sub.feedback && (
+                <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 12, padding: 18 }}>
+                  <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, marginBottom: 8 }}>💬 Coach Taaha — Feedback</div>
+                  <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.7 }}>{sub.feedback}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label>Your Submission</label>
+              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Write your homework answer, analysis or reflection here…"
+                style={{ height: 140, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
+              <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 10, padding: 16, textAlign: "center", background: C.navy, cursor: "pointer", marginBottom: 12 }}
+                onClick={() => document.getElementById("hw-img-upload").click()}>
+                <input id="hw-img-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); const M=1200; let w=img.width,h=img.height; if(w>M){h=h*M/w;w=M;} c.width=w;c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); setImage(c.toDataURL("image/jpeg",.7)); }; img.src=ev.target.result; }; r.readAsDataURL(f); }} />
+                {image ? <img src={image} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8 }} /> : <p style={{ color: C.grey, fontSize: 13 }}>📎 Attach a screenshot (optional)</p>}
+              </div>
+              {err && <div style={{ color: C.red, fontSize: 12, marginBottom: 8 }}>{err}</div>}
+              <Btn onClick={submit} disabled={saving} full sz="lg">{saving ? "Submitting…" : "Submit Homework"}</Btn>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Private Mentorship</p>
+        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>📝 Homework</h2>
+      </div>
+      {homework.length === 0 && <div style={{ textAlign: "center", padding: "60px 0", color: C.grey }}><div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📝</div><p>No homework assigned yet.</p></div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {homework.map(h => {
+          const sub = getSubmission(h.id);
+          const dueTs = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+          const isOverdue = dueTs && dueTs < now && !sub;
+          return (
+            <Card key={h.id} hover onClick={() => setSelected(h)} style={{ padding: "16px 20px", cursor: "pointer", border: "1.5px solid " + (isOverdue ? C.red + "50" : sub ? C.green + "40" : C.border) }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, marginBottom: 4 }}>{h.title}</div>
+                  {h.dueDate && <div style={{ fontSize: 12, color: isOverdue ? C.red : C.grey }}>Due: {new Date(h.dueDate + "T00:00:00").toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric" })}</div>}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 12px", borderRadius: 20, flexShrink: 0,
+                  background: sub ? "rgba(76,184,128,.15)" : isOverdue ? "rgba(217,96,96,.15)" : C.goldDim,
+                  color: sub ? C.green : isOverdue ? C.red : C.gold,
+                  border: "1px solid " + (sub ? C.green : isOverdue ? C.red : C.gold) + "40" }}>
+                  {sub ? "✓ Submitted" : isOverdue ? "Overdue" : "Pending"}
+                </span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN HOMEWORK TAB ──────────────────────────────────────────────────── */
+function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmissions, patchHwSubmission, users }) {
+  const [title, setTitle] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+  const [dueDate, setDueDate] = React.useState("");
+  const [selected, setSelected] = React.useState(null);
+  const [feedback, setFeedback] = React.useState("");
+  const [selectedSub, setSelectedSub] = React.useState(null);
+
+  const doAdd = () => {
+    if (!title.trim()) return;
+    addHomework({ id: uid(), title: title.trim(), description: desc.trim(), dueDate: dueDate || null, createdAt: Date.now() });
+    setTitle(""); setDesc(""); setDueDate("");
+  };
+
+  if (selectedSub) {
+    const sub = hwSubmissions.find(s => s.id === selectedSub);
+    const uname = users.find(u => u.id === sub?.userId)?.name || "Unknown";
+    return (
+      <div>
+        <button onClick={() => { setSelectedSub(null); setFeedback(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back</button>
+        <Card style={{ padding: 24 }}>
+          <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, marginBottom: 4 }}>Submission by {uname}</div>
+          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, marginBottom: 16, whiteSpace: "pre-wrap" }}>{sub?.text}</p>
+          {sub?.image && <img src={sub.image} alt="submission" style={{ width: "100%", borderRadius: 8, marginBottom: 16, border: "1px solid " + C.border, cursor: "zoom-in" }} onClick={() => { document.getElementById("tafx-zoom-overlay").style.display="flex"; document.getElementById("tafx-zoom-img").src=sub.image; }} />}
+          {sub?.feedback && <div style={{ background: C.goldDim, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: C.dim }}><strong style={{ color: C.gold }}>Previous feedback:</strong><br/>{sub.feedback}</div>}
+          <label>{sub?.feedback ? "Update Feedback" : "Add Feedback"}</label>
+          <textarea value={feedback || sub?.feedback || ""} onChange={e => setFeedback(e.target.value)} placeholder="Write your feedback for this student…"
+            style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
+          <Btn onClick={() => { patchHwSubmission(selectedSub, { feedback: feedback.trim(), feedbackAt: Date.now() }); setSelectedSub(null); setFeedback(""); }} sz="md">Send Feedback to {uname}</Btn>
+        </Card>
+      </div>
+    );
+  }
+
+  if (selected) {
+    const subs = hwSubmissions.filter(s => s.homeworkId === selected.id);
+    return (
+      <div>
+        <button onClick={() => setSelected(null)} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back to Homework</button>
+        <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{selected.title}</h3>
+        <p style={{ color: C.grey, fontSize: 13, marginBottom: 20 }}>{subs.length} submission{subs.length !== 1 ? "s" : ""}</p>
+        {subs.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No submissions yet.</p>}
+        {subs.map(s => {
+          const uname = users.find(u => u.id === s.userId)?.name || "Unknown";
+          return (
+            <Card key={s.id} hover onClick={() => { setSelectedSub(s.id); setFeedback(s.feedback || ""); }} style={{ padding: "14px 18px", marginBottom: 8, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div><div style={{ fontWeight: 700, color: C.white }}>{uname}</div><div style={{ fontSize: 12, color: C.grey }}>{new Date(s.createdAt).toLocaleDateString()}</div></div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: s.feedback ? C.green : C.gold }}>{s.feedback ? "✓ Feedback given" : "Needs feedback"}</span>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.gold, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 16 }}>+ Assign New Homework</div>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div><label>Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Week 3 Trade Review" /></div>
+          <div><label>Description / Instructions</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe what students need to do…" style={{ height: 90, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} /></div>
+          <div><label>Due Date (optional)</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+          <Btn onClick={doAdd} disabled={!title.trim()} style={{ justifySelf: "start" }}>Assign Homework</Btn>
+        </div>
+      </Card>
+      {homework.map(h => {
+        const subs = hwSubmissions.filter(s => s.homeworkId === h.id);
+        const pending = subs.filter(s => !s.feedback).length;
+        return (
+          <Card key={h.id} style={{ padding: "16px 20px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setSelected(h)}>
+                <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, marginBottom: 3 }}>{h.title}</div>
+                <div style={{ fontSize: 12, color: C.grey }}>
+                  {h.dueDate && <span>Due {new Date(h.dueDate + "T00:00:00").toLocaleDateString("en-ZA")} · </span>}
+                  <span>{subs.length} submission{subs.length !== 1 ? "s" : ""}</span>
+                  {pending > 0 && <span style={{ color: C.gold, fontWeight: 700 }}> · {pending} need feedback</span>}
+                </div>
+              </div>
+              <Btn v="danger" onClick={() => deleteHomework(h.id)} sz="sm">Delete</Btn>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
@@ -1146,7 +1338,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1158,7 +1350,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
     const o = {}; sections.filter(s => s.courseId === c.id).forEach(s => o[s.id] = true);
     setOpenS(o);
   };
-  const play = v => { setVideo(v); setView("player"); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const play = v => { setVideo(v); setView("player"); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); trackWatch(user.id, v.title); };
   const backToCourse = () => { setVideo(null); setView("course"); };
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
@@ -1166,9 +1358,34 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const [showSubscribe, setShowSubscribe] = React.useState(false);
   const [showCourses, setShowCourses] = React.useState(false);
   const [showCalc, setShowCalc] = React.useState(false);
+  const [showHomework, setShowHomework] = React.useState(false);
+  const [showHomework, setShowHomework] = React.useState(false);
+  const [showNotif, setShowNotif] = React.useState(false);
   const [completed, setCompleted] = React.useState(() => { try { return JSON.parse(localStorage.getItem("tafx_completed_" + user.id) || "{}"); } catch { return {}; } });
   const toggleComplete = (videoId) => { const n = { ...completed, [videoId]: !completed[videoId] }; setCompleted(n); try { localStorage.setItem("tafx_completed_" + user.id, JSON.stringify(n)); } catch {} };
   const userLevels = user.levels || [];
+  const hasPM = userLevels.includes("Private Mentorship");
+  
+  // Notifications
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const myJournals = journals.filter(j => j.userId === user.id);
+  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
+  const pendingHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due > Date.now();
+  });
+  const overdueHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due < Date.now();
+  });
+  const notifications = [
+    ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
+    ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
+    ...(notJournaledWeek ? [{ type: "journal", msg: "You haven't journalled in over a week", urgent: false }] : []),
+  ];
+  const [showNotifs, setShowNotifs] = React.useState(false);
   const accessibleCourses = courses.filter(c => {
     if (!c.level) return true; // no level restriction = visible to all approved members
     return userLevels.includes(c.level); // level set = must have that exact level
@@ -1178,18 +1395,116 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
+      {/* Global zoom overlay */}
+      <div id="tafx-zoom-overlay" onClick={() => document.getElementById("tafx-zoom-overlay").style.display="none"}
+        style={{ display:"none", position:"fixed", inset:0, background:"rgba(0,0,0,.93)", zIndex:9999, alignItems:"center", justifyContent:"center", cursor:"zoom-out", padding:20 }}>
+        <img id="tafx-zoom-img" style={{ maxWidth:"95vw", maxHeight:"95vh", borderRadius:8, objectFit:"contain" }} />
+        <div style={{ position:"absolute", top:20, right:20, color:"#fff", fontSize:28, cursor:"pointer" }}>✕</div>
+      </div>
+
       <Rule />
 
       {/* ── HEADER ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); }} />
+          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
+<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            {hasPM && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
+            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
+            {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Homework</Btn>}
             <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
             <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
             <div style={{ width: 1, height: 30, background: C.border }} />
+            {/* Notification bell */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setShowNotif(p => !p)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, position: "relative" }}>
+                <span style={{ fontSize: 20 }}>🔔</span>
+                {(() => {
+                  const userLevels = user.levels || [];
+  const hasPM = userLevels.includes("Private Mentorship");
+  
+  // Notifications
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const myJournals = journals.filter(j => j.userId === user.id);
+  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
+  const pendingHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due > Date.now();
+  });
+  const overdueHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due < Date.now();
+  });
+  const notifications = [
+    ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
+    ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
+    ...(notJournaledWeek ? [{ type: "journal", msg: "You haven't journalled in over a week", urgent: false }] : []),
+  ];
+  const [showNotifs, setShowNotifs] = React.useState(false);
+                  const myVideos = courses.filter(c => !c.level || userLevels.includes(c.level)).flatMap(c => videos.filter(v => v.courseId === c.id));
+                  const recentVideos = myVideos.filter(v => Date.now() - v.createdAt < 7*24*60*60*1000);
+                  const dueHw = homework.filter(h => h.dueDate && new Date(h.dueDate) > new Date() && !hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id));
+                  const myJournals = journals.filter(j => j.userId === user.id);
+                  const lastJournal = myJournals.length ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
+                  const noJournalWeek = lastJournal < Date.now() - 7*24*60*60*1000;
+                  const count = recentVideos.length + dueHw.length + (noJournalWeek && myJournals.length > 0 ? 1 : 0);
+                  return count > 0 ? <span style={{ position: "absolute", top: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{count}</span> : null;
+                })()}
+              </button>
+              {showNotif && (
+                <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: "0 8px 32px rgba(0,0,0,.5)", zIndex: 999, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 16px", borderBottom: "1px solid " + C.border, fontFamily: S, fontSize: 14, fontWeight: 700 }}>Notifications</div>
+                  <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                    {(() => {
+                      const userLevels = user.levels || [];
+  const hasPM = userLevels.includes("Private Mentorship");
+  
+  // Notifications
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const myJournals = journals.filter(j => j.userId === user.id);
+  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
+  const pendingHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due > Date.now();
+  });
+  const overdueHW = homework.filter(h => {
+    const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
+    const submitted = hwSubmissions.some(s => s.homeworkId === h.id && s.userId === user.id);
+    return hasPM && !submitted && due && due < Date.now();
+  });
+  const notifications = [
+    ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
+    ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
+    ...(notJournaledWeek ? [{ type: "journal", msg: "You haven't journalled in over a week", urgent: false }] : []),
+  ];
+  const [showNotifs, setShowNotifs] = React.useState(false);
+                      const myVideos = courses.filter(c => !c.level || userLevels.includes(c.level)).flatMap(c => videos.filter(v => v.courseId === c.id));
+                      const recentVideos = myVideos.filter(v => Date.now() - v.createdAt < 7*24*60*60*1000);
+                      const dueHw = homework.filter(h => h.dueDate && new Date(h.dueDate) > new Date() && !hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id));
+                      const myJournals = journals.filter(j => j.userId === user.id);
+                      const lastJournal = myJournals.length ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
+                      const noJournalWeek = lastJournal < Date.now() - 7*24*60*60*1000 && myJournals.length > 0;
+                      const notifs = [
+                        ...recentVideos.map(v => ({ icon: "▶", text: "New video: " + v.title, color: C.gold })),
+                        ...dueHw.map(h => ({ icon: "📚", text: "Homework due: " + h.title + (h.dueDate ? " (" + new Date(h.dueDate).toLocaleDateString() + ")" : ""), color: "#FF7096" })),
+                        ...(noJournalWeek ? [{ icon: "📓", text: "You haven't journalled in over a week!", color: C.red }] : []),
+                      ];
+                      if (!notifs.length) return <div style={{ padding: "20px 16px", color: C.grey, fontSize: 13, textAlign: "center" }}>You're all caught up! 🎉</div>;
+                      return notifs.map((n, i) => (
+                        <div key={i} style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}>{n.icon}</span>
+                          <span style={{ fontSize: 13, color: C.dim, lineHeight: 1.5 }}>{n.text}</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{user.name}</div>
@@ -1212,12 +1527,14 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
+      {showHomework && hasPM && <StudentHomework user={user} homework={homework} hwSubmissions={hwSubmissions} addHwSubmission={addHwSubmission} />}
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
+      {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
       {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
 
       {/* ══ HOME ══ */}
-      {!showJournal && !showCourses && !showCalc && view === "home" && (
+      {!showJournal && !showCourses && !showCalc && !showHomework && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
@@ -1384,7 +1701,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ COURSE ══ */}
-      {!showJournal && !showCourses && !showCalc && view === "course" && course && (
+      {!showJournal && !showCourses && !showCalc && !showHomework && view === "course" && course && (
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
           {/* Course header */}
           <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
@@ -1456,7 +1773,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ PLAYER ══ */}
-      {!showJournal && !showCourses && !showCalc && view === "player" && video && (() => {
+      {!showJournal && !showCourses && !showCalc && !showHomework && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -1833,6 +2150,226 @@ function PnlCalendar({ journals, userId }) {
   );
 }
 
+
+/* ── STUDENT HOMEWORK ───────────────────────────────────────────────────── */
+function StudentHomework({ user, homework, hwSubmits, addHwSubmit }) {
+  const [selected, setSelected] = React.useState(null);
+  const [text, setText] = React.useState("");
+  const [image, setImage] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState("");
+
+  const mySubmissions = hwSubmits.filter(s => s.userId === user.id);
+  const hasSubmitted = (hwId) => mySubmissions.some(s => s.homeworkId === hwId);
+  const getSubmission = (hwId) => mySubmissions.find(s => s.homeworkId === hwId);
+
+  const submit = async (hw) => {
+    if (!text.trim()) { setErr("Please write your answer before submitting."); return; }
+    setSaving(true);
+    await addHwSubmit({ id: uid(), homeworkId: hw.id, userId: user.id, userName: user.name, text: text.trim(), image: image||null, createdAt: Date.now() });
+    setText(""); setImage(null); setErr(""); setSelected(null); setSaving(false);
+  };
+
+  const compressImage = (file, cb) => {
+    const r = new FileReader();
+    r.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 1200; let w = img.width, h = img.height;
+        if (w > MAX) { h = h*MAX/w; w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: "#FF7096", textTransform: "uppercase", marginBottom: 6 }}>Private Mentorship</p>
+        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>📚 Homework</h2>
+        <p style={{ color: C.grey, fontSize: 13, marginTop: 4 }}>Complete your assigned homework before the due date.</p>
+      </div>
+
+      {homework.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 0", color: C.grey }}>
+          <div style={{ fontSize: 48, opacity: .3, marginBottom: 12 }}>📝</div>
+          <p>No homework assigned yet. Check back soon.</p>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {homework.map(hw => {
+          const submitted = hasSubmitted(hw.id);
+          const sub = getSubmission(hw.id);
+          const isOverdue = hw.dueDate && new Date(hw.dueDate) < new Date() && !submitted;
+          const isOpen = selected === hw.id;
+          return (
+            <div key={hw.id} style={{ background: C.card, border: "1.5px solid " + (submitted ? C.green + "40" : isOverdue ? C.red + "40" : C.border), borderRadius: 14, overflow: "hidden" }}>
+              <div onClick={() => setSelected(isOpen ? null : hw.id)} style={{ padding: "18px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, marginBottom: 4 }}>{hw.title}</div>
+                  {hw.dueDate && <div style={{ fontSize: 12, color: isOverdue ? C.red : C.grey }}>Due: {new Date(hw.dueDate).toLocaleDateString("en-ZA", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</div>}
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  {submitted
+                    ? <span style={{ background: C.green + "20", color: C.green, border: "1px solid " + C.green + "40", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>✓ Submitted</span>
+                    : isOverdue
+                    ? <span style={{ background: C.red + "20", color: C.red, border: "1px solid " + C.red + "40", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Overdue</span>
+                    : <span style={{ background: "#FF709620", color: "#FF7096", border: "1px solid #FF709640", padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Pending</span>
+                  }
+                </div>
+              </div>
+
+              {isOpen && (
+                <div style={{ padding: "0 20px 20px", borderTop: "1px solid " + C.border }}>
+                  <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, padding: "16px 0" }}>{hw.description}</p>
+
+                  {submitted && sub ? (
+                    <div>
+                      <div style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "14px 16px", marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>Your Submission</div>
+                        <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{sub.text}</p>
+                        {sub.image && <img src={sub.image} alt="submission" style={{ width: "100%", borderRadius: 8, marginTop: 10, border: "1px solid " + C.border }} />}
+                      </div>
+                      {sub.adminFeedback && (
+                        <div style={{ background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.25)", borderRadius: 10, padding: "14px 16px" }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 6 }}>💬 Coach Taaha's Feedback</div>
+                          <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{sub.adminFeedback}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : !isOverdue ? (
+                    <div>
+                      <label>Your Answer</label>
+                      <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Write your homework answer here..."
+                        style={{ width: "100%", height: 120, background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, fontFamily: D, fontSize: 13, lineHeight: 1.6, resize: "vertical", outline: "none", marginBottom: 10 }} />
+                      <div style={{ marginBottom: 12 }}>
+                        <label>Attach Image (optional)</label>
+                        <div onClick={() => document.getElementById("hw-img-" + hw.id).click()}
+                          style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 10, padding: "14px", textAlign: "center", cursor: "pointer", background: C.navy }}>
+                          <input id={"hw-img-" + hw.id} type="file" accept="image/*" style={{ display: "none" }}
+                            onChange={e => { const f = e.target.files[0]; if (f) compressImage(f, setImage); }} />
+                          {image
+                            ? <div><img src={image} alt="" style={{ maxHeight: 150, maxWidth: "100%", borderRadius: 6, display: "block", margin: "0 auto 8px" }} /><button onClick={e => { e.stopPropagation(); setImage(null); }} style={{ background: C.red+"20", color: C.red, border: "1px solid "+C.red+"40", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Remove</button></div>
+                            : <span style={{ color: C.grey, fontSize: 13 }}>📸 Click to add a photo</span>
+                          }
+                        </div>
+                      </div>
+                      {err && <div style={{ color: C.red, fontSize: 12, marginBottom: 8 }}>{err}</div>}
+                      <Btn onClick={() => submit(hw)} disabled={saving} full>{saving ? "Submitting..." : "Submit Homework"}</Btn>
+                    </div>
+                  ) : (
+                    <div style={{ padding: "14px", background: C.red+"10", border: "1px solid "+C.red+"30", borderRadius: 10, color: C.red, fontSize: 13 }}>This homework is overdue and can no longer be submitted.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN HOMEWORK TAB ─────────────────────────────────────────────────── */
+function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, users }) {
+  const [title, setTitle] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+  const [dueDate, setDueDate] = React.useState("");
+  const [selected, setSelected] = React.useState(null); // homework id to view submissions
+  const [feedback, setFeedback] = React.useState("");
+  const [feedbackSub, setFeedbackSub] = React.useState(null);
+
+  const doAdd = () => {
+    if (!title.trim() || !desc.trim()) return;
+    addHomework({ id: uid(), title: title.trim(), description: desc.trim(), dueDate: dueDate||null, createdAt: Date.now() });
+    setTitle(""); setDesc(""); setDueDate("");
+  };
+
+  const hw = selected ? homework.find(h => h.id === selected) : null;
+  const subs = selected ? hwSubmits.filter(s => s.homeworkId === selected) : [];
+
+  if (hw) return (
+    <div>
+      <button onClick={() => { setSelected(null); setFeedbackSub(null); setFeedback(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back to Homework</button>
+      <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{hw.title}</h3>
+      <p style={{ fontSize: 13, color: C.grey, marginBottom: 20 }}>{subs.length} submission{subs.length !== 1 ? "s" : ""}</p>
+      {subs.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No submissions yet.</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {subs.map(s => {
+          const uname = users.find(u => u.id === s.userId)?.name || s.userName;
+          return (
+            <div key={s.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontWeight: 700, color: C.gold, fontSize: 13, marginBottom: 4 }}>{uname}</div>
+              <div style={{ fontSize: 11, color: C.grey, marginBottom: 10 }}>{new Date(s.createdAt).toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</div>
+              <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7, marginBottom: 10 }}>{s.text}</p>
+              {s.image && <img src={s.image} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "contain", borderRadius: 8, marginBottom: 10, border: "1px solid " + C.border }} />}
+              {s.adminFeedback && <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "30", borderRadius: 8, padding: "10px 14px", marginBottom: 10, fontSize: 13, color: C.dim }}>Your feedback: {s.adminFeedback}</div>}
+              {feedbackSub === s.id ? (
+                <div>
+                  <textarea value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Write feedback for this student..."
+                    style={{ width: "100%", height: 80, background: C.navy, border: "1.5px solid " + C.gold, borderRadius: 9, padding: "10px 12px", color: C.white, fontFamily: D, fontSize: 13, resize: "vertical", outline: "none", marginBottom: 8 }} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Btn onClick={() => { patchHwSubmit(s.id, { adminFeedback: feedback }); setFeedbackSub(null); setFeedback(""); }} sz="sm" disabled={!feedback.trim()}>Send Feedback</Btn>
+                    <Btn v="outline" onClick={() => setFeedbackSub(null)} sz="sm">Cancel</Btn>
+                  </div>
+                </div>
+              ) : (
+                <Btn v="outline" onClick={() => { setFeedbackSub(s.id); setFeedback(s.adminFeedback||""); }} sz="sm">✏ {s.adminFeedback ? "Edit Feedback" : "Give Feedback"}</Btn>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>+ Assign New Homework</div>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div><label>Homework Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Week 3 — Market Structure Analysis" /></div>
+          <div><label>Instructions / Description</label>
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe what students need to do..."
+              style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+          </div>
+          <div><label>Due Date (optional)</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+          <Btn onClick={doAdd} disabled={!title.trim() || !desc.trim()} style={{ justifySelf: "start" }}>Assign Homework</Btn>
+        </div>
+      </Card>
+
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 14 }}>Assigned Homework ({homework.length})</div>
+        {homework.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No homework assigned yet.</p>}
+        {homework.map(hw => {
+          const subCount = hwSubmits.filter(s => s.homeworkId === hw.id).length;
+          return (
+            <div key={hw.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "14px 16px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: S, fontSize: 15, fontWeight: 700 }}>{hw.title}</div>
+                <div style={{ fontSize: 11, color: C.grey, marginTop: 3 }}>
+                  {hw.dueDate && <span>Due {new Date(hw.dueDate).toLocaleDateString()} · </span>}
+                  <span style={{ color: subCount > 0 ? C.green : C.faint }}>{subCount} submission{subCount !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn v="outline" onClick={() => setSelected(hw.id)} sz="sm">View Submissions</Btn>
+                <Btn v="danger" onClick={() => deleteHomework(hw.id)} sz="sm">Delete</Btn>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [title, setTitle] = React.useState("");
   const [pair, setPair] = React.useState("");
@@ -1850,6 +2387,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [editing, setEditing] = React.useState(null);
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
+  const [currency, setCurrency] = React.useState("ZAR");
+  const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
 
   const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
 
@@ -1857,10 +2396,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, tradeType, tradeDate, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try {
       await addJournal(entry_obj);
-      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setView("list");
+      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setCurrency("ZAR"); setView("list");
     } catch(e) {
       setErr("Failed to save. Please try again.");
     }
@@ -1911,7 +2450,19 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             ))}
           </div>
         </div>
-        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+          <div><label>Account Currency</label>
+            <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3, border: "1px solid " + C.border }}>
+              {["ZAR", "USD"].map(c => (
+                <button key={c} onClick={() => setCurrency(c)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
+                  background: currency === c ? C.goldDim : "transparent", color: currency === c ? C.gold : C.grey }}>
+                  {c === "ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
         <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
@@ -1924,7 +2475,17 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
           <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
           <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
-          <div><label>P&L</label><input value={pnl} onChange={e => setPnl(e.target.value)} placeholder="+$120" /></div>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+              <label style={{ margin: 0 }}>P&L</label>
+              <div style={{ display: "flex", background: C.bg, borderRadius: 7, padding: 2, gap: 2 }}>
+                {["ZAR","USD"].map(c => (
+                  <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", background: pnlCurrency === c ? C.gold : "transparent", color: pnlCurrency === c ? "#08090E" : C.grey }}>{c}</button>
+                ))}
+              </div>
+            </div>
+            <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency === "ZAR" ? "+R500" : "+$28"} />
+          </div>
         </div>
         <div><label>Result</label>
           <select value={result} onChange={e => setResult(e.target.value)}>
@@ -2002,6 +2563,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     </div>
   );
 
+  const [zoomImg, setZoomImg] = React.useState(null);
+
   if (view === "detail" && selected) {
     const j = journals.find(x => x.id === selected);
     if (!j) { setView("list"); return null; }
@@ -2024,7 +2587,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginBottom: 22 }}>
-            {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
+            {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L " + (j.currency||""), j.pnl||"—"]].map(([k,v]) => (
               <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "12px 14px" }}>
                 <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{v}</div>
@@ -2038,7 +2601,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
           {j.image && (
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshot</div>
-              <img src={j.image} alt="chart" style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block" }} />
+              <img src={j.image} alt="chart" onClick={() => setZoomImg(j.image)} style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block", cursor: "zoom-in" }} />
             </div>
           )}
           {j.lesson && <div style={{ marginBottom: 18 }}>
@@ -2062,6 +2625,14 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     );
   }
 
+  // Zoom overlay
+  if (zoomImg) return (
+    <div onClick={() => setZoomImg(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", padding: 20 }}>
+      <img src={zoomImg} alt="zoom" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12, boxShadow: "0 0 60px rgba(0,0,0,.8)", objectFit: "contain" }} />
+      <button onClick={() => setZoomImg(null)} style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,.15)", border: "none", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 20, cursor: "pointer" }}>✕</button>
+    </div>
+  );
+
   if (view === "edit" && editing) return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
@@ -2082,7 +2653,19 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             ))}
           </div>
         </div>
-        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
+          <div><label>Account Currency</label>
+            <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3, border: "1px solid " + C.border }}>
+              {["ZAR", "USD"].map(c => (
+                <button key={c} onClick={() => setCurrency(c)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
+                  background: currency === c ? C.goldDim : "transparent", color: currency === c ? C.gold : C.grey }}>
+                  {c === "ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
         <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
@@ -2091,7 +2674,17 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
           <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
           <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
-          <div><label>P&L</label><input value={pnl} onChange={e => setPnl(e.target.value)} placeholder="+$120" /></div>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+              <label style={{ margin: 0 }}>P&L</label>
+              <div style={{ display: "flex", background: C.bg, borderRadius: 7, padding: 2, gap: 2 }}>
+                {["ZAR","USD"].map(c => (
+                  <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", background: pnlCurrency === c ? C.gold : "transparent", color: pnlCurrency === c ? "#08090E" : C.grey }}>{c}</button>
+                ))}
+              </div>
+            </div>
+            <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency === "ZAR" ? "+R500" : "+$28"} />
+          </div>
         </div>
         <div><label>Result</label><select value={result} onChange={e => setResult(e.target.value)}><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
         <div><label>Trade Analysis</label>
@@ -2147,6 +2740,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                 <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.title}</div>
                 <div style={{ display: "flex", gap: 10, fontSize: 12, color: C.grey, flexWrap: "wrap", alignItems: "center" }}>
                   {j.tradeType && <span style={{ background: j.tradeType === "Backtest" ? C.goldDim : "rgba(46,204,113,.12)", color: j.tradeType === "Backtest" ? C.gold : C.green, border: "1px solid " + (j.tradeType === "Backtest" ? C.gold : C.green) + "40", padding: "1px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{j.tradeType}</span>}
+                  {j.currency && <span style={{ background: "rgba(201,168,76,.1)", color: C.gold, border: "1px solid " + C.gold + "30", padding: "1px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{j.currency}</span>}
                   <span>{j.pair}</span>
                   <span>·</span>
                   <span>{j.direction}</span>
@@ -2312,7 +2906,7 @@ const LEVEL_COLORS = {
   "Free":               { bg: "rgba(76,184,128,.15)", border: "rgba(76,184,128,.4)", text: "#4CB880" },
 };
 
-function MembershipTab({ users, patchUser, courses, patchCourse }) {
+function MembershipTab({ users, patchUser, courses, patchCourse, lastWatch, journals }) {
   const [search, setSearch] = React.useState("");
   const approved = users.filter(u => u.status === "approved").filter(u => !search.trim() || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
 
@@ -2374,6 +2968,14 @@ function MembershipTab({ users, patchUser, courses, patchCourse }) {
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: C.white }}>{u.name}</div>
                 <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
+                <div style={{ display: "flex", gap: 16, marginTop: 4, flexWrap: "wrap" }}>
+                  {lastWatch && lastWatch[u.id] && (() => { const [ts, vid] = lastWatch[u.id].split("|"); return <span style={{ fontSize: 11, color: C.grey }}>▶ Last watched: <strong style={{ color: C.dim }}>{vid}</strong> · {new Date(parseInt(ts)).toLocaleDateString("en-ZA")}</span>; })()}
+                  {(() => { const lj = journals.filter(j => j.userId === u.id); const last = lj.length ? Math.max(...lj.map(j=>j.createdAt)) : null; return last ? <span style={{ fontSize: 11, color: C.grey }}>📓 Last journalled: <strong style={{ color: (Date.now()-last > 7*24*60*60*1000) ? C.red : C.dim }}>{new Date(last).toLocaleDateString("en-ZA")}</strong></span> : <span style={{ fontSize: 11, color: C.faint }}>📓 Never journalled</span>; })()}
+                </div>
+                {lastWatch[u.id] && (() => {
+                  const [ts, vid] = lastWatch[u.id].split("|");
+                  return <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>Last watched: <span style={{ color: C.gold }}>{vid}</span> — {new Date(ts).toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</div>;
+                })()}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {(u.levels || []).length === 0
@@ -2428,7 +3030,10 @@ function App() {
   const [sections, setSections] = React.useState([]);
   const [videos,   setVideos]   = React.useState([]);
   const [journals, setJournals] = React.useState([]);
-  const [comments, setComments] = React.useState([]);
+  const [comments,  setComments]  = React.useState([]);
+  const [homework,  setHomework]  = React.useState([]);
+  const [hwSubmits, setHwSubmits] = React.useState([]);
+  const [lastWatch, setLastWatch] = React.useState({});
   const [screen,   setScreen]   = React.useState("login");
   const [me,       setMe]       = React.useState(null);
   const [loading,  setLoading]  = React.useState(true);
@@ -2451,20 +3056,28 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j, com] = await Promise.all([
+      const [u, c, sec, v, j, com, hw, hws] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
         sb("videos?order=created_at.asc"),
         sb("journals?order=created_at.desc"),
         sb("comments?order=created_at.asc"),
+        sb("homework?order=created_at.desc"),
+        sb("hw_submissions?order=created_at.desc"),
       ]);
-      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at })));
+      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
+      if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at })));
+      if (hws) setHwSubmissions(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, feedback:x.feedback||null, feedbackAt:x.feedback_at||null, createdAt:x.created_at })));
+      if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
+      if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
+      // Build lastWatched map
+      if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
     } catch(e) { console.error("loadAll error:", e); }
     if (showSpinner) setLoading(false);
   };
@@ -2543,6 +3156,49 @@ function App() {
     await sb("videos?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
     setVideos(prev => prev.filter(v => v.id !== id));
   };
+  const addHomeworkDB = async (h) => {
+    await sb("homework", { method: "POST", prefer: "return=minimal", body: { id:h.id, title:h.title, description:h.description, due_date:h.dueDate, created_at:h.createdAt } });
+    setHomework(prev => [h, ...prev]);
+  };
+  const deleteHomeworkDB = async (id) => {
+    await sb("hw_submissions?homework_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    await sb("homework?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setHomework(prev => prev.filter(h => h.id !== id));
+  };
+  const addHwSubmitDB = async (s) => {
+    await sb("hw_submissions", { method: "POST", prefer: "return=minimal", body: { id:s.id, homework_id:s.homeworkId, user_id:s.userId, user_name:s.userName, text:s.text, image:s.image||null, admin_feedback:null, created_at:s.createdAt } });
+    setHwSubmits(prev => [s, ...prev]);
+  };
+  const patchHwSubmit = async (id, patch) => {
+    await sb("hw_submissions?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: { admin_feedback: patch.adminFeedback } });
+    setHwSubmits(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
+  const trackVideoWatch = async (userId, videoTitle) => {
+    const ts = new Date().toISOString();
+    await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: ts + "|" + videoTitle } });
+    setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
+  };
+  const addHomeworkDB = async (h) => {
+    await sb("homework", { method: "POST", prefer: "return=minimal", body: { id:h.id, title:h.title, description:h.description, due_date:h.dueDate, created_at:h.createdAt } });
+    setHomework(prev => [h, ...prev]);
+  };
+  const deleteHomeworkDB = async (id) => {
+    await sb("homework_submissions?homework_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    await sb("homework?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setHomework(prev => prev.filter(h => h.id !== id));
+    setHwSubmissions(prev => prev.filter(s => s.homeworkId !== id));
+  };
+  const addHwSubmissionDB = async (s) => {
+    await sb("homework_submissions", { method: "POST", prefer: "return=minimal", body: { id:s.id, homework_id:s.homeworkId, user_id:s.userId, user_name:s.userName, text:s.text, image:s.image||null, feedback:null, feedback_at:null, created_at:s.createdAt } });
+    setHwSubmissions(prev => [s, ...prev]);
+  };
+  const patchHwSubmission = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.feedback !== undefined) dbPatch.feedback = patch.feedback;
+    if (patch.feedbackAt !== undefined) dbPatch.feedback_at = patch.feedbackAt;
+    await sb("homework_submissions?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setHwSubmissions(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
   const addCommentDB = async (c) => {
     await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
@@ -2555,7 +3211,7 @@ function App() {
   };
 
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk, gain:j.gain, result:j.result, pnl:j.pnl, analysis:j.analysis, lesson:j.lesson, image:j.image, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk, gain:j.gain, result:j.result, pnl:j.pnl, analysis:j.analysis, lesson:j.lesson, image:j.image, currency:j.currency||"ZAR", trade_type:j.tradeType||"Live Trade", trade_date:j.tradeDate||null, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
@@ -2609,8 +3265,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
