@@ -2921,27 +2921,6 @@ function App() {
     await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: ts + "|" + videoTitle } });
     setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
   };
-  const addHomeworkDB = async (h) => {
-    await sb("homework", { method: "POST", prefer: "return=minimal", body: { id:h.id, title:h.title, description:h.description, due_date:h.dueDate, created_at:h.createdAt } });
-    setHomework(prev => [h, ...prev]);
-  };
-  const deleteHomeworkDB = async (id) => {
-    await sb("homework_submissions?homework_id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
-    await sb("homework?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
-    setHomework(prev => prev.filter(h => h.id !== id));
-    setHwSubmissions(prev => prev.filter(s => s.homeworkId !== id));
-  };
-  const addHwSubmitDB = async (s) => {
-    await sb("homework_submissions", { method: "POST", prefer: "return=minimal", body: { id:s.id, homework_id:s.homeworkId, user_id:s.userId, user_name:s.userName, text:s.text, image:s.image||null, feedback:null, feedback_at:null, created_at:s.createdAt } });
-    setHwSubmissions(prev => [s, ...prev]);
-  };
-  const patchHwSubmit = async (id, patch) => {
-    const dbPatch = {};
-    if (patch.feedback !== undefined) dbPatch.feedback = patch.feedback;
-    if (patch.feedbackAt !== undefined) dbPatch.feedback_at = patch.feedbackAt;
-    await sb("homework_submissions?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
-    setHwSubmissions(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
-  };
   const addCommentDB = async (c) => {
     await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
