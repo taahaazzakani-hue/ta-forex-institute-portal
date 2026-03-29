@@ -1170,7 +1170,6 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const [showCourses, setShowCourses] = React.useState(false);
   const [showCalc, setShowCalc] = React.useState(false);
   const [showHomework, setShowHomework] = React.useState(false);
-  const [showHomework, setShowHomework] = React.useState(false);
   const [showNotif, setShowNotif] = React.useState(false);
   const [completed, setCompleted] = React.useState(() => { try { return JSON.parse(localStorage.getItem("tafx_completed_" + user.id) || "{}"); } catch { return {}; } });
   const toggleComplete = (videoId) => { const n = { ...completed, [videoId]: !completed[videoId] }; setCompleted(n); try { localStorage.setItem("tafx_completed_" + user.id, JSON.stringify(n)); } catch {} };
