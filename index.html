@@ -1112,194 +1112,6 @@ function RiskCalculator() {
 
 
 /* ── STUDENT HOMEWORK ────────────────────────────────────────────────────── */
-function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
-  const [selected, setSelected] = React.useState(null);
-  const [text, setText] = React.useState("");
-  const [image, setImage] = React.useState(null);
-  const [saving, setSaving] = React.useState(false);
-  const [err, setErr] = React.useState("");
-
-  const mySubmissions = (hwSubmits||[]).filter(s => s.userId === user.id);
-  const getSubmission = (hwId) => mySubmissions.find(s => s.homeworkId === hwId);
-
-  const submit = async () => {
-    if (!text.trim()) { setErr("Please write your submission."); return; }
-    setSaving(true);
-    await addHwSubmit({ id: uid(), homeworkId: selected.id, userId: user.id, userName: user.name, text: text.trim(), image: image || null, createdAt: Date.now() });
-    setText(""); setImage(null); setSelected(null); setSaving(false);
-  };
-
-  const now = Date.now();
-
-  if (selected) {
-    const sub = getSubmission(selected.id);
-    const dueTs = selected.dueDate ? new Date(selected.dueDate + "T23:59:59").getTime() : null;
-    const isOverdue = dueTs && dueTs < now;
-    return (
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-        <button onClick={() => { setSelected(null); setText(""); setImage(null); setErr(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back</button>
-        <Card style={{ padding: 24 }}>
-          <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{selected.title}</h2>
-          {selected.dueDate && <div style={{ fontSize: 12, color: isOverdue ? C.red : C.gold, fontWeight: 700, marginBottom: 12 }}>{isOverdue ? "⚠ Overdue — " : "📅 Due: "}{new Date(selected.dueDate + "T00:00:00").toLocaleDateString("en-ZA", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}</div>}
-          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, marginBottom: 20, whiteSpace: "pre-wrap" }}>{selected.description}</p>
-
-          {sub ? (
-            <div>
-              <div style={{ background: "rgba(76,184,128,.08)", border: "1px solid " + C.green + "40", borderRadius: 12, padding: 18, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: C.green, fontWeight: 700, marginBottom: 8 }}>✓ Submitted {new Date(sub.createdAt).toLocaleDateString()}</div>
-                <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{sub.text}</p>
-                {sub.image && <img src={sub.image} alt="submission" style={{ width: "100%", borderRadius: 8, marginTop: 12, border: "1px solid " + C.border, cursor: "zoom-in" }} onClick={() => { document.getElementById("tafx-zoom-overlay").style.display="flex"; document.getElementById("tafx-zoom-img").src=sub.image; }} />}
-              </div>
-              {sub.feedback && (
-                <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 12, padding: 18 }}>
-                  <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, marginBottom: 8 }}>💬 Coach Taaha — Feedback</div>
-                  <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.7 }}>{sub.feedback}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label>Your Submission</label>
-              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Write your homework answer, analysis or reflection here…"
-                style={{ height: 140, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
-              <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 10, padding: 16, textAlign: "center", background: C.navy, cursor: "pointer", marginBottom: 12 }}
-                onClick={() => document.getElementById("hw-img-upload").click()}>
-                <input id="hw-img-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); const M=1200; let w=img.width,h=img.height; if(w>M){h=h*M/w;w=M;} c.width=w;c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); setImage(c.toDataURL("image/jpeg",.7)); }; img.src=ev.target.result; }; r.readAsDataURL(f); }} />
-                {image ? <img src={image} style={{ maxWidth:"100%", maxHeight:200, borderRadius:8 }} /> : <p style={{ color: C.grey, fontSize: 13 }}>📎 Attach a screenshot (optional)</p>}
-              </div>
-              {err && <div style={{ color: C.red, fontSize: 12, marginBottom: 8 }}>{err}</div>}
-              <Btn onClick={submit} disabled={saving} full sz="lg">{saving ? "Submitting…" : "Submit Homework"}</Btn>
-            </div>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-      <div style={{ marginBottom: 24 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Private Mentorship</p>
-        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>📝 Homework</h2>
-      </div>
-      {homework.length === 0 && <div style={{ textAlign: "center", padding: "60px 0", color: C.grey }}><div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📝</div><p>No homework assigned yet.</p></div>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {homework.map(h => {
-          const sub = getSubmission(h.id);
-          const dueTs = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
-          const isOverdue = dueTs && dueTs < now && !sub;
-          return (
-            <Card key={h.id} hover onClick={() => setSelected(h)} style={{ padding: "16px 20px", cursor: "pointer", border: "1.5px solid " + (isOverdue ? C.red + "50" : sub ? C.green + "40" : C.border) }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                <div>
-                  <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, marginBottom: 4 }}>{h.title}</div>
-                  {h.dueDate && <div style={{ fontSize: 12, color: isOverdue ? C.red : C.grey }}>Due: {new Date(h.dueDate + "T00:00:00").toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric" })}</div>}
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 12px", borderRadius: 20, flexShrink: 0,
-                  background: sub ? "rgba(76,184,128,.15)" : isOverdue ? "rgba(217,96,96,.15)" : C.goldDim,
-                  color: sub ? C.green : isOverdue ? C.red : C.gold,
-                  border: "1px solid " + (sub ? C.green : isOverdue ? C.red : C.gold) + "40" }}>
-                  {sub ? "✓ Submitted" : isOverdue ? "Overdue" : "Pending"}
-                </span>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ── ADMIN HOMEWORK TAB ──────────────────────────────────────────────────── */
-function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, users }) {
-  const [title, setTitle] = React.useState("");
-  const [desc, setDesc] = React.useState("");
-  const [dueDate, setDueDate] = React.useState("");
-  const [selected, setSelected] = React.useState(null);
-  const [feedback, setFeedback] = React.useState("");
-  const [selectedSub, setSelectedSub] = React.useState(null);
-
-  const doAdd = () => {
-    if (!title.trim()) return;
-    addHomework({ id: uid(), title: title.trim(), description: desc.trim(), dueDate: dueDate || null, createdAt: Date.now() });
-    setTitle(""); setDesc(""); setDueDate("");
-  };
-
-  if (selectedSub) {
-    const sub = hwSubmits.find(s => s.id === selectedSub);
-    const uname = users.find(u => u.id === sub?.userId)?.name || "Unknown";
-    return (
-      <div>
-        <button onClick={() => { setSelectedSub(null); setFeedback(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back</button>
-        <Card style={{ padding: 24 }}>
-          <div style={{ fontSize: 11, color: C.gold, fontWeight: 700, marginBottom: 4 }}>Submission by {uname}</div>
-          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, marginBottom: 16, whiteSpace: "pre-wrap" }}>{sub?.text}</p>
-          {sub?.image && <img src={sub.image} alt="submission" style={{ width: "100%", borderRadius: 8, marginBottom: 16, border: "1px solid " + C.border, cursor: "zoom-in" }} onClick={() => { document.getElementById("tafx-zoom-overlay").style.display="flex"; document.getElementById("tafx-zoom-img").src=sub.image; }} />}
-          {sub?.feedback && <div style={{ background: C.goldDim, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: C.dim }}><strong style={{ color: C.gold }}>Previous feedback:</strong><br/>{sub.feedback}</div>}
-          <label>{sub?.feedback ? "Update Feedback" : "Add Feedback"}</label>
-          <textarea value={feedback || sub?.feedback || ""} onChange={e => setFeedback(e.target.value)} placeholder="Write your feedback for this student…"
-            style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
-          <Btn onClick={() => { patchHwSubmit(selectedSub, { feedback: feedback.trim(), feedbackAt: Date.now() }); setSelectedSub(null); setFeedback(""); }} sz="md">Send Feedback to {uname}</Btn>
-        </Card>
-      </div>
-    );
-  }
-
-  if (selected) {
-    const subs = hwSubmits.filter(s => s.homeworkId === selected.id);
-    return (
-      <div>
-        <button onClick={() => setSelected(null)} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20 }}>← Back to Homework</button>
-        <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{selected.title}</h3>
-        <p style={{ color: C.grey, fontSize: 13, marginBottom: 20 }}>{subs.length} submission{subs.length !== 1 ? "s" : ""}</p>
-        {subs.length === 0 && <p style={{ color: C.faint, fontSize: 13 }}>No submissions yet.</p>}
-        {subs.map(s => {
-          const uname = users.find(u => u.id === s.userId)?.name || "Unknown";
-          return (
-            <Card key={s.id} hover onClick={() => { setSelectedSub(s.id); setFeedback(s.feedback || ""); }} style={{ padding: "14px 18px", marginBottom: 8, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div><div style={{ fontWeight: 700, color: C.white }}>{uname}</div><div style={{ fontSize: 12, color: C.grey }}>{new Date(s.createdAt).toLocaleDateString()}</div></div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: s.feedback ? C.green : C.gold }}>{s.feedback ? "✓ Feedback given" : "Needs feedback"}</span>
-            </Card>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: "grid", gap: 20 }}>
-      <Card style={{ padding: 24 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.gold, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 16 }}>+ Assign New Homework</div>
-        <div style={{ display: "grid", gap: 12 }}>
-          <div><label>Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Week 3 Trade Review" /></div>
-          <div><label>Description / Instructions</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe what students need to do…" style={{ height: 90, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} /></div>
-          <div><label>Due Date (optional)</label><input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
-          <Btn onClick={doAdd} disabled={!title.trim()} style={{ justifySelf: "start" }}>Assign Homework</Btn>
-        </div>
-      </Card>
-      {homework.map(h => {
-        const subs = hwSubmits.filter(s => s.homeworkId === h.id);
-        const pending = subs.filter(s => !s.feedback).length;
-        return (
-          <Card key={h.id} style={{ padding: "16px 20px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setSelected(h)}>
-                <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, marginBottom: 3 }}>{h.title}</div>
-                <div style={{ fontSize: 12, color: C.grey }}>
-                  {h.dueDate && <span>Due {new Date(h.dueDate + "T00:00:00").toLocaleDateString("en-ZA")} · </span>}
-                  <span>{subs.length} submission{subs.length !== 1 ? "s" : ""}</span>
-                  {pending > 0 && <span style={{ color: C.gold, fontWeight: 700 }}> · {pending} need feedback</span>}
-                </div>
-              </div>
-              <Btn v="danger" onClick={() => deleteHomework(h.id)} sz="sm">Delete</Btn>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
@@ -1372,12 +1184,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due > Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due < Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due < Date.now();
   });
   const notifications = [
     ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
@@ -1409,7 +1221,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
           <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
 <Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            {hasPM && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
+            {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
             <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
             {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Homework</Btn>}
             <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
@@ -1430,12 +1242,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due > Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due < Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due < Date.now();
   });
   const notifications = [
     ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
@@ -1468,12 +1280,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due > Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due > Date.now();
   });
   const overdueHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
-    return hasPM && !submitted && due && due < Date.now();
+    return (user.levels||[]).includes("Private Mentorship") && !submitted && due && due < Date.now();
   });
   const notifications = [
     ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
@@ -1526,7 +1338,6 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ JOURNAL ══ */}
       {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
-      {showHomework && hasPM && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
       {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
