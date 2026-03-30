@@ -2128,6 +2128,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [selected, setSelected] = React.useState(null);
   const [err, setErr] = React.useState("");
   const [editing, setEditing] = React.useState(null);
+  const [zoomImg, setZoomImg] = React.useState(null);
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
@@ -2305,8 +2306,6 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       </div>
     </div>
   );
-
-  const [zoomImg, setZoomImg] = React.useState(null);
 
   if (view === "detail" && selected) {
     const j = journals.find(x => x.id === selected);
