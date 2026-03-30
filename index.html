@@ -1179,7 +1179,8 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   // Notifications
   const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const myJournals = journals.filter(j => j.userId === user.id);
-  const notJournaledWeek = myJournals.length === 0 || Math.max(...myJournals.map(j => j.createdAt)) < oneWeekAgo;
+  const lastEntry = myJournals.length > 0 ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
+  const notJournaledWeek = myJournals.length === 0 || lastEntry < oneWeekAgo;
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T23:59:59").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
@@ -1763,7 +1764,7 @@ function PnlCalendar({ journals, userId }) {
   const [mode, setMode] = React.useState("Live Trade"); // Live Trade | Backtest
 
   const allJournals = journals.filter(j => j.userId === userId && j.pnl);
-  const myJournals = allJournals.filter(j => (j.tradeType || "Live Trade") === mode);
+  const myJournals = (allJournals || []).filter(j => (j.tradeType || "Live Trade") === mode);
 
   const parsePnl = (str) => {
     if (!str) return null;
@@ -1780,7 +1781,7 @@ function PnlCalendar({ journals, userId }) {
       const jd = dateStr ? new Date(dateStr + "T12:00:00") : new Date(j.createdAt);
       return jd.getFullYear() === year && jd.getMonth() === month && jd.getDate() === day;
     });
-    const pnl = trades.reduce((sum, j) => sum + (parsePnl(j.pnl) || 0), 0);
+    const pnl = trades.length > 0 ? trades.reduce((sum, j) => sum + (parsePnl(j.pnl) || 0), 0) : 0;
     return { trades, pnl };
   };
 
@@ -2132,7 +2133,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [currency, setCurrency] = React.useState("ZAR");
   const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
 
-  const myJournals = journals.filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
+  const myJournals = (journals||[]).filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
 
   const submit = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
@@ -2814,8 +2815,7 @@ function App() {
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
-      if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at })));
-      if (hws) setHwSubmissions(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, feedback:x.feedback||null, feedbackAt:x.feedback_at||null, createdAt:x.created_at })));
+      if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       // Build lastWatched map
