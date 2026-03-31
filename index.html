@@ -2224,7 +2224,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
-  const [image, setImage] = React.useState(null);
+  const [chartImg, setChartImg] = React.useState(null);
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
@@ -2253,7 +2253,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const resetForm = () => {
     setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain("");
     setResult("Win"); setPnl(""); setPnlCurrency("ZAR"); setAnalysis(""); setLesson("");
-    setImage(null); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
+    setChartImg(null); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
     setCurrency("ZAR"); setErr("");
   };
 
@@ -2261,7 +2261,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: chartImg||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try { await addJournal(entry); resetForm(); setView("list"); }
     catch(e) { setErr("Failed to save. Please try again."); }
   };
@@ -2270,7 +2270,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!editing) return;
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null, tradeType, tradeDate, currency };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: chartImg||null, tradeType, tradeDate, currency };
     try {
       await deleteJournal(editing.id);
       await addJournal(updated);
@@ -2287,7 +2287,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
     setTradeType(j.tradeType||"Live Trade");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
-    setCurrency(j.currency||"ZAR"); setImage(j.image||null); setErr("");
+    setCurrency(j.currency||"ZAR"); setChartImg(j.image||null); setErr("");
     setEditing(j); setView("edit");
     console.log("openEdit: view set to edit, editing:", j.id);
     } catch(e) { console.error("openEdit error:", e); }
@@ -2296,7 +2296,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const formProps = { tradeType, setTradeType, tradeDate, setTradeDate, currency, setCurrency,
     title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
     pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
-    lesson, setLesson, image, setImage, err, userId: user.id, compressImage };
+    lesson, setLesson, image: chartImg, setImage: setChartImg, err, userId: user.id, compressImage };
 
   if (zoomImg) return (
     <div onClick={() => setZoomImg(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", padding:20 }}>
