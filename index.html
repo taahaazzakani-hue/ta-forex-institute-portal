@@ -2127,6 +2127,12 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, pa
 }
 
 function StudentJournal({ user, journals, addJournal, deleteJournal }) {
+  const [view, setView] = React.useState("list");
+  const [selected, setSelected] = React.useState(null);
+  const [editing, setEditing] = React.useState(null);
+  const [zoomImg, setZoomImg] = React.useState(null);
+
+  // Form state
   const [title, setTitle] = React.useState("");
   const [pair, setPair] = React.useState("");
   const [direction, setDirection] = React.useState("Long");
@@ -2134,388 +2140,264 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [gain, setGain] = React.useState("");
   const [result, setResult] = React.useState("Win");
   const [pnl, setPnl] = React.useState("");
+  const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
-  const [images, setImages] = React.useState([]);
-  const [view, setView] = React.useState("list"); // list | new | detail | edit
-  const [selected, setSelected] = React.useState(null);
-  const [err, setErr] = React.useState("");
-  const [editing, setEditing] = React.useState(null);
-  const [zoomImg, setZoomImg] = React.useState(null);
+  const [image, setImage] = React.useState(null);
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
-  const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
+  const [err, setErr] = React.useState("");
 
   const myJournals = (journals||[]).filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
+  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
 
-  const submit = async () => {
+  const resetForm = () => {
+    setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain("");
+    setResult("Win"); setPnl(""); setPnlCurrency("ZAR"); setAnalysis(""); setLesson("");
+    setImage(null); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
+    setCurrency("ZAR"); setErr("");
+  };
+
+  const compressImage = (file, cb) => {
+    const r = new FileReader();
+    r.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX = 1200; let w = img.width, h = img.height;
+        if (w > MAX) { h = h*MAX/w; w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+
+  const submitNew = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), images: images.length ? images : [], image: images[0]||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
-    try {
-      await addJournal(entry_obj);
-      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImages([]); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setCurrency("ZAR"); setView("list");
-    } catch(e) {
-      setErr("Failed to save. Please try again.");
-    }
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    try { await addJournal(entry); resetForm(); setView("list"); }
+    catch(e) { setErr("Failed to save. Please try again."); }
   };
 
-  const deleteEntry = id => deleteJournal(id);
-
-  const openEdit = (j) => {
-    setTitle(j.title||""); 
-    setPair(j.pair||""); 
-    setDirection(j.direction||"Long");
-    setRisk(j.risk||""); 
-    setGain(j.gain||""); 
-    setResult(j.result||"Win");
-    setPnl(j.pnl||""); 
-    setAnalysis(j.analysis||""); 
-    setLesson(j.lesson||"");
-    setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
-    setTradeType(j.tradeType||"Live Trade");
-    setCurrency(j.currency||"ZAR");
-    setImage(j.image||null);
-    setImages(j.images||[]);
-    setErr("");
-    setEditing(j);
-    setView("edit");
-  };
-
-  const saveEdit = async () => {
+  const submitEdit = async () => {
+    if (!editing) return;
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||(images&&images.length?images[0]:null), tradeType: tradeType||"Live Trade", tradeDate: tradeDate||editing.tradeDate||null, currency: currency||"ZAR" };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null, tradeType, tradeDate, currency };
     try {
-      // Delete old and re-insert with updated data
       await deleteJournal(editing.id);
       await addJournal(updated);
-      setEditing(null); setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setImages([]); setErr(""); setSelected(updated.id); setView("detail");
+      resetForm(); setEditing(null); setSelected(updated.id); setView("detail");
     } catch(e) { setErr("Failed to save. Please try again."); }
   };
 
-  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
+  const openEdit = (j) => {
+    setTitle(j.title||""); setPair(j.pair||""); setDirection(j.direction||"Long");
+    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
+    setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
+    setTradeType(j.tradeType||"Live Trade"); setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
+    setCurrency(j.currency||"ZAR"); setImage(j.image||null); setErr("");
+    setEditing(j); setView("edit");
+  };
 
-  if (view === "new") return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-        <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back</button>
-        <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700 }}>New Trade Journal</h2>
+  const TradeForm = ({ onSubmit, submitLabel }) => (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div>
+        <label>Trade Type</label>
+        <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3 }}>
+          {["Live Trade","Backtest"].map(t => (
+            <button key={t} onClick={() => setTradeType(t)} style={{ flex:1, padding:"9px 0", borderRadius:8, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s",
+              background: tradeType===t ? (t==="Live Trade" ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : "linear-gradient(135deg,"+C.goldLt+","+C.gold+")") : "transparent",
+              color: tradeType===t ? (t==="Live Trade" ? "#fff" : "#08090E") : C.grey }}>
+              {t==="Live Trade" ? "📈 Live Trade" : "🔬 Backtest"}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ display: "grid", gap: 16 }}>
-        {/* Trade Type Toggle */}
-        <div>
-          <label>Trade Type</label>
-          <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3 }}>
-            {["Live Trade", "Backtest"].map(t => (
-              <button key={t} onClick={() => setTradeType(t)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: ".06em", border: "none", cursor: "pointer", transition: "all .2s",
-                background: tradeType === t ? (t === "Live Trade" ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")") : "transparent",
-                color: tradeType === t ? (t === "Live Trade" ? "#fff" : "#08090E") : C.grey }}>
-                {t === "Live Trade" ? "📈 Live Trade" : "🔬 Backtest"}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme:"dark" }} /></div>
+        <div><label>Currency</label>
+          <div style={{ display:"flex", background:C.bg, borderRadius:10, padding:3, gap:3, border:"1px solid "+C.border }}>
+            {["ZAR","USD"].map(c => (
+              <button key={c} onClick={() => setCurrency(c)} style={{ flex:1, padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"none", cursor:"pointer",
+                background: currency===c ? C.goldDim : "transparent", color: currency===c ? C.gold : C.grey }}>
+                {c==="ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
-          <div><label>Account Currency</label>
-            <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3, border: "1px solid " + C.border }}>
-              {["ZAR", "USD"].map(c => (
-                <button key={c} onClick={() => setCurrency(c)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
-                  background: currency === c ? C.goldDim : "transparent", color: currency === c ? C.gold : C.grey }}>
-                  {c === "ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
-          <div><label>Direction</label>
-            <select value={direction} onChange={e => setDirection(e.target.value)}>
-              <option>Long</option><option>Short</option>
-            </select>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
-          <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-              <label style={{ margin: 0 }}>P&L</label>
-              <div style={{ display: "flex", background: C.bg, borderRadius: 7, padding: 2, gap: 2 }}>
-                {["ZAR","USD"].map(c => (
-                  <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", background: pnlCurrency === c ? C.gold : "transparent", color: pnlCurrency === c ? "#08090E" : C.grey }}>{c}</button>
-                ))}
-              </div>
-            </div>
-            <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency === "ZAR" ? "+R500" : "+$28"} />
-          </div>
-        </div>
-        <div><label>Result</label>
-          <select value={result} onChange={e => setResult(e.target.value)}>
-            <option>Win</option><option>Loss</option><option>Break Even</option>
-          </select>
-        </div>
-        <div><label>Trade Analysis</label>
-          <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} placeholder="Describe your setup, why you took this trade, market structure, confluences, entry reasoning…" style={{ height: 130, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
-        </div>
-        <div><label>Lesson Learned</label>
-          <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you? What would you do differently?" style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
-        </div>
-        <div>
-          <label>Chart Screenshots (optional — add multiple)</label>
-          <div style={{ border: "2px dashed " + C.border, borderRadius: 12, padding: "16px", background: C.navy }}>
-            <input id="chart-upload-multi" type="file" accept="image/*" multiple style={{ display: "none" }}
-              onChange={e => {
-                const files = Array.from(e.target.files);
-                files.forEach(file => {
-                  const reader = new FileReader();
-                  reader.onload = ev => {
-                    const img = new Image();
-                    img.onload = () => {
-                      const canvas = document.createElement("canvas");
-                      const MAX = 1200; let w = img.width, h = img.height;
-                      if (w > MAX) { h = h*MAX/w; w = MAX; }
-                      canvas.width = w; canvas.height = h;
-                      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-                      setImages(prev => [...prev, canvas.toDataURL("image/jpeg", 0.7)]);
-                    };
-                    img.src = ev.target.result;
-                  };
-                  reader.readAsDataURL(file);
-                });
-                e.target.value = "";
-              }} />
-            {images.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 8, marginBottom: 12 }}>
-                {images.map((img, i) => (
-                  <div key={i} style={{ position: "relative" }}>
-                    <img src={img} alt={"chart " + (i+1)} onClick={() => setZoomImg(img)} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 8, border: "1px solid " + C.border, cursor: "zoom-in", display: "block" }} />
-                    <button onClick={() => setImages(prev => prev.filter((_,j) => j !== i))}
-                      style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,.7)", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button onClick={() => document.getElementById("chart-upload-multi").click()}
-              style={{ width: "100%", background: "transparent", border: "1px dashed " + C.gold + "50", borderRadius: 9, padding: "12px", color: C.grey, fontSize: 13, cursor: "pointer" }}>
-              📸 Add Chart Screenshots (click to select multiple)
-            </button>
-          </div>
-        </div>
-        {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
-        <Btn onClick={submit} full sz="lg">Save Journal Entry</Btn>
       </div>
+      <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+        <div><label>Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
+        <div><label>Direction</label><select value={direction} onChange={e => setDirection(e.target.value)}><option>Long</option><option>Short</option></select></div>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
+        <div><label>Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+            <label style={{ margin:0 }}>P&L</label>
+            <div style={{ display:"flex", background:C.bg, borderRadius:7, padding:2, gap:2 }}>
+              {["ZAR","USD"].map(c => <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding:"3px 10px", borderRadius:5, fontSize:10, fontWeight:700, border:"none", cursor:"pointer", background:pnlCurrency===c?C.gold:"transparent", color:pnlCurrency===c?"#08090E":C.grey }}>{c}</button>)}
+            </div>
+          </div>
+          <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency==="ZAR" ? "+R500" : "+$28"} />
+        </div>
+      </div>
+      <div><label>Result</label><select value={result} onChange={e => setResult(e.target.value)}><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
+      <div><label>Analysis</label>
+        <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} placeholder="Describe your setup, confluences, entry reasoning…"
+          style={{ height:130, resize:"vertical", background:C.navy, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
+      </div>
+      <div><label>Lesson Learned</label>
+        <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you?"
+          style={{ height:80, resize:"vertical", background:C.navy, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
+      </div>
+      <div>
+        <label>Chart Screenshot (optional)</label>
+        <div style={{ border:"2px dashed "+(image?C.gold:C.border), borderRadius:12, padding:"16px", textAlign:"center", background:C.navy, cursor:"pointer" }}
+          onClick={() => document.getElementById("chart-upload-"+user.id).click()}>
+          <input id={"chart-upload-"+user.id} type="file" accept="image/*" style={{ display:"none" }}
+            onChange={e => { const f = e.target.files[0]; if (f) compressImage(f, setImage); }} />
+          {image
+            ? <div><img src={image} alt="chart" style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, display:"block", margin:"0 auto 10px" }} />
+                <button onClick={ev => { ev.stopPropagation(); setImage(null); }} style={{ background:C.red+"20", color:C.red, border:"1px solid "+C.red+"40", borderRadius:8, padding:"5px 12px", fontSize:11, fontWeight:700, cursor:"pointer" }}>Remove</button>
+              </div>
+            : <span style={{ color:C.grey, fontSize:13 }}>📸 Click to add a chart screenshot</span>
+          }
+        </div>
+      </div>
+      {err && <div style={{ color:err==="Saving..."?C.gold:C.red, fontSize:12, textAlign:"center" }}>{err}</div>}
+      <Btn onClick={onSubmit} full sz="lg">{submitLabel}</Btn>
     </div>
   );
 
+  // ZOOM OVERLAY
+  if (zoomImg) return (
+    <div onClick={() => setZoomImg(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", padding:20 }}>
+      <img src={zoomImg} alt="zoom" style={{ maxWidth:"100%", maxHeight:"90vh", borderRadius:12, objectFit:"contain" }} />
+      <button onClick={() => setZoomImg(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,.15)", border:"none", color:"#fff", width:40, height:40, borderRadius:"50%", fontSize:20, cursor:"pointer" }}>✕</button>
+    </div>
+  );
+
+  // NEW ENTRY
+  if (view === "new") return (
+    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
+        <button onClick={() => { resetForm(); setView("list"); }} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Back</button>
+        <h2 style={{ fontFamily:S, fontSize:24, fontWeight:700 }}>New Trade Journal</h2>
+      </div>
+      <TradeForm onSubmit={submitNew} submitLabel="Save Journal Entry" />
+    </div>
+  );
+
+  // EDIT ENTRY
+  if (view === "edit") return (
+    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
+        <button onClick={() => { resetForm(); setEditing(null); setView("detail"); }} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Cancel</button>
+        <h2 style={{ fontFamily:S, fontSize:24, fontWeight:700 }}>Edit Journal Entry</h2>
+      </div>
+      <TradeForm onSubmit={submitEdit} submitLabel="Save Changes" />
+    </div>
+  );
+
+  // DETAIL VIEW
   if (view === "detail" && selected) {
-    const j = journals.find(x => x.id === selected);
+    const j = myJournals.find(x => x.id === selected) || (journals||[]).find(x => x.id === selected);
     if (!j) return null;
     return (
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back to Journal</button>
-<div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => openEdit(j)} style={{ background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✏ Edit</button>
-            <button onClick={() => { deleteEntry(j.id); setView("list"); }} style={{ background: C.red + "15", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>🗑 Delete</button>
+      <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <button onClick={() => setView("list")} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Back to Journal</button>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={() => openEdit(j)} style={{ background:C.goldDim, color:C.gold, border:"1px solid "+C.gold+"40", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>✏ Edit</button>
+            <button onClick={() => { deleteJournal(j.id); setView("list"); }} style={{ background:C.red+"15", color:C.red, border:"1px solid "+C.red+"40", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>🗑 Delete</button>
           </div>
         </div>
-        <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "28px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+        <div style={{ background:C.card, border:"1.5px solid "+C.border, borderRadius:16, padding:"28px 24px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:20 }}>
             <div>
-              <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{j.title}</h2>
-              {j.tradeType && <span style={{ display: "inline-block", background: j.tradeType === "Backtest" ? C.goldDim : "rgba(46,204,113,.12)", color: j.tradeType === "Backtest" ? C.gold : C.green, border: "1px solid " + (j.tradeType === "Backtest" ? C.gold : C.green) + "40", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, marginBottom: 6 }}>{j.tradeType}</span>}
-              <div style={{ fontSize: 12, color: C.grey }}>{j.tradeDate ? new Date(j.tradeDate + "T12:00:00").toLocaleDateString("en-ZA", { weekday:"long", year:"numeric", month:"long", day:"numeric" }) : new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
+              <h2 style={{ fontFamily:S, fontSize:22, fontWeight:700, marginBottom:6 }}>{j.title}</h2>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:6 }}>
+                {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.tradeType}</span>}
+                {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.currency}</span>}
+              </div>
+              <div style={{ fontSize:12, color:C.grey }}>{j.tradeDate ? new Date(j.tradeDate+"T12:00:00").toLocaleDateString("en-ZA",{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : new Date(j.createdAt).toLocaleDateString("en-ZA",{year:"numeric",month:"long",day:"numeric"})}</div>
             </div>
-            <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
+            <span style={{ background:resultColor(j.result)+"20", color:resultColor(j.result), border:"1px solid "+resultColor(j.result)+"40", padding:"6px 16px", borderRadius:20, fontSize:13, fontWeight:700 }}>{j.result}</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10, marginBottom: 22 }}>
-            {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L " + (j.currency||""), j.pnl||"—"]].map(([k,v]) => (
-              <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "12px 14px" }}>
-                <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>{k}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.white }}>{v}</div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:22 }}>
+            {[["Pair",j.pair],["Direction",j.direction],["Risk (Pips)",j.risk||"—"],["Gain (Pips)",j.gain||"—"],["P&L",j.pnl||"—"]].map(([k,v]) => (
+              <div key={k} style={{ background:C.bg, border:"1px solid "+C.border, borderRadius:10, padding:"12px 14px" }}>
+                <div style={{ fontSize:10, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:4 }}>{k}</div>
+                <div style={{ fontSize:16, fontWeight:700 }}>{v}</div>
               </div>
             ))}
           </div>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
-            <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
-          </div>
-          {((j.images && j.images.length > 0) || j.image) && (
-            <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshots</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 8 }}>
-                {(j.images && j.images.length > 0 ? j.images : [j.image]).filter(Boolean).map((img, i) => (
-                  <img key={i} src={img} alt={"chart " + (i+1)} onClick={() => setZoomImg(img)}
-                    style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 9, border: "1px solid " + C.border, cursor: "zoom-in", display: "block" }} />
-                ))}
-              </div>
-            </div>
-          )}
-          {j.lesson && <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Lesson Learned</div>
-            <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.lesson}</p>
-          </div>}
-          {j.adminComment && (
-            <div style={{ marginTop: 24, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.25)", borderRadius: 12, padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#08090E", fontWeight: 800 }}>T</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>Coach Taaha</div>
-                  <div style={{ fontSize: 11, color: C.grey }}>{new Date(j.adminCommentAt).toLocaleDateString("en-ZA", { year:"numeric", month:"short", day:"numeric" })}</div>
-                </div>
-              </div>
-              <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{j.adminComment}</p>
-            </div>
-          )}
+          {j.analysis && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Analysis</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.analysis}</p></div>}
+          {j.lesson && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Lesson Learned</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.lesson}</p></div>}
+          {j.image && <div><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Chart</div><img src={j.image} alt="chart" onClick={() => setZoomImg(j.image)} style={{ width:"100%", borderRadius:10, border:"1px solid "+C.border, display:"block", cursor:"zoom-in" }} /></div>}
+          {j.adminComment && <div style={{ marginTop:20, background:"rgba(201,168,76,.06)", border:"1px solid rgba(201,168,76,.25)", borderRadius:10, padding:"14px 16px" }}><div style={{ fontSize:11, fontWeight:700, color:C.gold, marginBottom:6 }}>Coach Taaha — Feedback</div><p style={{ fontSize:14, lineHeight:1.7, color:C.dim }}>{j.adminComment}</p></div>}
         </div>
       </div>
     );
   }
 
-  // Zoom overlay
-  if (zoomImg) return (
-    <div onClick={() => setZoomImg(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out", padding: 20 }}>
-      <img src={zoomImg} alt="zoom" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12, boxShadow: "0 0 60px rgba(0,0,0,.8)", objectFit: "contain" }} />
-      <button onClick={() => setZoomImg(null)} style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,.15)", border: "none", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 20, cursor: "pointer" }}>✕</button>
-    </div>
-  );
-
-  if (view === "edit") { if (!editing) return null; return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-        <button onClick={() => { setView("detail"); setEditing(null); setErr(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Cancel</button>
-        <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700 }}>Edit Journal Entry</h2>
-      </div>
-      <div style={{ display: "grid", gap: 16 }}>
-        {/* Trade Type Toggle */}
-        <div>
-          <label>Trade Type</label>
-          <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3 }}>
-            {["Live Trade", "Backtest"].map(t => (
-              <button key={t} onClick={() => setTradeType(t)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: ".06em", border: "none", cursor: "pointer", transition: "all .2s",
-                background: tradeType === t ? (t === "Live Trade" ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")") : "transparent",
-                color: tradeType === t ? (t === "Live Trade" ? "#fff" : "#08090E") : C.grey }}>
-                {t === "Live Trade" ? "📈 Live Trade" : "🔬 Backtest"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme: "dark" }} /></div>
-          <div><label>Account Currency</label>
-            <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3, border: "1px solid " + C.border }}>
-              {["ZAR", "USD"].map(c => (
-                <button key={c} onClick={() => setCurrency(c)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
-                  background: currency === c ? C.goldDim : "transparent", color: currency === c ? C.gold : C.grey }}>
-                  {c === "ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div><label>Currency Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
-          <div><label>Direction</label><select value={direction} onChange={e => setDirection(e.target.value)}><option>Long</option><option>Short</option></select></div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
-          <div><label>Potential Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-              <label style={{ margin: 0 }}>P&L</label>
-              <div style={{ display: "flex", background: C.bg, borderRadius: 7, padding: 2, gap: 2 }}>
-                {["ZAR","USD"].map(c => (
-                  <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding: "3px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", background: pnlCurrency === c ? C.gold : "transparent", color: pnlCurrency === c ? "#08090E" : C.grey }}>{c}</button>
-                ))}
-              </div>
-            </div>
-            <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency === "ZAR" ? "+R500" : "+$28"} />
-          </div>
-        </div>
-        <div><label>Result</label><select value={result} onChange={e => setResult(e.target.value)}><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
-        <div><label>Trade Analysis</label>
-          <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} style={{ height: 130, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
-        </div>
-        <div><label>Lesson Learned</label>
-          <textarea value={lesson} onChange={e => setLesson(e.target.value)} style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
-        </div>
-        <div>
-          <label>Chart Screenshot</label>
-          <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 12, padding: "16px", textAlign: "center", background: C.navy, cursor: "pointer" }} onClick={() => document.getElementById("chart-edit-upload").click()}>
-            <input id="chart-edit-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => { const img = new Image(); img.onload = () => { const canvas = document.createElement("canvas"); const MAX=1200; let w=img.width,h=img.height; if(w>MAX){h=h*MAX/w;w=MAX;} canvas.width=w;canvas.height=h; canvas.getContext("2d").drawImage(img,0,0,w,h); setImage(canvas.toDataURL("image/jpeg",0.7)); }; img.src=ev.target.result; }; reader.readAsDataURL(file); }} />
-            {image ? (
-              <div>
-                <img src={image} alt="chart" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, display: "block", margin: "0 auto 10px" }} />
-                <button onClick={e => { e.stopPropagation(); setImage(null); }} style={{ background: C.red+"20", color: C.red, border: "1px solid "+C.red+"40", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✕ Remove</button>
-              </div>
-            ) : <p style={{ color: C.grey, fontSize: 13 }}>Click to upload a chart screenshot</p>}
-          </div>
-        </div>
-        {err && <div style={{ color: err === "Saving..." ? C.gold : C.red, fontSize: 12 }}>{err}</div>}
-        <Btn onClick={saveEdit} full sz="lg">Save Changes</Btn>
-      </div>
-    </div>
-  );
-
-  }
+  // LIST VIEW
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
+    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, flexWrap:"wrap", gap:12 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.white, textTransform: "uppercase", marginBottom: 4 }}>Trade Journal</p>
-          <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>My Entries</h2>
+          <p style={{ fontSize:11, fontWeight:700, letterSpacing:".25em", color:C.white, textTransform:"uppercase", marginBottom:4 }}>Trade Journal</p>
+          <h2 style={{ fontFamily:S, fontSize:26, fontWeight:700 }}>My Entries</h2>
         </div>
-        <Btn onClick={() => setView("new")} sz="md">+ New Entry</Btn>
+        <Btn onClick={() => { resetForm(); setView("new"); }}>+ New Entry</Btn>
       </div>
-      <PnlCalendar journals={journals} userId={user.id} />
-
       {myJournals.length === 0 && (
-        <div style={{ textAlign: "center", padding: "60px 0" }}>
-          <div style={{ fontSize: 48, marginBottom: 16, opacity: .3 }}>📓</div>
-          <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7 }}>No journal entries yet.<br />Start documenting your trades to track your growth.</p>
-          <Btn onClick={() => setView("new")} style={{ marginTop: 20 }}>Log Your First Trade</Btn>
+        <div style={{ textAlign:"center", padding:"60px 0" }}>
+          <div style={{ fontSize:48, marginBottom:16, opacity:.3 }}>📓</div>
+          <p style={{ color:C.grey, fontSize:14, lineHeight:1.7 }}>No journal entries yet.</p>
+          <Btn onClick={() => { resetForm(); setView("new"); }} style={{ marginTop:20 }}>Log Your First Trade</Btn>
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
         {myJournals.map(j => (
-          <div key={j.id} style={{ background: C.card, border: "1.5px solid " + (j.adminComment ? "rgba(201,168,76,.35)" : C.border), borderRadius: 12, padding: "16px 18px", cursor: "pointer", position: "relative" }}
+          <div key={j.id} style={{ background:C.card, border:"1.5px solid "+(j.adminComment?"rgba(201,168,76,.35)":C.border), borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
             onClick={() => { setSelected(j.id); setView("detail"); }}
             onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
-            onMouseLeave={e => e.currentTarget.style.borderColor = j.adminComment ? "rgba(201,168,76,.35)" : C.border}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.title}</div>
-                <div style={{ display: "flex", gap: 10, fontSize: 12, color: C.grey, flexWrap: "wrap", alignItems: "center" }}>
-                  {j.tradeType && <span style={{ background: j.tradeType === "Backtest" ? C.goldDim : "rgba(46,204,113,.12)", color: j.tradeType === "Backtest" ? C.gold : C.green, border: "1px solid " + (j.tradeType === "Backtest" ? C.gold : C.green) + "40", padding: "1px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{j.tradeType}</span>}
-                  {j.currency && <span style={{ background: "rgba(201,168,76,.1)", color: C.gold, border: "1px solid " + C.gold + "30", padding: "1px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{j.currency}</span>}
-                  <span>{j.pair}</span>
-                  <span>·</span>
-                  <span>{j.direction}</span>
-                  {j.pnl && <><span>·</span><span style={{ color: j.result==="Win" ? C.green : j.result==="Loss" ? C.red : C.gold }}>{j.pnl}</span></>}
-                  <span>·</span>
-                  <span>{j.tradeDate ? new Date(j.tradeDate + "T12:00:00").toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric" }) : new Date(j.createdAt).toLocaleDateString()}</span>
+            onMouseLeave={e => e.currentTarget.style.borderColor = j.adminComment?"rgba(201,168,76,.35)":C.border}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:S, fontSize:16, fontWeight:700, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.title}</div>
+                <div style={{ display:"flex", gap:8, fontSize:12, color:C.grey, flexWrap:"wrap", alignItems:"center" }}>
+                  {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.tradeType}</span>}
+                  {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.currency}</span>}
+                  <span>{j.pair}</span><span>·</span><span>{j.direction}</span>
+                  {j.pnl && <><span>·</span><span style={{ color:j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold }}>{j.pnl}</span></>}
+                  <span>·</span><span>{j.tradeDate ? new Date(j.tradeDate+"T12:00:00").toLocaleDateString("en-ZA",{day:"numeric",month:"short",year:"numeric"}) : new Date(j.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-                <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{j.result}</span>
-                {j.adminComment && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700, letterSpacing: ".06em" }}>💬 COACH FEEDBACK</span>}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
+                <span style={{ background:resultColor(j.result)+"20", color:resultColor(j.result), border:"1px solid "+resultColor(j.result)+"40", padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.result}</span>
+                {j.adminComment && <span style={{ fontSize:10, color:C.gold, fontWeight:700, letterSpacing:".06em" }}>COACH FEEDBACK</span>}
               </div>
             </div>
           </div>
         ))}
       </div>
+      <PnlCalendar journals={journals} userId={user.id} />
     </div>
   );
 }
 
-/* ── ADMIN JOURNAL TAB ───────────────────────────────────────────────────── */
 function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
   const [selected, setSelected] = React.useState(null);
   const [comment, setComment] = React.useState("");
