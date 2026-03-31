@@ -2166,22 +2166,25 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
 
   const openEdit = (j) => {
     setEditing(j);
-    setTitle(j.title); setPair(j.pair); setDirection(j.direction);
-    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result);
-    setPnl(j.pnl||""); setAnalysis(j.analysis); setLesson(j.lesson||"");
+    setTitle(j.title); setPair(j.pair); setDirection(j.direction||"Long");
+    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
+    setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
+    setTradeType(j.tradeType||"Live Trade");
+    setCurrency(j.currency||"ZAR");
+    setImage(j.image||null);
     setImages(j.images||[]); setErr(""); setView("edit");
   };
 
   const saveEdit = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||null };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||(images.length?images[0]:null), images: images.length?images:undefined, tradeType, tradeDate, currency };
     try {
       // Delete old and re-insert with updated data
       await deleteJournal(editing.id);
       await addJournal(updated);
-      setEditing(null); setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setSelected(updated.id); setView("detail");
+      setEditing(null); setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setImages([]); setErr(""); setSelected(updated.id); setView("detail");
     } catch(e) { setErr("Failed to save. Please try again."); }
   };
 
