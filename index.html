@@ -1148,7 +1148,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, patchVideoNotes, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -2165,21 +2165,29 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const deleteEntry = id => deleteJournal(id);
 
   const openEdit = (j) => {
-    setEditing(j);
-    setTitle(j.title); setPair(j.pair); setDirection(j.direction||"Long");
-    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
-    setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
+    setTitle(j.title||""); 
+    setPair(j.pair||""); 
+    setDirection(j.direction||"Long");
+    setRisk(j.risk||""); 
+    setGain(j.gain||""); 
+    setResult(j.result||"Win");
+    setPnl(j.pnl||""); 
+    setAnalysis(j.analysis||""); 
+    setLesson(j.lesson||"");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
     setTradeType(j.tradeType||"Live Trade");
     setCurrency(j.currency||"ZAR");
     setImage(j.image||null);
-    setImages(j.images||[]); setErr(""); setView("edit");
+    setImages(j.images||[]);
+    setErr("");
+    setEditing(j);
+    setView("edit");
   };
 
   const saveEdit = async () => {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||(images.length?images[0]:null), images: images.length?images:undefined, tradeType, tradeDate, currency };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image||(images&&images.length?images[0]:null), tradeType: tradeType||"Live Trade", tradeDate: tradeDate||editing.tradeDate||null, currency: currency||"ZAR" };
     try {
       // Delete old and re-insert with updated data
       await deleteJournal(editing.id);
@@ -2942,7 +2950,7 @@ function App() {
   };
 
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
@@ -2997,7 +3005,7 @@ function App() {
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
       {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} patchVideoNotes={patchVideoNotes} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
