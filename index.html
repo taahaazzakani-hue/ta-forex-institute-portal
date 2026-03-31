@@ -2386,7 +2386,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     </div>
   );
 
-  if (view === "edit" && editing) return (
+  if (view === "edit") { if (!editing) { setView("list"); return null; } return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
         <button onClick={() => { setView("detail"); setEditing(null); setErr(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Cancel</button>
@@ -2464,6 +2464,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     </div>
   );
 
+  }
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
