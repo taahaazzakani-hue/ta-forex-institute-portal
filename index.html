@@ -518,10 +518,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   );
 }
 
-function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideoNotes }) {
-  const [editNotes, setEditNotes] = React.useState(null); // video id being edited
-  const [notesText, setNotesText] = React.useState("");
-  const [editPdf, setEditPdf] = React.useState(null);
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
   const [vT, setVT] = React.useState("");
   const [vU, setVU] = React.useState("");
   const [vD, setVD] = React.useState("");
@@ -576,44 +573,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
                         <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
                         {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
                       </div>
-<Btn v="outline" onClick={() => { setEditNotes(editNotes === vid.id ? null : vid.id); setNotesText(vid.notes||""); }} sz="sm" style={{ fontSize: 11 }}>📝 Notes</Btn>
-                            <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
-                          </div>
-                        </div>
-                        {editNotes === vid.id && (
-                          <div style={{ marginTop: 10, padding: "14px", background: C.bg, borderRadius: 10, border: "1px solid " + C.border }}>
-                            <label>Video Notes (visible to students)</label>
-                            <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
-                              placeholder="Add notes, key points, or resources for this video..."
-                              style={{ width: "100%", height: 90, background: C.navy, border: "1.5px solid " + C.border, borderRadius: 9, padding: "10px 12px", color: C.white, fontFamily: D, fontSize: 13, resize: "vertical", outline: "none", marginBottom: 10, lineHeight: 1.6 }} />
-                            <div style={{ marginBottom: 10 }}>
-                              <label>Attach PDF (optional)</label>
-                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                <input id={"pdf-" + vid.id} type="file" accept=".pdf" style={{ display: "none" }}
-                                  onChange={e => {
-                                    const file = e.target.files[0];
-                                    if (!file) return;
-                                    const reader = new FileReader();
-                                    reader.onload = ev => {
-                                      patchVideoNotes(vid.id, { pdfUrl: ev.target.result, pdfName: file.name });
-                                      setEditPdf(vid.id);
-                                    };
-                                    reader.readAsDataURL(file);
-                                  }} />
-                                <button onClick={() => document.getElementById("pdf-" + vid.id).click()}
-                                  style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 8, color: C.grey, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
-                                  📎 {vid.pdfName || "Upload PDF"}
-                                </button>
-                                {vid.pdfUrl && <span style={{ fontSize: 11, color: C.green }}>✓ {vid.pdfName}</span>}
-                                {vid.pdfUrl && <button onClick={() => patchVideoNotes(vid.id, { pdfUrl: null, pdfName: "" })} style={{ background: "transparent", color: C.red, border: "none", fontSize: 11, cursor: "pointer" }}>✕ Remove</button>}
-                              </div>
-                            </div>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <Btn onClick={() => { patchVideoNotes(vid.id, { notes: notesText }); setEditNotes(null); }} sz="sm">Save Notes</Btn>
-                              <Btn v="outline" onClick={() => setEditNotes(null)} sz="sm">Cancel</Btn>
-                            </div>
-                          </div>
-                        )}
+                      <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
                     </div>
                   ))}
                 </div>
@@ -626,7 +586,6 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-/* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
 function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideoNotes, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
@@ -655,7 +614,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         </div>
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideoNotes={patchVideoNotes} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
