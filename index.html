@@ -518,7 +518,10 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   );
 }
 
-function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideoNotes }) {
+  const [editNotes, setEditNotes] = React.useState(null); // video id being edited
+  const [notesText, setNotesText] = React.useState("");
+  const [editPdf, setEditPdf] = React.useState(null);
   const [vT, setVT] = React.useState("");
   const [vU, setVU] = React.useState("");
   const [vD, setVD] = React.useState("");
@@ -573,7 +576,44 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
                         <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
                         {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
                       </div>
-                      <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
+<Btn v="outline" onClick={() => { setEditNotes(editNotes === vid.id ? null : vid.id); setNotesText(vid.notes||""); }} sz="sm" style={{ fontSize: 11 }}>📝 Notes</Btn>
+                            <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
+                          </div>
+                        </div>
+                        {editNotes === vid.id && (
+                          <div style={{ marginTop: 10, padding: "14px", background: C.bg, borderRadius: 10, border: "1px solid " + C.border }}>
+                            <label>Video Notes (visible to students)</label>
+                            <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
+                              placeholder="Add notes, key points, or resources for this video..."
+                              style={{ width: "100%", height: 90, background: C.navy, border: "1.5px solid " + C.border, borderRadius: 9, padding: "10px 12px", color: C.white, fontFamily: D, fontSize: 13, resize: "vertical", outline: "none", marginBottom: 10, lineHeight: 1.6 }} />
+                            <div style={{ marginBottom: 10 }}>
+                              <label>Attach PDF (optional)</label>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <input id={"pdf-" + vid.id} type="file" accept=".pdf" style={{ display: "none" }}
+                                  onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (!file) return;
+                                    const reader = new FileReader();
+                                    reader.onload = ev => {
+                                      patchVideoNotes(vid.id, { pdfUrl: ev.target.result, pdfName: file.name });
+                                      setEditPdf(vid.id);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }} />
+                                <button onClick={() => document.getElementById("pdf-" + vid.id).click()}
+                                  style={{ background: C.navy, border: "1px solid " + C.border, borderRadius: 8, color: C.grey, padding: "7px 14px", fontSize: 12, cursor: "pointer" }}>
+                                  📎 {vid.pdfName || "Upload PDF"}
+                                </button>
+                                {vid.pdfUrl && <span style={{ fontSize: 11, color: C.green }}>✓ {vid.pdfName}</span>}
+                                {vid.pdfUrl && <button onClick={() => patchVideoNotes(vid.id, { pdfUrl: null, pdfName: "" })} style={{ background: "transparent", color: C.red, border: "none", fontSize: 11, cursor: "pointer" }}>✕ Remove</button>}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <Btn onClick={() => { patchVideoNotes(vid.id, { notes: notesText }); setEditNotes(null); }} sz="sm">Save Notes</Btn>
+                              <Btn v="outline" onClick={() => setEditNotes(null)} sz="sm">Cancel</Btn>
+                            </div>
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -587,7 +627,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
 }
 
 /* ── ADMIN PANEL ─────────────────────────────────────────────────────────── */
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideoNotes, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "membership", l: "Membership" }];
@@ -615,7 +655,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         </div>
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideoNotes={patchVideoNotes} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
@@ -1149,7 +1189,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
+function Portal({ user, courses, sections, videos, patchVideoNotes, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1548,6 +1588,20 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
                   </div>
                   <span style={{ color: C.gold, fontSize: 24, flexShrink: 0 }}>›</span>
                 </Card>
+              </div>
+            )}
+
+            {/* Video Notes & PDF */}
+            {(video.notes || video.pdfUrl) && (
+              <div style={{ margin: "20px 20px 0", padding: "18px 20px", background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.2)", borderRadius: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>📝 Lesson Notes</div>
+                {video.notes && <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: video.pdfUrl ? 14 : 0 }}>{video.notes}</p>}
+                {video.pdfUrl && (
+                  <a href={video.pdfUrl} download={video.pdfName || "notes.pdf"}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "9px 16px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+                    📥 Download PDF — {video.pdfName || "Notes"}
+                  </a>
+                )}
               </div>
             )}
 
@@ -2123,7 +2177,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [pnl, setPnl] = React.useState("");
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
-  const [image, setImage] = React.useState(null);
+  const [images, setImages] = React.useState([]);
   const [view, setView] = React.useState("list"); // list | new | detail | edit
   const [selected, setSelected] = React.useState(null);
   const [err, setErr] = React.useState("");
@@ -2140,10 +2194,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: image || null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry_obj = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), images: images.length ? images : [], image: images[0]||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try {
       await addJournal(entry_obj);
-      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImage(null); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setCurrency("ZAR"); setView("list");
+      setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain(""); setResult("Win"); setPnl(""); setAnalysis(""); setLesson(""); setImages([]); setErr(""); setTradeDate(new Date().toISOString().split("T")[0]); setCurrency("ZAR"); setView("list");
     } catch(e) {
       setErr("Failed to save. Please try again.");
     }
@@ -2157,7 +2211,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result);
     setPnl(j.pnl||""); setAnalysis(j.analysis); setLesson(j.lesson||"");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
-    setImage(j.image||null); setErr(""); setView("edit");
+    setImages(j.images||[]); setErr(""); setView("edit");
   };
 
   const saveEdit = async () => {
@@ -2243,62 +2297,44 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
           <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you? What would you do differently?" style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
         </div>
         <div>
-          <label>Chart Screenshot (optional)</label>
-          <div style={{ border: "2px dashed " + (image ? C.gold : C.border), borderRadius: 12, padding: "20px", textAlign: "center", background: C.navy, cursor: "pointer", transition: "border-color .2s", position: "relative" }}
-            onClick={() => document.getElementById("chart-upload").click()}
-            onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = C.gold; }}
-            onDragLeave={e => { e.currentTarget.style.borderColor = image ? C.gold : C.border; }}
-            onDrop={e => {
-              e.preventDefault();
-              const file = e.dataTransfer.files[0];
-              if (!file || !file.type.startsWith("image/")) return;
-              const reader = new FileReader();
-              reader.onload = ev => {
-                const img = new Image();
-                img.onload = () => {
-                  const canvas = document.createElement("canvas");
-                  const MAX = 1200;
-                  let w = img.width, h = img.height;
-                  if (w > MAX) { h = h * MAX / w; w = MAX; }
-                  canvas.width = w; canvas.height = h;
-                  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-                  setImage(canvas.toDataURL("image/jpeg", 0.7));
-                };
-                img.src = ev.target.result;
-              };
-              reader.readAsDataURL(file);
-            }}>
-            <input id="chart-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
-              const file = e.target.files[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = ev => {
-                const img = new Image();
-                img.onload = () => {
-                  const canvas = document.createElement("canvas");
-                  const MAX = 1200;
-                  let w = img.width, h = img.height;
-                  if (w > MAX) { h = h * MAX / w; w = MAX; }
-                  canvas.width = w; canvas.height = h;
-                  canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-                  setImage(canvas.toDataURL("image/jpeg", 0.7));
-                };
-                img.src = ev.target.result;
-              };
-              reader.readAsDataURL(file);
-            }} />
-            {image ? (
-              <div>
-                <img src={image} alt="chart" style={{ maxWidth: "100%", maxHeight: 300, borderRadius: 8, display: "block", margin: "0 auto 12px" }} />
-                <button onClick={e => { e.stopPropagation(); setImage(null); }} style={{ background: C.red + "20", color: C.red, border: "1px solid " + C.red + "40", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✕ Remove Image</button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 32, marginBottom: 8, opacity: .5 }}>📸</div>
-                <p style={{ color: C.grey, fontSize: 13, marginBottom: 4 }}>Click or drag & drop your chart screenshot</p>
-                <p style={{ color: C.faint, fontSize: 11 }}>PNG, JPG, WEBP supported</p>
+          <label>Chart Screenshots (optional — add multiple)</label>
+          <div style={{ border: "2px dashed " + C.border, borderRadius: 12, padding: "16px", background: C.navy }}>
+            <input id="chart-upload-multi" type="file" accept="image/*" multiple style={{ display: "none" }}
+              onChange={e => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                  const reader = new FileReader();
+                  reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = document.createElement("canvas");
+                      const MAX = 1200; let w = img.width, h = img.height;
+                      if (w > MAX) { h = h*MAX/w; w = MAX; }
+                      canvas.width = w; canvas.height = h;
+                      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                      setImages(prev => [...prev, canvas.toDataURL("image/jpeg", 0.7)]);
+                    };
+                    img.src = ev.target.result;
+                  };
+                  reader.readAsDataURL(file);
+                });
+                e.target.value = "";
+              }} />
+            {images.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 8, marginBottom: 12 }}>
+                {images.map((img, i) => (
+                  <div key={i} style={{ position: "relative" }}>
+                    <img src={img} alt={"chart " + (i+1)} onClick={() => setZoomImg(img)} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 8, border: "1px solid " + C.border, cursor: "zoom-in", display: "block" }} />
+                    <button onClick={() => setImages(prev => prev.filter((_,j) => j !== i))}
+                      style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,.7)", color: "#fff", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                  </div>
+                ))}
               </div>
             )}
+            <button onClick={() => document.getElementById("chart-upload-multi").click()}
+              style={{ width: "100%", background: "transparent", border: "1px dashed " + C.gold + "50", borderRadius: 9, padding: "12px", color: C.grey, fontSize: 13, cursor: "pointer" }}>
+              📸 Add Chart Screenshots (click to select multiple)
+            </button>
           </div>
         </div>
         {err && <div style={{ color: C.red, fontSize: 12 }}>{err}</div>}
@@ -2340,10 +2376,15 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Analysis</div>
             <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
           </div>
-          {j.image && (
+          {((j.images && j.images.length > 0) || j.image) && (
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshot</div>
-              <img src={j.image} alt="chart" onClick={() => setZoomImg(j.image)} style={{ width: "100%", borderRadius: 10, border: "1px solid " + C.border, display: "block", cursor: "zoom-in" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Chart Screenshots</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 8 }}>
+                {(j.images && j.images.length > 0 ? j.images : [j.image]).filter(Boolean).map((img, i) => (
+                  <img key={i} src={img} alt={"chart " + (i+1)} onClick={() => setZoomImg(img)}
+                    style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 9, border: "1px solid " + C.border, cursor: "zoom-in", display: "block" }} />
+                ))}
+              </div>
             </div>
           )}
           {j.lesson && <div style={{ marginBottom: 18 }}>
@@ -2811,8 +2852,8 @@ function App() {
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
-      if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk, gain:x.gain, result:x.result, pnl:x.pnl, analysis:x.analysis, lesson:x.lesson, image:x.image, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen, createdAt:x.created_at })));
+      if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
@@ -2889,6 +2930,14 @@ function App() {
     await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
     setVideos(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v));
   };
+  const patchVideoNotes = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+    if (patch.pdfUrl !== undefined) dbPatch.pdf_url = patch.pdfUrl;
+    if (patch.pdfName !== undefined) dbPatch.pdf_name = patch.pdfName;
+    await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v));
+  };
   const addVideoDB = async (v) => {
     await sb("videos", { method: "POST", prefer: "return=minimal", body: { id:v.id, course_id:v.courseId, section_id:v.sectionId, title:v.title, url:v.url, description:v.desc||"", created_at:v.createdAt } });
     setVideos(prev => [...prev, v]);
@@ -2931,7 +2980,7 @@ function App() {
   };
 
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk, gain:j.gain, result:j.result, pnl:j.pnl, analysis:j.analysis, lesson:j.lesson, image:j.image, currency:j.currency||"ZAR", trade_type:j.tradeType||"Live Trade", trade_date:j.tradeDate||null, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
@@ -2985,8 +3034,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideoNotes={patchVideoNotes} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} patchVideoNotes={patchVideoNotes} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
