@@ -586,7 +586,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideoNotes, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "membership", l: "Membership" }];
@@ -2711,12 +2711,12 @@ function MembershipTab({ users, patchUser, courses, patchCourse, lastWatch, jour
                 <div style={{ fontWeight: 700, fontSize: 15, color: C.white }}>{u.name}</div>
                 <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
                 <div style={{ display: "flex", gap: 16, marginTop: 4, flexWrap: "wrap" }}>
-                  {lastWatch && lastWatch[u.id] && (() => { const [ts, vid] = lastWatch[u.id].split("|"); return <span style={{ fontSize: 11, color: C.grey }}>▶ Last watched: <strong style={{ color: C.dim }}>{vid}</strong> · {new Date(parseInt(ts)).toLocaleDateString("en-ZA")}</span>; })()}
+                  {lastWatch && lastWatch[u.id] && (() => { const [ts, vid] = lastWatch[u.id].split("|"); const d = new Date(ts); const valid = !isNaN(d.getTime()) && d.getFullYear() > 1971; return valid ? <span style={{ fontSize: 11, color: C.grey }}>▶ Last watched: <strong style={{ color: C.dim }}>{vid}</strong> · {d.toLocaleDateString("en-ZA")}</span> : null; })()}
                   {(() => { const lj = journals.filter(j => j.userId === u.id); const last = lj.length ? Math.max(...lj.map(j=>j.createdAt)) : null; return last ? <span style={{ fontSize: 11, color: C.grey }}>📓 Last journalled: <strong style={{ color: (Date.now()-last > 7*24*60*60*1000) ? C.red : C.dim }}>{new Date(last).toLocaleDateString("en-ZA")}</strong></span> : <span style={{ fontSize: 11, color: C.faint }}>📓 Never journalled</span>; })()}
                 </div>
                 {lastWatch[u.id] && (() => {
                   const [ts, vid] = lastWatch[u.id].split("|");
-                  return <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>Last watched: <span style={{ color: C.gold }}>{vid}</span> — {new Date(ts).toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</div>;
+                  const d = new Date(ts); const valid = !isNaN(d.getTime()) && d.getFullYear() > 1971; return valid ? <div style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>Last watched: <span style={{ color: C.gold }}>{vid}</span> — {d.toLocaleDateString("en-ZA", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</div> : null;
                 })()}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -2993,7 +2993,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideoNotes={patchVideoNotes} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} patchVideoNotes={patchVideoNotes} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
