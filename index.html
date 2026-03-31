@@ -2279,6 +2279,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   };
 
   const openEdit = (j) => {
+    console.log("openEdit called", j?.id, j?.title);
     setTitle(j.title||""); setPair(j.pair||""); setDirection(j.direction||"Long");
     setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
     setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
