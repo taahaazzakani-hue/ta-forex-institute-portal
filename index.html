@@ -2279,7 +2279,9 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   };
 
   const openEdit = (j) => {
-    console.log("openEdit called", j?.id, j?.title);
+    try {
+    if (!j) { console.error("openEdit: j is null/undefined"); return; }
+    console.log("openEdit called", j.id, j.title);
     setTitle(j.title||""); setPair(j.pair||""); setDirection(j.direction||"Long");
     setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
     setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
@@ -2287,6 +2289,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
     setCurrency(j.currency||"ZAR"); setImage(j.image||null); setErr("");
     setEditing(j); setView("edit");
+    console.log("openEdit: view set to edit, editing:", j.id);
+    } catch(e) { console.error("openEdit error:", e); }
   };
 
   const formProps = { tradeType, setTradeType, tradeDate, setTradeDate, currency, setCurrency,
@@ -2322,7 +2326,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   );
 
   if (view === "detail" && selected) {
-    const j = myJournals.find(x => x.id === selected) || (journals||[]).find(x => x.id === selected);
+    const j = (journals||[]).find(x => x.id === selected);
     if (!j) return null;
     return (
       <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
