@@ -495,7 +495,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
               </div>
             </div>
             {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
-            {cs.map(s => (
+            {cs.map((s, si) => (
               <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border, gap: 8 }}>
                 {editSection === s.id
                   ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
@@ -505,7 +505,13 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
                     </div>
                   : <div style={{ fontSize: 13, flex: 1 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
                 }
-                {editSection !== s.id && <div style={{ display: "flex", gap: 5 }}>
+                {editSection !== s.id && <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button onClick={() => { if (si > 0) { const a=cs[si-1]; const b=cs[si]; patchSection(a.id,{sort_order:b.sortOrder||si}); patchSection(b.id,{sort_order:a.sortOrder||(si-1)}); } }} disabled={si===0}
+                      style={{ background:si===0?"transparent":C.card, border:"1px solid "+C.border, borderRadius:4, color:si===0?C.faint:C.white, width:22, height:18, fontSize:10, cursor:si===0?"default":"pointer", lineHeight:1, padding:0 }}>▲</button>
+                    <button onClick={() => { if (si < cs.length-1) { const a=cs[si]; const b=cs[si+1]; patchSection(a.id,{sort_order:b.sortOrder||(si+1)}); patchSection(b.id,{sort_order:a.sortOrder||si}); } }} disabled={si===cs.length-1}
+                      style={{ background:si===cs.length-1?"transparent":C.card, border:"1px solid "+C.border, borderRadius:4, color:si===cs.length-1?C.faint:C.white, width:22, height:18, fontSize:10, cursor:si===cs.length-1?"default":"pointer", lineHeight:1, padding:0 }}>▼</button>
+                  </div>
                   <Btn v="outline" onClick={() => { setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">✏</Btn>
                   <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
                 </div>}
@@ -518,7 +524,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   );
 }
 
-function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
+function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVideo }) {
   const [vT, setVT] = React.useState("");
   const [vU, setVU] = React.useState("");
   const [vD, setVD] = React.useState("");
@@ -567,8 +573,14 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
               return (
                 <div key={sec.id} style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>
-                  {sv.map(vid => (
+                  {sv.map((vid, vi) => (
                     <div key={vid.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                        <button onClick={() => { if (vi > 0) { const a=sv[vi-1]; const b=sv[vi]; patchVideo(a.id,{sort_order:b.sortOrder||vi}); patchVideo(b.id,{sort_order:a.sortOrder||(vi-1)}); } }} disabled={vi===0}
+                          style={{ background:vi===0?"transparent":C.bg, border:"1px solid "+C.border, borderRadius:4, color:vi===0?C.faint:C.white, width:22, height:18, fontSize:10, cursor:vi===0?"default":"pointer", lineHeight:1, padding:0 }}>▲</button>
+                        <button onClick={() => { if (vi < sv.length-1) { const a=sv[vi]; const b=sv[vi+1]; patchVideo(a.id,{sort_order:b.sortOrder||(vi+1)}); patchVideo(b.id,{sort_order:a.sortOrder||vi}); } }} disabled={vi===sv.length-1}
+                          style={{ background:vi===sv.length-1?"transparent":C.bg, border:"1px solid "+C.border, borderRadius:4, color:vi===sv.length-1?C.faint:C.white, width:22, height:18, fontSize:10, cursor:vi===sv.length-1?"default":"pointer", lineHeight:1, padding:0 }}>▼</button>
+                      </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
                         {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
@@ -586,7 +598,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo }) {
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
   const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "membership", l: "Membership" }];
@@ -614,7 +626,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         </div>
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
-        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} />}
+        {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
@@ -2133,7 +2145,7 @@ function TradeForm({ onSubmit, submitLabel,
   risk, setRisk, gain, setGain,
   pnl, setPnl, pnlCurrency, setPnlCurrency,
   result, setResult, analysis, setAnalysis,
-  lesson, setLesson, image, setImage, err, userId,
+  lesson, setLesson, image, setImage, images, setImages, err, userId,
   compressImage }) {
   return (
     <div style={{ display:"grid", gap:16 }}>
@@ -2190,20 +2202,30 @@ function TradeForm({ onSubmit, submitLabel,
           style={{ height:80, resize:"vertical", background:C.navy, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
       </div>
       <div>
-        <label>Chart Screenshot (optional)</label>
-        <div style={{ border:"2px dashed "+(image?C.gold:C.border), borderRadius:12, padding:"16px", textAlign:"center", background:C.navy, cursor:"pointer" }}
+        <label>Chart Screenshots (optional — add multiple)</label>
+        <div style={{ border:"2px dashed "+C.border, borderRadius:12, padding:"16px", textAlign:"center", background:C.navy, cursor:"pointer" }}
           onClick={() => document.getElementById("chart-upload-"+userId).click()}>
-          <input id={"chart-upload-"+userId} type="file" accept="image/*" style={{ display:"none" }}
-            onChange={e => { const f = e.target.files[0]; if (f) compressImage(f, setImage); }} />
-          {image
-            ? <div><img src={image} alt="chart" style={{ maxWidth:"100%", maxHeight:200, borderRadius:8, display:"block", margin:"0 auto 10px" }} />
-                <button onClick={ev => { ev.stopPropagation(); setImage(null); }} style={{ background:C.red+"20", color:C.red, border:"1px solid "+C.red+"40", borderRadius:8, padding:"5px 12px", fontSize:11, fontWeight:700, cursor:"pointer" }}>Remove</button>
-              </div>
-            : <span style={{ color:C.grey, fontSize:13 }}>📸 Click to add a chart screenshot</span>
-          }
+          <input id={"chart-upload-"+userId} type="file" accept="image/*" multiple style={{ display:"none" }}
+            onChange={e => {
+              const files = Array.from(e.target.files);
+              files.forEach(f => compressImage(f, img => setImage(prev => [...(prev||[]), img])));
+              e.target.value = "";
+            }} />
+          <span style={{ color:C.grey, fontSize:13 }}>📸 Click to add chart screenshots (multiple allowed)</span>
         </div>
+        {image && image.length > 0 && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:8, marginTop:10 }}>
+            {image.map((img, i) => (
+              <div key={i} style={{ position:"relative", borderRadius:8, overflow:"hidden", border:"1px solid "+C.border }}>
+                <img src={img} alt={"chart "+i} style={{ width:"100%", height:120, objectFit:"cover", display:"block", cursor:"zoom-in" }} />
+                <button onClick={() => setImage(prev => prev.filter((_,j)=>j!==i))}
+                  style={{ position:"absolute", top:4, right:4, background:"rgba(0,0,0,.7)", color:"#fff", border:"none", borderRadius:"50%", width:22, height:22, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {err && <div style={{ color:err==="Saving..."?C.gold:C.red, fontSize:12, textAlign:"center" }}>{err}</div>}
+      {err && <div style={{ color:err==="Saving..."?C.gold:err==="saved"?C.green:C.red, fontSize:13, textAlign:"center", fontWeight:700 }}>{err==="saved" ? "✓ Entry saved!" : err}</div>}
       <Btn onClick={onSubmit} full sz="lg">{submitLabel}</Btn>
     </div>
   );
@@ -2224,7 +2246,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
   const [analysis, setAnalysis] = React.useState("");
   const [lesson, setLesson] = React.useState("");
-  const [chartImg, setChartImg] = React.useState(null);
+  const [chartImg, setChartImg] = React.useState([]);
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
@@ -2253,7 +2275,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const resetForm = () => {
     setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain("");
     setResult("Win"); setPnl(""); setPnlCurrency("ZAR"); setAnalysis(""); setLesson("");
-    setChartImg(null); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
+    setChartImg([]); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
     setCurrency("ZAR"); setErr("");
   };
 
@@ -2261,8 +2283,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: chartImg||null, tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
-    try { await addJournal(entry); resetForm(); setView("list"); }
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    try { await addJournal(entry); resetForm(); setErr("saved"); setTimeout(() => setView("list"), 800); }
     catch(e) { setErr("Failed to save. Please try again."); }
   };
 
@@ -2270,7 +2292,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!editing) return;
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: chartImg||null, tradeType, tradeDate, currency };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeDate, currency };
     try {
       await deleteJournal(editing.id);
       await addJournal(updated);
@@ -2287,7 +2309,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
     setTradeType(j.tradeType||"Live Trade");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
-    setCurrency(j.currency||"ZAR"); setChartImg(j.image||null); setErr("");
+    setCurrency(j.currency||"ZAR"); setChartImg(j.images&&j.images.length?j.images:(j.image?[j.image]:[])); setErr("");
     setEditing(j); setView("edit");
     console.log("openEdit: view set to edit, editing:", j.id);
     } catch(e) { console.error("openEdit error:", e); }
@@ -2296,7 +2318,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const formProps = { tradeType, setTradeType, tradeDate, setTradeDate, currency, setCurrency,
     title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
     pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
-    lesson, setLesson, image: chartImg, setImage: setChartImg, err, userId: user.id, compressImage };
+    lesson, setLesson, image: chartImg||[], setImage: setChartImg, err, userId: user.id, compressImage };
 
   if (zoomImg) return (
     <div onClick={() => setZoomImg(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", padding:20 }}>
@@ -2359,7 +2381,17 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
           </div>
           {j.analysis && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Analysis</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.analysis}</p></div>}
           {j.lesson && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Lesson Learned</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.lesson}</p></div>}
-          {j.image && <div><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Chart</div><img src={j.image} alt="chart" onClick={() => setZoomImg(j.image)} style={{ width:"100%", borderRadius:10, border:"1px solid "+C.border, display:"block", cursor:"zoom-in" }} /></div>}
+          {((j.images&&j.images.length>0)||j.image) && (
+            <div>
+              <div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Charts</div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:8 }}>
+                {(j.images&&j.images.length>0 ? j.images : [j.image]).filter(Boolean).map((img,i) => (
+                  <img key={i} src={img} alt={"chart "+i} onClick={() => setZoomImg(img)}
+                    style={{ width:"100%", borderRadius:10, border:"1px solid "+C.border, display:"block", cursor:"zoom-in", objectFit:"cover", maxHeight:200 }} />
+                ))}
+              </div>
+            </div>
+          )}
           {j.adminComment && <div style={{ marginTop:20, background:"rgba(201,168,76,.06)", border:"1px solid rgba(201,168,76,.25)", borderRadius:10, padding:"14px 16px" }}><div style={{ fontSize:11, fontWeight:700, color:C.gold, marginBottom:6 }}>Coach Taaha — Feedback</div><p style={{ fontSize:14, lineHeight:1.7, color:C.dim }}>{j.adminComment}</p></div>}
         </div>
       </div>
@@ -2718,7 +2750,7 @@ function App() {
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
-      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title })));
+      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
@@ -2835,6 +2867,14 @@ function App() {
     await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: ts + "|" + videoTitle } });
     setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
   };
+  const patchVideoDB = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.sort_order !== undefined) dbPatch.sort_order = patch.sort_order;
+    await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    const jsPatch = { ...patch };
+    if (patch.sort_order !== undefined) jsPatch.sortOrder = patch.sort_order;
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...jsPatch } : v).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)));
+  };
   const addCommentDB = async (c) => {
     await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
@@ -2901,7 +2941,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
