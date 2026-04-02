@@ -451,10 +451,27 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
   const [editCourse, setEditCourse] = React.useState(null); const [editCourseTitle, setEditCourseTitle] = React.useState("");
   const [editSection, setEditSection] = React.useState(null); const [editSectionTitle, setEditSectionTitle] = React.useState("");
+  const [dragSec, setDragSec] = React.useState(null);
+  const [dragOverSec, setDragOverSec] = React.useState(null);
+
   const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
   const doAddSec = () => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim() }); setST(""); };
   const saveCourseEdit = () => { if (editCourse && editCourseTitle.trim()) { patchCourse(editCourse, { title: editCourseTitle.trim() }); setEditCourse(null); } };
   const saveSectionEdit = () => { if (editSection && editSectionTitle.trim()) { patchSection(editSection, { title: editSectionTitle.trim() }); setEditSection(null); } };
+
+  const handleSecDrop = (courseId, droppedOnId) => {
+    if (!dragSec || dragSec === droppedOnId) return;
+    const cs = sections.filter(s => s.courseId === courseId).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+    const from = cs.findIndex(s => s.id === dragSec);
+    const to = cs.findIndex(s => s.id === droppedOnId);
+    if (from === -1 || to === -1) return;
+    const reordered = [...cs];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    reordered.forEach((s, i) => patchSection(s.id, { sort_order: i }));
+    setDragSec(null); setDragOverSec(null);
+  };
+
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <Card style={{ padding: 24 }}>
@@ -474,7 +491,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
         </div>
       </Card>
       {courses.map(c => {
-        const cs = sections.filter(s => s.courseId === c.id);
+        const cs = sections.filter(s => s.courseId === c.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
         return (
           <Card key={c.id} style={{ padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: cs.length ? 16 : 0 }}>
@@ -490,29 +507,37 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
                 {c.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{c.desc}</div>}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <Btn v="outline" onClick={() => { setEditCourse(c.id); setEditCourseTitle(c.title); }} sz="sm">✏ Edit</Btn>
+                <Btn v="outline" onClick={() => { setEditCourse(c.id); setEditCourseTitle(c.title); }} sz="sm">Edit</Btn>
                 <Btn v="danger" onClick={() => deleteCourse(c.id)} sz="sm">Delete</Btn>
               </div>
             </div>
             {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
-            {cs.map((s, si) => (
-              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9, background: C.bg, marginBottom: 6, border: "1px solid " + C.border, gap: 8 }}>
-                {editSection === s.id
-                  ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
-                      <input value={editSectionTitle} onChange={e => setEditSectionTitle(e.target.value)} style={{ flex: 1, padding: "6px 10px", borderRadius: 7, fontSize: 13 }} onKeyDown={e => e.key === "Enter" && saveSectionEdit()} autoFocus />
-                      <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
-                      <Btn v="outline" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
-                    </div>
-                  : <div style={{ fontSize: 13, flex: 1 }}><span style={{ color: C.gold, marginRight: 8, fontSize: 11 }}>§</span>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
-                }
-                {editSection !== s.id && <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <button onClick={() => { if (si > 0) { const a=cs[si-1]; const b=cs[si]; patchSection(a.id,{sort_order:b.sortOrder||si}); patchSection(b.id,{sort_order:a.sortOrder||(si-1)}); } }} disabled={si===0}
-                      style={{ background:si===0?"transparent":C.card, border:"1px solid "+C.border, borderRadius:4, color:si===0?C.faint:C.white, width:22, height:18, fontSize:10, cursor:si===0?"default":"pointer", lineHeight:1, padding:0 }}>▲</button>
-                    <button onClick={() => { if (si < cs.length-1) { const a=cs[si]; const b=cs[si+1]; patchSection(a.id,{sort_order:b.sortOrder||(si+1)}); patchSection(b.id,{sort_order:a.sortOrder||si}); } }} disabled={si===cs.length-1}
-                      style={{ background:si===cs.length-1?"transparent":C.card, border:"1px solid "+C.border, borderRadius:4, color:si===cs.length-1?C.faint:C.white, width:22, height:18, fontSize:10, cursor:si===cs.length-1?"default":"pointer", lineHeight:1, padding:0 }}>▼</button>
-                  </div>
-                  <Btn v="outline" onClick={() => { setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">✏</Btn>
+            {cs.length > 0 && <div style={{ fontSize: 11, color: C.faint, marginBottom: 8, letterSpacing: ".05em" }}>DRAG TO REORDER SECTIONS</div>}
+            {cs.map(s => (
+              <div key={s.id}
+                draggable
+                onDragStart={() => setDragSec(s.id)}
+                onDragOver={e => { e.preventDefault(); setDragOverSec(s.id); }}
+                onDragLeave={() => setDragOverSec(null)}
+                onDrop={() => handleSecDrop(c.id, s.id)}
+                onDragEnd={() => { setDragSec(null); setDragOverSec(null); }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9,
+                  background: dragOverSec === s.id ? C.goldDim : C.bg, marginBottom: 6,
+                  border: "1px solid " + (dragOverSec === s.id ? C.gold : dragSec === s.id ? C.border + "80" : C.border),
+                  opacity: dragSec === s.id ? 0.5 : 1, cursor: "grab", transition: "background .15s, border-color .15s", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                  <span style={{ color: C.faint, fontSize: 16, cursor: "grab", flexShrink: 0 }}>⠿</span>
+                  {editSection === s.id
+                    ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
+                        <input value={editSectionTitle} onChange={e => setEditSectionTitle(e.target.value)} style={{ flex: 1, padding: "6px 10px", borderRadius: 7, fontSize: 13 }} onKeyDown={e => e.key === "Enter" && saveSectionEdit()} autoFocus />
+                        <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
+                        <Btn v="outline" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
+                      </div>
+                    : <div style={{ fontSize: 13 }}>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
+                  }
+                </div>
+                {editSection !== s.id && <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                  <Btn v="outline" onClick={() => { setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">Edit</Btn>
                   <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
                 </div>}
               </div>
@@ -531,13 +556,31 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   const [vC, setVC] = React.useState("");
   const [vS, setVS] = React.useState("");
   const [vErr, setVErr] = React.useState("");
+  const [dragVid, setDragVid] = React.useState(null);
+  const [dragOverVid, setDragOverVid] = React.useState(null);
+
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
+
   const addVid = () => {
     if (!vT.trim() || !vU.trim() || !vC || !vS) { setVErr("All fields are required."); return; }
     addVideo({ id: uid(), courseId: vC, sectionId: vS, title: vT.trim(), url: vU.trim(), desc: vD.trim(), createdAt: Date.now() });
     setVT(""); setVU(""); setVD(""); setVErr("");
   };
+
+  const handleVidDrop = (sectionId, droppedOnId) => {
+    if (!dragVid || dragVid === droppedOnId) return;
+    const sv = videos.filter(v => v.sectionId === sectionId).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0));
+    const from = sv.findIndex(v => v.id === dragVid);
+    const to = sv.findIndex(v => v.id === droppedOnId);
+    if (from === -1 || to === -1) return;
+    const reordered = [...sv];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    reordered.forEach((v, i) => patchVideo(v.id, { sort_order: i }));
+    setDragVid(null); setDragOverVid(null);
+  };
+
   return (
     <div>
       <Card style={{ padding: 24, marginBottom: 28 }}>
@@ -562,25 +605,33 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
         </div>
       </Card>
       {courses.map(course => {
+        const courseSecs = sections.filter(s => s.courseId === course.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
         const courseVids = videos.filter(v => v.courseId === course.id);
         if (!courseVids.length) return null;
         return (
           <div key={course.id} style={{ marginBottom: 28 }}>
             <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{course.title}</div>
-            {sections.filter(s => s.courseId === course.id).map(sec => {
+            {courseSecs.map(sec => {
               const sv = videos.filter(v => v.sectionId === sec.id).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0));
               if (!sv.length) return null;
               return (
                 <div key={sec.id} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>
-                  {sv.map((vid, vi) => (
-                    <div key={vid.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "11px 16px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-                        <button onClick={() => { if (vi > 0) { const a=sv[vi-1]; const b=sv[vi]; patchVideo(a.id,{sort_order:b.sortOrder||vi}); patchVideo(b.id,{sort_order:a.sortOrder||(vi-1)}); } }} disabled={vi===0}
-                          style={{ background:vi===0?"transparent":C.bg, border:"1px solid "+C.border, borderRadius:4, color:vi===0?C.faint:C.white, width:22, height:18, fontSize:10, cursor:vi===0?"default":"pointer", lineHeight:1, padding:0 }}>▲</button>
-                        <button onClick={() => { if (vi < sv.length-1) { const a=sv[vi]; const b=sv[vi+1]; patchVideo(a.id,{sort_order:b.sortOrder||(vi+1)}); patchVideo(b.id,{sort_order:a.sortOrder||vi}); } }} disabled={vi===sv.length-1}
-                          style={{ background:vi===sv.length-1?"transparent":C.bg, border:"1px solid "+C.border, borderRadius:4, color:vi===sv.length-1?C.faint:C.white, width:22, height:18, fontSize:10, cursor:vi===sv.length-1?"default":"pointer", lineHeight:1, padding:0 }}>▼</button>
-                      </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 6 }}>{sec.title}</div>
+                  <div style={{ fontSize: 10, color: C.faint, marginBottom: 6, letterSpacing: ".05em" }}>DRAG TO REORDER</div>
+                  {sv.map(vid => (
+                    <div key={vid.id}
+                      draggable
+                      onDragStart={() => setDragVid(vid.id)}
+                      onDragOver={e => { e.preventDefault(); setDragOverVid(vid.id); }}
+                      onDragLeave={() => setDragOverVid(null)}
+                      onDrop={() => handleVidDrop(sec.id, vid.id)}
+                      onDragEnd={() => { setDragVid(null); setDragOverVid(null); }}
+                      style={{ background: dragOverVid === vid.id ? C.goldDim : C.card,
+                        border: "1px solid " + (dragOverVid === vid.id ? C.gold : dragVid === vid.id ? C.border+"80" : C.border),
+                        borderRadius: 10, padding: "11px 16px", marginBottom: 6,
+                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+                        opacity: dragVid === vid.id ? 0.5 : 1, cursor: "grab", transition: "background .15s" }}>
+                      <span style={{ color: C.faint, fontSize: 16, flexShrink: 0 }}>⠿</span>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
                         {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
