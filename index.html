@@ -461,14 +461,20 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
 
   const handleSecDrop = (courseId, droppedOnId) => {
     if (!dragSec || dragSec === droppedOnId) return;
-    const cs = sections.filter(s => s.courseId === courseId).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+    const cs = sections.filter(s => s.courseId === courseId)
+      .map((s, i) => ({ ...s, _idx: i }))
+      .sort((a,b) => {
+        const ao = a.sortOrder != null ? a.sortOrder : a._idx * 10000;
+        const bo = b.sortOrder != null ? b.sortOrder : b._idx * 10000;
+        return ao - bo;
+      });
     const from = cs.findIndex(s => s.id === dragSec);
     const to = cs.findIndex(s => s.id === droppedOnId);
     if (from === -1 || to === -1) return;
     const reordered = [...cs];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
-    reordered.forEach((s, i) => patchSection(s.id, { sort_order: i }));
+    reordered.forEach((s, i) => patchSection(s.id, { sort_order: i + 1 }));
     setDragSec(null); setDragOverSec(null);
   };
 
@@ -570,14 +576,22 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
 
   const handleVidDrop = (sectionId, droppedOnId) => {
     if (!dragVid || dragVid === droppedOnId) return;
-    const sv = videos.filter(v => v.sectionId === sectionId).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0));
+    // Sort by explicit sort_order first, then use array index as stable fallback
+    const sv = videos.filter(v => v.sectionId === sectionId)
+      .map((v, i) => ({ ...v, _idx: i }))
+      .sort((a,b) => {
+        const ao = a.sortOrder != null ? a.sortOrder : a._idx * 10000;
+        const bo = b.sortOrder != null ? b.sortOrder : b._idx * 10000;
+        return ao - bo;
+      });
     const from = sv.findIndex(v => v.id === dragVid);
     const to = sv.findIndex(v => v.id === droppedOnId);
     if (from === -1 || to === -1) return;
     const reordered = [...sv];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
-    reordered.forEach((v, i) => patchVideo(v.id, { sort_order: i }));
+    // Save clean sequential integers starting from 1
+    reordered.forEach((v, i) => patchVideo(v.id, { sort_order: i + 1 }));
     setDragVid(null); setDragOverVid(null);
   };
 
@@ -612,7 +626,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
           <div key={course.id} style={{ marginBottom: 28 }}>
             <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{course.title}</div>
             {courseSecs.map(sec => {
-              const sv = videos.filter(v => v.sectionId === sec.id).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0));
+              const sv = videos.filter(v => v.sectionId === sec.id).map((v,i)=>({...v,_i:i})).sort((a,b)=>{ const ao=a.sortOrder!=null?a.sortOrder:a._i*10000; const bo=b.sortOrder!=null?b.sortOrder:b._i*10000; return ao-bo; });
               if (!sv.length) return null;
               return (
                 <div key={sec.id} style={{ marginBottom: 16 }}>
@@ -2887,7 +2901,7 @@ function App() {
     await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
     const jsPatch = { ...patch };
     if (patch.sort_order !== undefined) jsPatch.sortOrder = patch.sort_order;
-    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...jsPatch } : v).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0)));
+    setVideos(prev => { const updated = prev.map(v => v.id === id ? { ...v, ...jsPatch } : v); return updated.map((v,i)=>({...v,_i:i})).sort((a,b)=>{ const ao=a.sortOrder!=null?a.sortOrder:a._i*10000; const bo=b.sortOrder!=null?b.sortOrder:b._i*10000; return ao-bo; }); });
   };
   const patchVideoNotes = async (id, patch) => {
     const dbPatch = {};
