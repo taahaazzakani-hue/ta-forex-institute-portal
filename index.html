@@ -568,7 +568,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
           <div key={course.id} style={{ marginBottom: 28 }}>
             <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{course.title}</div>
             {sections.filter(s => s.courseId === course.id).map(sec => {
-              const sv = videos.filter(v => v.sectionId === sec.id);
+              const sv = videos.filter(v => v.sectionId === sec.id).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0));
               if (!sv.length) return null;
               return (
                 <div key={sec.id} style={{ marginBottom: 16 }}>
@@ -2202,8 +2202,11 @@ function TradeForm({ onSubmit, submitLabel,
           style={{ height:80, resize:"vertical", background:C.navy, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
       </div>
       <div>
-        <label>Chart Screenshots (optional — add multiple)</label>
-        <div style={{ border:"2px dashed "+C.border, borderRadius:12, padding:"16px", textAlign:"center", background:C.navy, cursor:"pointer" }}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+          <label style={{ margin:0 }}>Chart Screenshots</label>
+          <span style={{ fontSize:11, color:C.grey }}>{(image||[]).length} image{(image||[]).length!==1?"s":""} added</span>
+        </div>
+        <div style={{ border:"2px dashed "+(image&&image.length?C.gold:C.border), borderRadius:12, padding:"20px", textAlign:"center", background:C.navy, cursor:"pointer", transition:"border-color .2s" }}
           onClick={() => document.getElementById("chart-upload-"+userId).click()}>
           <input id={"chart-upload-"+userId} type="file" accept="image/*" multiple style={{ display:"none" }}
             onChange={e => {
@@ -2211,22 +2214,25 @@ function TradeForm({ onSubmit, submitLabel,
               files.forEach(f => compressImage(f, img => setImage(prev => [...(prev||[]), img])));
               e.target.value = "";
             }} />
-          <span style={{ color:C.grey, fontSize:13 }}>📸 Click to add chart screenshots (multiple allowed)</span>
+          <div style={{ fontSize:28, marginBottom:6 }}>📸</div>
+          <div style={{ color:C.white, fontSize:13, fontWeight:600, marginBottom:4 }}>Click to add screenshots</div>
+          <div style={{ color:C.grey, fontSize:11 }}>You can select multiple images at once — click again to add more</div>
         </div>
         {image && image.length > 0 && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:8, marginTop:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10, marginTop:12 }}>
             {image.map((img, i) => (
-              <div key={i} style={{ position:"relative", borderRadius:8, overflow:"hidden", border:"1px solid "+C.border }}>
-                <img src={img} alt={"chart "+i} style={{ width:"100%", height:120, objectFit:"cover", display:"block", cursor:"zoom-in" }} />
-                <button onClick={() => setImage(prev => prev.filter((_,j)=>j!==i))}
-                  style={{ position:"absolute", top:4, right:4, background:"rgba(0,0,0,.7)", color:"#fff", border:"none", borderRadius:"50%", width:22, height:22, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              <div key={i} style={{ position:"relative", borderRadius:10, overflow:"hidden", border:"1.5px solid "+C.border, background:C.bg }}>
+                <img src={img} alt={"chart "+(i+1)} style={{ width:"100%", height:130, objectFit:"cover", display:"block" }} />
+                <button onClick={ev => { ev.stopPropagation(); setImage(prev => prev.filter((_,j)=>j!==i)); }}
+                  style={{ position:"absolute", top:6, right:6, background:"rgba(0,0,0,.75)", color:"#fff", border:"none", borderRadius:"50%", width:24, height:24, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>✕</button>
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"rgba(0,0,0,.5)", fontSize:10, color:C.grey, textAlign:"center", padding:"3px 0" }}>Photo {i+1}</div>
               </div>
             ))}
           </div>
         )}
       </div>
       {err && <div style={{ color:err==="Saving..."?C.gold:err==="saved"?C.green:C.red, fontSize:13, textAlign:"center", fontWeight:700 }}>{err==="saved" ? "✓ Entry saved!" : err}</div>}
-      <Btn onClick={onSubmit} full sz="lg">{submitLabel}</Btn>
+      <div style={{ display:"flex", gap:10 }}><Btn onClick={onSubmit} full sz="lg">{submitLabel}</Btn></div>
     </div>
   );
 }
@@ -2826,8 +2832,11 @@ function App() {
     if (patch.sectionId !== undefined) dbPatch.section_id = patch.sectionId;
     if (patch.courseId !== undefined) dbPatch.course_id = patch.courseId;
     if (patch.createdAt !== undefined) dbPatch.created_at = patch.createdAt;
+    if (patch.sort_order !== undefined) dbPatch.sort_order = patch.sort_order;
     await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
-    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v));
+    const jsPatch = { ...patch };
+    if (patch.sort_order !== undefined) jsPatch.sortOrder = patch.sort_order;
+    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...jsPatch } : v).sort((a,b)=>(a.sortOrder||a.createdAt||0)-(b.sortOrder||b.createdAt||0)));
   };
   const patchVideoNotes = async (id, patch) => {
     const dbPatch = {};
@@ -2867,14 +2876,7 @@ function App() {
     await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: ts + "|" + videoTitle } });
     setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
   };
-  const patchVideoDB = async (id, patch) => {
-    const dbPatch = {};
-    if (patch.sort_order !== undefined) dbPatch.sort_order = patch.sort_order;
-    await sb("videos?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
-    const jsPatch = { ...patch };
-    if (patch.sort_order !== undefined) jsPatch.sortOrder = patch.sort_order;
-    setVideos(prev => prev.map(v => v.id === id ? { ...v, ...jsPatch } : v).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)));
-  };
+
   const addCommentDB = async (c) => {
     await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
@@ -2941,7 +2943,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideoDB} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
