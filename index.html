@@ -663,10 +663,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "membership", l: "Membership" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -695,6 +695,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
+        {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
       </div>
     </div>
   );
@@ -1225,7 +1226,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, trackWatch, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1246,6 +1247,9 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
   const [showCourses, setShowCourses] = React.useState(false);
   const [showCalc, setShowCalc] = React.useState(false);
   const [showHomework, setShowHomework] = React.useState(false);
+  const [showPlaybook, setShowPlaybook] = React.useState(false);
+  const [showChecklist, setShowChecklist] = React.useState(false);
+  const [showReview, setShowReview] = React.useState(false);
   const [showNotif, setShowNotif] = React.useState(false);
   const [completed, setCompleted] = React.useState(() => { try { return JSON.parse(localStorage.getItem("tafx_completed_" + user.id) || "{}"); } catch { return {}; } });
   const toggleComplete = (videoId) => { const n = { ...completed, [videoId]: !completed[videoId] }; setCompleted(n); try { localStorage.setItem("tafx_completed_" + user.id, JSON.stringify(n)); } catch {} };
@@ -1296,9 +1300,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); }} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
-            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
+<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
+            {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
+            <Btn v={showPlaybook ? "gold" : "outline"} onClick={() => { setShowPlaybook(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📘 Playbook</Btn>
+            <Btn v={showChecklist ? "gold" : "outline"} onClick={() => { setShowChecklist(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>✅ Checklist</Btn>
+            <Btn v={showReview ? "gold" : "outline"} onClick={() => { setShowReview(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📅 Review</Btn>
+            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
             <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
             <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
             <div style={{ width: 1, height: 30, background: C.border }} />
@@ -1350,10 +1357,13 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
       {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
+      {showPlaybook && <ModelPlaybook />}
+      {showChecklist && <PreTradeChecklist />}
+      {showReview && <WeeklyReview user={user} reviews={reviews||[]} addReview={addReviewDB} weeklyPrompts={weeklyPrompts||[]} />}
       {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
 
       {/* ══ HOME ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && view === "home" && (
+      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
@@ -1520,7 +1530,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ COURSE ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && view === "course" && course && (
+      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
           {/* Course header */}
           <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
@@ -1592,7 +1602,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ PLAYER ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && view === "player" && video && (() => {
+      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -2818,6 +2828,522 @@ function StatusScreen({ icon, title, color, msg, onLogout }) {
 }
 
 /* ── ROOT ────────────────────────────────────────────────────────────────── */
+/* ── MODEL PLAYBOOK ──────────────────────────────────────────────────────── */
+const PLAYBOOK_DATA = {
+  "TA MODEL": {
+    color: "#6B9FFF",
+    icon: "📘",
+    tagline: "The foundation. Master this before anything else.",
+    description: "The TA Model is built on pure price action and market structure. It identifies institutional order flow using key levels, break of structure, and confirmation entries.",
+    rules: [
+      "Only trade Break of Structure (BOS) confirmations",
+      "Entry on the first pullback after BOS",
+      "Stop loss below the last significant swing low/high",
+      "Minimum 1:2 RR — no exceptions",
+      "Only trade during London or New York sessions",
+    ],
+    dos: ["Wait for full candle close", "Mark your levels before the session", "Use higher timeframe bias"],
+    donts: ["Enter before BOS confirmation", "Move stop loss to breakeven too early", "Trade news events"],
+  },
+  "FOREVER MODEL": {
+    color: "#4CB880",
+    icon: "♾️",
+    tagline: "Patience is the edge. One setup. One entry.",
+    description: "The Forever Model is about finding the one clean setup per week and executing it flawlessly. Quality over quantity. This model produces the most consistent results for disciplined traders.",
+    rules: [
+      "Maximum 1-2 setups per week",
+      "Must have confluence from at least 3 timeframes",
+      "Only trade premium/discount zones",
+      "RR must be minimum 1:3",
+      "No trading on Monday or Friday",
+    ],
+    dos: ["Mark weekly levels on Sunday", "Screenshot your setup before entry", "Let the trade fully play out"],
+    donts: ["Force setups mid-week", "Enter without multi-timeframe confirmation", "Scale in prematurely"],
+  },
+  "PM SESSION MODEL": {
+    color: "#C9A84C",
+    icon: "🌆",
+    tagline: "The PM edge. Precision in the afternoon session.",
+    description: "The PM Session Model exploits the afternoon reversal or continuation plays that occur during the New York PM session (2pm-5pm EST / 8pm-11pm SAST). High probability setups with tight stops.",
+    rules: [
+      "Only enter between 8pm-11pm SAST",
+      "Must have clear NY AM high/low to reference",
+      "Trade reversals at previous session extremes",
+      "Tight stops — max 15 pips on FX, 50 points on indices",
+      "Close all trades by 11pm SAST",
+    ],
+    dos: ["Mark NY AM high and low before session", "Look for liquidity grabs at session extremes", "Use 5m/15m for entries"],
+    donts: ["Carry trades overnight from this model", "Enter without AM reference points", "Trade first 30 min of PM session"],
+  },
+  "TA 2.0 MODEL": {
+    color: "#FF7096",
+    icon: "🚀",
+    tagline: "The evolved model. Refined price action.",
+    description: "TA 2.0 is the advanced evolution of the original TA Model, incorporating Order Block theory, Fair Value Gaps, and institutional candle patterns for higher precision entries.",
+    rules: [
+      "Identify a valid Order Block before any entry",
+      "Wait for price to return to the OB",
+      "Confirm with a Fair Value Gap fill",
+      "Enter on the 1m or 5m after OB reaction",
+      "Minimum RR 1:3 due to tight entries",
+    ],
+    dos: ["Mark OBs on 15m/1H first", "Look for mitigation candles", "Track OB quality in your journal"],
+    donts: ["Enter an OB that has already been mitigated", "Skip FVG confirmation", "Use this model without mastering TA MODEL first"],
+  },
+  "TA MMXM MODEL": {
+    color: "#C96BFF",
+    icon: "⚡",
+    tagline: "Manipulation. Movement. The full cycle.",
+    description: "The MMXM Model tracks the full market cycle: Manipulation, Movement, eXpansion, and Mitigation. It identifies where smart money runs stops before the real move begins.",
+    rules: [
+      "Identify the manipulation phase (stop hunt)",
+      "Wait for the displacement candle confirming the move",
+      "Enter on the retracement into the FVG/OB",
+      "Target the opposite liquidity pool",
+      "Only trade during power hours",
+    ],
+    dos: ["Mark buy-side and sell-side liquidity", "Wait for full manipulation before entry", "Target the full range liquidity"],
+    donts: ["Enter during the manipulation phase", "Miss the displacement — it is your signal", "Set targets at random levels"],
+  },
+};
+
+function ModelPlaybook() {
+  const [activeModel, setActiveModel] = React.useState("TA MODEL");
+  const m = PLAYBOOK_DATA[activeModel];
+  const models = Object.keys(PLAYBOOK_DATA);
+
+  return (
+    <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
+        <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Model Playbook</h2>
+        <p style={{ color: C.grey, fontSize: 14 }}>Your trading bible. Study each model. Trade only what you know.</p>
+      </div>
+
+      {/* Model tabs */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+        {models.map(mod => {
+          const d = PLAYBOOK_DATA[mod];
+          return (
+            <button key={mod} onClick={() => setActiveModel(mod)} style={{
+              padding: "10px 16px", borderRadius: 12, fontSize: 12, fontWeight: 700, border: "1.5px solid", cursor: "pointer", transition: "all .2s",
+              background: activeModel === mod ? d.color + "20" : C.card,
+              color: activeModel === mod ? d.color : C.grey,
+              borderColor: activeModel === mod ? d.color + "60" : C.border,
+            }}>{d.icon} {mod}</button>
+          );
+        })}
+      </div>
+
+      {/* Active model card */}
+      <div style={{ background: C.card, border: "2px solid " + m.color + "40", borderRadius: 20, overflow: "hidden" }}>
+        {/* Banner */}
+        <div style={{ background: "linear-gradient(135deg," + m.color + "25," + m.color + "08)", padding: "28px 28px 24px", borderBottom: "1px solid " + m.color + "30" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <span style={{ fontSize: 36 }}>{m.icon}</span>
+            <div>
+              <h3 style={{ fontFamily: S, fontSize: 24, fontWeight: 700, color: m.color, marginBottom: 2 }}>{activeModel}</h3>
+              <p style={{ fontSize: 13, color: C.grey, fontStyle: "italic" }}>{m.tagline}</p>
+            </div>
+          </div>
+          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8 }}>{m.description}</p>
+        </div>
+
+        <div style={{ padding: 28, display: "grid", gap: 24 }}>
+          {/* Rules */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 18 }}>📋</span>
+              <h4 style={{ fontFamily: S, fontSize: 15, fontWeight: 700, color: C.white }}>Golden Rules</h4>
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {m.rules.map((rule, i) => (
+                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 16px", background: C.bg, borderRadius: 10, border: "1px solid " + C.border }}>
+                  <span style={{ background: m.color + "20", color: m.color, width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{rule}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Dos and Donts */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ background: "rgba(76,184,128,.05)", border: "1px solid rgba(76,184,128,.25)", borderRadius: 14, padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 16 }}>✅</span>
+                <h4 style={{ fontFamily: S, fontSize: 13, fontWeight: 700, color: C.green }}>Always Do</h4>
+              </div>
+              {m.dos.map((d, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-start" }}>
+                  <span style={{ color: C.green, fontSize: 12, flexShrink: 0, marginTop: 1 }}>→</span>
+                  <span style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>{d}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "rgba(217,96,96,.05)", border: "1px solid rgba(217,96,96,.25)", borderRadius: 14, padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 16 }}>🚫</span>
+                <h4 style={{ fontFamily: S, fontSize: 13, fontWeight: 700, color: C.red }}>Never Do</h4>
+              </div>
+              {m.donts.map((d, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-start" }}>
+                  <span style={{ color: C.red, fontSize: 12, flexShrink: 0, marginTop: 1 }}>✕</span>
+                  <span style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Reminder */}
+          <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 12, padding: "14px 18px", display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>💡</span>
+            <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
+              <strong style={{ color: C.gold }}>Remember:</strong> Consistency beats perfection. Execute your model the same way every time. The edge compounds over many trades, not one.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── PRE-TRADE CHECKLIST ─────────────────────────────────────────────────── */
+const CHECKLIST_ITEMS = [
+  { id: "setup", icon: "🎯", text: "My model setup has fully formed — I am not forcing it" },
+  { id: "rr", icon: "⚖️", text: "My Risk:Reward is at least 1:2 before I enter" },
+  { id: "levels", icon: "📍", text: "I have marked my entry, stop loss, and take profit BEFORE entering" },
+  { id: "emotion", icon: "🧠", text: "I am NOT revenge trading, FOMO trading, or emotionally compromised" },
+  { id: "session", icon: "🕐", text: "I am trading during the correct session for this setup" },
+  { id: "news", icon: "📰", text: "I have checked the economic calendar — no major news in next 30 min" },
+  { id: "size", icon: "💰", text: "My position size is within my risk rules (no over-leveraging)" },
+  { id: "model", icon: "📘", text: "This is a valid model trade — not a random setup I invented" },
+];
+
+function PreTradeChecklist() {
+  const [checked, setChecked] = React.useState({});
+  const [submitted, setSubmitted] = React.useState(false);
+  const [note, setNote] = React.useState("");
+  const [history, setHistory] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem("tafx_checklist_history") || "[]"); } catch { return []; }
+  });
+
+  const toggle = (id) => {
+    if (submitted) return;
+    setChecked(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const allChecked = CHECKLIST_ITEMS.every(item => checked[item.id]);
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+  const pct = Math.round((checkedCount / CHECKLIST_ITEMS.length) * 100);
+
+  const submit = () => {
+    if (!allChecked) return;
+    const entry = { date: new Date().toISOString(), note: note.trim(), score: 100 };
+    const newHistory = [entry, ...history].slice(0, 30);
+    setHistory(newHistory);
+    try { localStorage.setItem("tafx_checklist_history", JSON.stringify(newHistory)); } catch {}
+    setSubmitted(true);
+  };
+
+  const reset = () => {
+    setChecked({});
+    setSubmitted(false);
+    setNote("");
+  };
+
+  return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Discipline First</p>
+        <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Pre-Trade Checklist</h2>
+        <p style={{ color: C.grey, fontSize: 14 }}>Complete every check before you enter. No shortcuts. No exceptions.</p>
+      </div>
+
+      {submitted ? (
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div style={{ fontSize: 72, marginBottom: 16 }}>🟢</div>
+          <h3 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: C.green, marginBottom: 8 }}>You are clear to trade.</h3>
+          <p style={{ color: C.grey, fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>All 8 checks passed. You have done the work. Now execute with confidence and trust your model.</p>
+          <div style={{ background: "rgba(76,184,128,.08)", border: "1px solid rgba(76,184,128,.3)", borderRadius: 14, padding: "16px 20px", marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
+            <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Cleared at</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>{new Date().toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} — {new Date().toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })}</div>
+          </div>
+          <Btn onClick={reset} v="outline">Run Checklist Again</Btn>
+        </div>
+      ) : (
+        <div>
+          {/* Progress bar */}
+          <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 14, padding: "16px 20px", marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{checkedCount}/{CHECKLIST_ITEMS.length} checks complete</span>
+              <span style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: allChecked ? C.green : pct > 50 ? C.gold : C.grey }}>{pct}%</span>
+            </div>
+            <div style={{ height: 8, background: C.bg, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: pct + "%", background: allChecked ? "linear-gradient(90deg,#2ecc71,#1a9e50)" : pct > 50 ? "linear-gradient(90deg," + C.goldLt + "," + C.gold + ")" : "linear-gradient(90deg,#6B9FFF,#3B6FFF)", borderRadius: 8, transition: "width .4s cubic-bezier(.22,1,.36,1)" }} />
+            </div>
+          </div>
+
+          {/* Checklist items */}
+          <div style={{ display: "grid", gap: 10, marginBottom: 24 }}>
+            {CHECKLIST_ITEMS.map((item, i) => {
+              const done = checked[item.id];
+              return (
+                <div key={item.id} onClick={() => toggle(item.id)}
+                  style={{ display: "flex", gap: 14, alignItems: "center", padding: "16px 20px", background: done ? "rgba(76,184,128,.08)" : C.card,
+                    border: "1.5px solid " + (done ? "rgba(76,184,128,.4)" : C.border), borderRadius: 14, cursor: "pointer",
+                    transition: "all .2s", transform: done ? "translateX(4px)" : "translateX(0)" }}
+                  onMouseEnter={e => { if (!done) e.currentTarget.style.borderColor = C.gold + "60"; }}
+                  onMouseLeave={e => { if (!done) e.currentTarget.style.borderColor = C.border; }}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{done ? "✅" : item.icon}</span>
+                  <span style={{ fontSize: 13, color: done ? C.green : C.dim, lineHeight: 1.5, fontWeight: done ? 600 : 400, flex: 1, textDecoration: done ? "line-through" : "none", textDecorationColor: "rgba(76,184,128,.4)" }}>{item.text}</span>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid " + (done ? C.green : C.border), background: done ? C.green : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .2s" }}>
+                    {done && <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>✓</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Optional note */}
+          <div style={{ marginBottom: 20 }}>
+            <label>Setup notes (optional)</label>
+            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Describe your setup briefly before you enter... what do you see? Why is this valid?"
+              style={{ height: 80, resize: "vertical", background: C.navy, border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+          </div>
+
+          {!allChecked && (
+            <div style={{ padding: "12px 16px", background: "rgba(217,96,96,.08)", border: "1px solid rgba(217,96,96,.25)", borderRadius: 10, fontSize: 13, color: C.red, marginBottom: 16 }}>
+              ⚠️ Complete all {CHECKLIST_ITEMS.length} checks before you can proceed to trade.
+            </div>
+          )}
+
+          <Btn onClick={submit} disabled={!allChecked} full sz="lg" style={{ background: allChecked ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : undefined, color: allChecked ? "#fff" : undefined }}>
+            {allChecked ? "✅ I am ready — clear to trade" : `Complete all checks (${CHECKLIST_ITEMS.length - checkedCount} remaining)`}
+          </Btn>
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 40, borderTop: "1px solid " + C.border, paddingTop: 28 }}>
+          <h4 style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Recent Checklist History</h4>
+          <div style={{ display: "grid", gap: 8 }}>
+            {history.slice(0, 5).map((h, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: C.card, borderRadius: 10, border: "1px solid " + C.border }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.green }}>✅ All checks passed</div>
+                  {h.note && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{h.note.slice(0, 60)}{h.note.length > 60 ? "…" : ""}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: C.faint }}>{new Date(h.date).toLocaleDateString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── WEEKLY REVIEW ───────────────────────────────────────────────────────── */
+function WeeklyReview({ user, reviews, addReview, weeklyPrompts }) {
+  const [view, setView] = React.useState("list");
+  const [answers, setAnswers] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState("");
+
+  const myReviews = (reviews || []).filter(r => r.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
+  const activePrompts = (weeklyPrompts || []).filter(p => p.active !== false);
+
+  const getWeekLabel = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    return monday.toLocaleDateString("en-ZA", { day: "numeric", month: "long" }) + " week";
+  };
+
+  const submit = async () => {
+    const required = activePrompts.filter(p => p.required !== false);
+    const missing = required.find(p => !answers[p.id]?.trim());
+    if (missing) { setErr("Please answer all required questions."); return; }
+    setSaving(true);
+    await addReview({ id: uid(), userId: user.id, userName: user.name, answers, weekLabel: getWeekLabel(), createdAt: Date.now(), coachFeedback: null });
+    setAnswers({});
+    setSaving(false);
+    setErr("");
+    setView("list");
+  };
+
+  if (view === "new") return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+        <button onClick={() => setView("list")} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none" }}>← Back</button>
+        <div>
+          <h2 style={{ fontFamily: S, fontSize: 24, fontWeight: 700 }}>Weekly Review</h2>
+          <p style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{getWeekLabel()}</p>
+        </div>
+      </div>
+      {activePrompts.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No review prompts set yet. Coach Taaha will add them soon.</p>}
+      <div style={{ display: "grid", gap: 20 }}>
+        {activePrompts.map((p, i) => (
+          <div key={p.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 14, padding: "20px 22px" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
+              <span style={{ background: C.goldDim, color: C.gold, width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.white, lineHeight: 1.5 }}>{p.question}</p>
+                {p.required === false && <span style={{ fontSize: 10, color: C.faint }}>Optional</span>}
+              </div>
+            </div>
+            <textarea value={answers[p.id] || ""} onChange={e => setAnswers(prev => ({ ...prev, [p.id]: e.target.value }))}
+              placeholder="Be honest with yourself..."
+              style={{ height: 100, resize: "vertical", background: C.navy, border: "1.5px solid " + (answers[p.id]?.trim() ? C.gold + "50" : C.border), borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6 }} />
+          </div>
+        ))}
+      </div>
+      {err && <div style={{ color: C.red, fontSize: 12, marginTop: 12, textAlign: "center" }}>{err}</div>}
+      {activePrompts.length > 0 && <Btn onClick={submit} disabled={saving} full sz="lg" style={{ marginTop: 20 }}>{saving ? "Submitting..." : "Submit Weekly Review"}</Btn>}
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: "28px 16px 80px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Growth Mindset</p>
+        <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Weekly Review</h2>
+        <p style={{ color: C.grey, fontSize: 14 }}>Reflect. Learn. Improve. The traders who review are the traders who grow.</p>
+      </div>
+      <div style={{ background: "linear-gradient(135deg,rgba(201,168,76,.12),rgba(201,168,76,.04))", border: "1px solid " + C.gold + "40", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Current week: {getWeekLabel()}</div>
+          <div style={{ fontSize: 13, color: C.grey }}>Complete your review before Sunday midnight</div>
+        </div>
+        <Btn onClick={() => setView("new")} disabled={activePrompts.length === 0}>+ Write This Week</Btn>
+      </div>
+      {myReviews.length === 0 && <div style={{ textAlign: "center", padding: "60px 0" }}><div style={{ fontSize: 48, opacity: .3, marginBottom: 12 }}>📝</div><p style={{ color: C.grey }}>No reviews yet. Start your first one above.</p></div>}
+      <div style={{ display: "grid", gap: 12 }}>
+        {myReviews.map(r => (
+          <div key={r.id} style={{ background: C.card, border: "1.5px solid " + (r.coachFeedback ? C.gold + "50" : C.border), borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontFamily: S, fontSize: 15, fontWeight: 700 }}>{r.weekLabel}</div>
+                <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{new Date(r.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}</div>
+              </div>
+              {r.coachFeedback && <span style={{ background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>💬 Coach feedback</span>}
+            </div>
+            <div style={{ padding: "16px 20px" }}>
+              {Object.entries(r.answers || {}).slice(0, 2).map(([pid, ans]) => {
+                const prompt = (weeklyPrompts || []).find(p => p.id === pid);
+                return (
+                  <div key={pid} style={{ marginBottom: 12 }}>
+                    {prompt && <div style={{ fontSize: 11, color: C.grey, marginBottom: 4 }}>{prompt.question}</div>}
+                    <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{ans.slice(0, 120)}{ans.length > 120 ? "…" : ""}</div>
+                  </div>
+                );
+              })}
+              {r.coachFeedback && (
+                <div style={{ marginTop: 12, background: C.goldDim, border: "1px solid " + C.gold + "30", borderRadius: 10, padding: "12px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 6 }}>Coach Taaha — Feedback</div>
+                  <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{r.coachFeedback}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN WEEKLY REVIEW TAB ─────────────────────────────────────────────── */
+function AdminWeeklyReviewTab({ reviews, patchReview, users, weeklyPrompts, addPrompt, deletePrompt, togglePrompt }) {
+  const [selUser, setSelUser] = React.useState("all");
+  const [feedback, setFeedback] = React.useState("");
+  const [feedbackRev, setFeedbackRev] = React.useState(null);
+  const [newQ, setNewQ] = React.useState("");
+  const [newRequired, setNewRequired] = React.useState(true);
+
+  const filtered = (reviews || []).filter(r => selUser === "all" || r.userId === selUser).sort((a,b) => b.createdAt - a.createdAt);
+  const approvedUsers = users.filter(u => u.status === "approved");
+
+  return (
+    <div style={{ display: "grid", gap: 24 }}>
+      {/* Manage Prompts */}
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>Weekly Review Questions</div>
+        <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
+          <div><label>New Question</label><input value={newQ} onChange={e => setNewQ(e.target.value)} placeholder="e.g. What was your biggest mistake this week?" /></div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input type="checkbox" checked={newRequired} onChange={e => setNewRequired(e.target.checked)} id="req" style={{ width: 16, height: 16 }} />
+            <label htmlFor="req" style={{ margin: 0, textTransform: "none", letterSpacing: 0, fontSize: 13, color: C.dim }}>Required question</label>
+          </div>
+          <Btn onClick={() => { if (newQ.trim()) { addPrompt({ id: uid(), question: newQ.trim(), required: newRequired, active: true, createdAt: Date.now() }); setNewQ(""); } }} style={{ justifySelf: "start" }} disabled={!newQ.trim()}>Add Question</Btn>
+        </div>
+        {(weeklyPrompts || []).map(p => (
+          <div key={p.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 14px", background: p.active ? C.bg : "transparent", border: "1px solid " + (p.active ? C.border : C.faint + "40"), borderRadius: 9, marginBottom: 6, opacity: p.active ? 1 : 0.5 }}>
+            <span style={{ flex: 1, fontSize: 13, color: C.dim }}>{p.question}</span>
+            {!p.required && <span style={{ fontSize: 10, color: C.faint }}>Optional</span>}
+            <Btn v="outline" onClick={() => togglePrompt(p.id, !p.active)} sz="sm">{p.active ? "Disable" : "Enable"}</Btn>
+            <Btn v="danger" onClick={() => deletePrompt(p.id)} sz="sm">Delete</Btn>
+          </div>
+        ))}
+      </Card>
+
+      {/* Student Reviews */}
+      <div>
+        <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase" }}>Student Reviews ({filtered.length})</div>
+          <select value={selUser} onChange={e => setSelUser(e.target.value)} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
+            <option value="all">All Students</option>
+            {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        {filtered.map(r => {
+          const uname = users.find(u => u.id === r.userId)?.name || r.userName;
+          return (
+            <div key={r.id} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
+              <div style={{ padding: "14px 20px", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ fontWeight: 700, color: C.gold, fontSize: 13 }}>{uname}</span>
+                  <span style={{ color: C.grey, fontSize: 12, marginLeft: 10 }}>{r.weekLabel}</span>
+                </div>
+                <span style={{ fontSize: 11, color: C.faint }}>{new Date(r.createdAt).toLocaleDateString("en-ZA")}</span>
+              </div>
+              <div style={{ padding: "14px 20px" }}>
+                {Object.entries(r.answers || {}).map(([pid, ans]) => {
+                  const prompt = (weeklyPrompts || []).find(p => p.id === pid);
+                  return (
+                    <div key={pid} style={{ marginBottom: 12 }}>
+                      {prompt && <div style={{ fontSize: 11, color: C.grey, marginBottom: 4 }}>{prompt.question}</div>}
+                      <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{ans}</p>
+                    </div>
+                  );
+                })}
+                {feedbackRev === r.id ? (
+                  <div style={{ marginTop: 12 }}>
+                    <textarea value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Write your feedback for this student..."
+                      style={{ width: "100%", height: 80, background: C.navy, border: "1.5px solid " + C.gold, borderRadius: 9, padding: "10px 12px", color: C.white, fontFamily: D, fontSize: 13, resize: "vertical", outline: "none", marginBottom: 8 }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Btn onClick={() => { patchReview(r.id, { coachFeedback: feedback }); setFeedbackRev(null); setFeedback(""); }} sz="sm" disabled={!feedback.trim()}>Send Feedback</Btn>
+                      <Btn v="outline" onClick={() => setFeedbackRev(null)} sz="sm">Cancel</Btn>
+                    </div>
+                  </div>
+                ) : (
+                  <Btn v="outline" onClick={() => { setFeedbackRev(r.id); setFeedback(r.coachFeedback || ""); }} sz="sm" style={{ marginTop: 8 }}>
+                    {r.coachFeedback ? "Edit Feedback" : "Give Feedback"}
+                  </Btn>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 function App() {
   const [users,    setUsers]    = React.useState([]);
   const [courses,  setCourses]  = React.useState([]);
@@ -2828,6 +3354,8 @@ function App() {
   const [homework,  setHomework]  = React.useState([]);
   const [hwSubmits, setHwSubmits] = React.useState([]);
   const [lastWatch, setLastWatch] = React.useState({});
+  const [reviews,   setReviews]   = React.useState([]);
+  const [weeklyPrompts, setWeeklyPrompts] = React.useState([]);
   const [screen,   setScreen]   = React.useState("login");
   const [me,       setMe]       = React.useState(null);
   const [loading,  setLoading]  = React.useState(true);
@@ -2850,7 +3378,7 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j, com, hw, hws] = await Promise.all([
+      const [u, c, sec, v, j, com, hw, hws, rev, wp] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
@@ -2867,8 +3395,12 @@ function App() {
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
+      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
+      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
+      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
+      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       // Build lastWatched map
       if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
     } catch(e) { console.error("loadAll error:", e); }
@@ -2983,6 +3515,28 @@ function App() {
     setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
   };
 
+  const addReviewDB = async (r) => {
+    await sb("weekly_reviews", { method: "POST", prefer: "return=minimal", body: { id:r.id, user_id:r.userId, user_name:r.userName, week_label:r.weekLabel, answers:r.answers, coach_feedback:null, created_at:r.createdAt } });
+    setReviews(prev => [r, ...prev]);
+  };
+  const patchReviewDB = async (id, patch) => {
+    const dbPatch = {};
+    if (patch.coachFeedback !== undefined) dbPatch.coach_feedback = patch.coachFeedback;
+    await sb("weekly_reviews?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
+    setReviews(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+  };
+  const addPromptDB = async (p) => {
+    await sb("weekly_prompts", { method: "POST", prefer: "return=minimal", body: { id:p.id, question:p.question, required:p.required!==false, active:true, created_at:p.createdAt } });
+    setWeeklyPrompts(prev => [...prev, p]);
+  };
+  const deletePromptDB = async (id) => {
+    await sb("weekly_prompts?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setWeeklyPrompts(prev => prev.filter(p => p.id !== id));
+  };
+  const togglePromptDB = async (id, active) => {
+    await sb("weekly_prompts?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: { active } });
+    setWeeklyPrompts(prev => prev.map(p => p.id === id ? { ...p, active } : p));
+  };
   const addCommentDB = async (c) => {
     await sb("comments", { method: "POST", prefer: "return=minimal", body: { id:c.id, video_id:c.videoId, user_id:c.userId, user_name:c.userName, text:c.text, parent_id:c.parentId||null, is_admin:c.isAdmin||false, timestamp:c.timestamp||null, created_at:c.createdAt } });
     setComments(prev => [...prev, c]);
@@ -3049,8 +3603,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
