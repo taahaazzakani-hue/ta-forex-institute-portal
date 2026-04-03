@@ -3686,6 +3686,9 @@ function App() {
         sb("comments?order=created_at.asc"),
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
+        sb("weekly_reviews?order=created_at.desc").catch(()=>null),
+        sb("weekly_prompts?order=created_at.asc").catch(()=>null),
+        sb("login_sessions?order=created_at.desc&limit=500").catch(()=>null),
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
@@ -3697,16 +3700,10 @@ function App() {
       if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
       if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
-      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
-      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
-      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
-      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
-      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
-      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
       if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
       // Build lastWatched map
       if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
@@ -3875,20 +3872,31 @@ function App() {
   const login = async (email, pass, setMsg) => {
     const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
     if (!u) { setMsg("Incorrect email or password."); return; }
+    // Fire-and-forget session tracking BEFORE state changes
+    if (u.status === "approved") {
+      const sessionId = uid();
+      const device = navigator.userAgent.slice(0, 200);
+      const createdAt = Date.now();
+      fetch("https://api.ipify.org?format=json")
+        .then(r => r.json())
+        .then(d => {
+          const ip = d.ip || "Unknown";
+          return fetch("https://qpjnzhmuwklvqmevlxjm.supabase.co/rest/v1/login_sessions", {
+            method: "POST",
+            headers: {
+              "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwam56aG11d2tsdnFtZXZseGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjQ1ODUsImV4cCI6MjA4OTg0MDU4NX0.OlFw50GiD4vNzrLZ2-dFXVdAD8OxG1-g0xP_erR_n98",
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwam56aG11d2tsdnFtZXZseGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjQ1ODUsImV4cCI6MjA4OTg0MDU4NX0.OlFw50GiD4vNzrLZ2-dFXVdAD8OxG1-g0xP_erR_n98",
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify({ id: sessionId, user_id: u.id, user_name: u.name, ip_address: ip, device_info: device, created_at: createdAt })
+          });
+        })
+        .then(() => setLoginSessions(prev => [{ id: sessionId, userId: u.id, userName: u.name, ip: "recorded", device, createdAt }, ...prev]))
+        .catch(e => console.log("Session tracking:", e.message));
+    }
     setMe(u);
     setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
-    // Track login session — fetch IP and store device info
-    if (u.status === "approved") {
-      try {
-        const ipRes = await fetch("https://api.ipify.org?format=json");
-        const ipData = await ipRes.json();
-        const ip = ipData.ip || "Unknown";
-        const device = navigator.userAgent;
-        const sessionEntry = { ip, device: device.slice(0, 200), ts: Date.now() };
-        // Store in Supabase login_sessions table
-        await sb("login_sessions", { method: "POST", prefer: "return=minimal", body: { id: uid(), user_id: u.id, user_name: u.name, ip_address: ip, device_info: device.slice(0, 200), created_at: Date.now() } });
-      } catch(e) { console.log("Session tracking skipped:", e.message); }
-    }
   };
 
   const register = async (name, email, pass, setMsg) => {
