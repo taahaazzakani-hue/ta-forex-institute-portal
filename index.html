@@ -1852,9 +1852,10 @@ function PnlCalendar({ journals, userId }) {
   const [month, setMonth] = React.useState(now.getMonth());
   const [year, setYear] = React.useState(now.getFullYear());
   const [mode, setMode] = React.useState("Live Trade"); // Live Trade | Backtest
+  const [calModel, setCalModel] = React.useState("All");
 
   const allJournals = journals.filter(j => j.userId === userId && j.pnl);
-  const myJournals = (allJournals || []).filter(j => (j.tradeType || "Live Trade") === mode);
+  const myJournals = (allJournals || []).filter(j => (j.tradeType || "Live Trade") === mode && (calModel === "All" || j.tradeModel === calModel));
 
   const parsePnl = (str) => {
     if (!str) return null;
@@ -1911,6 +1912,22 @@ function PnlCalendar({ journals, userId }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Model filter */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
+        {["All","TA MODEL","FOREVER MODEL","PM SESSION MODEL","TA 2.0 MODEL","TA MMXM MODEL"].map(m => {
+          const colors = {"TA MODEL":"#6B9FFF","FOREVER MODEL":"#4CB880","PM SESSION MODEL":"#C9A84C","TA 2.0 MODEL":"#FF7096","TA MMXM MODEL":"#C96BFF"};
+          const col = m === "All" ? C.gold : colors[m];
+          return (
+            <button key={m} onClick={() => setCalModel(m)} style={{
+              padding:"6px 14px", borderRadius:20, fontSize:11, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s",
+              background: calModel===m ? col+"20" : "transparent",
+              color: calModel===m ? col : C.grey,
+              borderColor: calModel===m ? col+"60" : C.border
+            }}>{m==="All" ? "All Models" : m}</button>
+          );
+        })}
       </div>
 
       {/* Stats row */}
@@ -2227,8 +2244,8 @@ function TradeForm({ onSubmit, submitLabel,
         </div>
       </div>
       <div>
-        <label>Trading Model (optional)</label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+        <label>Trading Model <span style={{ color:C.red }}>*</span></label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"10px", borderRadius:10, border:"1.5px solid "+(tradeModel?C.border+"00":"transparent"), transition:"border-color .2s" }}>
           <button key="TA MODEL" onClick={() => setTradeModel(tradeModel==="TA MODEL"?"":"TA MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA MODEL"?"#6B9FFF20":"transparent", color:tradeModel==="TA MODEL"?"#6B9FFF":C.grey, borderColor:tradeModel==="TA MODEL"?"#6B9FFF50":C.border }}>TA MODEL</button>
             <button key="FOREVER MODEL" onClick={() => setTradeModel(tradeModel==="FOREVER MODEL"?"":"FOREVER MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="FOREVER MODEL"?"#4CB88020":"transparent", color:tradeModel==="FOREVER MODEL"?"#4CB880":C.grey, borderColor:tradeModel==="FOREVER MODEL"?"#4CB88050":C.border }}>FOREVER MODEL</button>
             <button key="PM SESSION MODEL" onClick={() => setTradeModel(tradeModel==="PM SESSION MODEL"?"":"PM SESSION MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="PM SESSION MODEL"?"#C9A84C20":"transparent", color:tradeModel==="PM SESSION MODEL"?"#C9A84C":C.grey, borderColor:tradeModel==="PM SESSION MODEL"?"#C9A84C50":C.border }}>PM SESSION MODEL</button>
@@ -2363,7 +2380,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   };
 
   const submitNew = async () => {
-    if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
+    if (!title.trim() || !pair.trim() || !analysis.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
     const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
@@ -2373,7 +2390,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
 
   const submitEdit = async () => {
     if (!editing) return;
-    if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
+    if (!title.trim() || !pair.trim() || !analysis.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, tradeDate, currency };
     try {
