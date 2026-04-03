@@ -1354,11 +1354,32 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       )}
 
       {/* ══ JOURNAL ══ */}
-      {showJournal && <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />}
+      {showJournal && (
+        (user.levels||[]).includes("Private Mentorship") ? (
+          <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />
+        ) : (
+          <div style={{ maxWidth: 600, margin: "0 auto", padding: "60px 16px", textAlign: "center" }}>
+            <div style={{ fontSize: 64, marginBottom: 20 }}>🔒</div>
+            <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: C.white, marginBottom: 12 }}>Journal is for Private Mentorship</h2>
+            <p style={{ fontSize: 15, color: C.grey, lineHeight: 1.8, marginBottom: 8 }}>The Trade Journal is exclusively available to Private Mentorship members.</p>
+            <p style={{ fontSize: 14, color: C.grey, lineHeight: 1.8, marginBottom: 32 }}>Track your trades, review your performance, and build the habits of a professional trader.</p>
+            <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 14, padding: "20px 24px", marginBottom: 32 }}>
+              <div style={{ fontSize: 13, color: C.gold, fontWeight: 700, marginBottom: 8 }}>What you get with Private Mentorship:</div>
+              {["Full trade journal with P&L calendar", "Model filter to track each strategy separately", "Multiple image uploads per trade", "Coach review and feedback on your trades", "Weekly performance analysis"].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, textAlign: "left" }}>
+                  <span style={{ color: C.gold, fontSize: 12 }}>✦</span>
+                  <span style={{ fontSize: 13, color: C.dim }}>{item}</span>
+                </div>
+              ))}
+            </div>
+            <Btn onClick={() => { setShowJournal(false); setShowSubscribe(true); }} sz="lg">Upgrade to Private Mentorship</Btn>
+          </div>
+        )
+      )}
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
       {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
-      {showPlaybook && <ModelPlaybook />}
+      {showPlaybook && <ModelPlaybook user={user} />}
       {showChecklist && <PreTradeChecklist />}
       {showReview && <WeeklyReview user={user} reviews={reviews||[]} addReview={addReviewDB} weeklyPrompts={weeklyPrompts||[]} />}
       {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
@@ -2995,7 +3016,7 @@ const PLAYBOOK_DATA = {
   },
 };
 
-function ModelPlaybook() {
+function ModelPlaybook({ user }) {
   const [activeModel, setActiveModel] = React.useState("TA MODEL");
   const m = PLAYBOOK_DATA[activeModel];
   const models = Object.keys(PLAYBOOK_DATA);
@@ -3013,13 +3034,19 @@ function ModelPlaybook() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
         {models.map(mod => {
           const d = PLAYBOOK_DATA[mod];
+          const isPMOnly = mod === "FOREVER MODEL" || mod === "PM SESSION MODEL";
+          const hasPM = (user.levels||[]).includes("Private Mentorship");
+          const locked = isPMOnly && !hasPM;
           return (
-            <button key={mod} onClick={() => setActiveModel(mod)} style={{
-              padding: "10px 16px", borderRadius: 12, fontSize: 12, fontWeight: 700, border: "1.5px solid", cursor: "pointer", transition: "all .2s",
+            <button key={mod} onClick={() => !locked && setActiveModel(mod)} style={{
+              padding: "10px 16px", borderRadius: 12, fontSize: 12, fontWeight: 700, border: "1.5px solid", cursor: locked ? "not-allowed" : "pointer", transition: "all .2s",
               background: activeModel === mod ? d.color + "20" : C.card,
-              color: activeModel === mod ? d.color : C.grey,
+              color: locked ? C.faint : activeModel === mod ? d.color : C.grey,
               borderColor: activeModel === mod ? d.color + "60" : C.border,
-            }}>{d.icon} {mod}</button>
+              opacity: locked ? 0.45 : 1,
+            }}>
+              {locked ? "🔒" : d.icon} {mod}{locked ? " — PM Only" : ""}
+            </button>
           );
         })}
       </div>
