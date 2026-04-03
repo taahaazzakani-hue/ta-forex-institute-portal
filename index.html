@@ -2204,7 +2204,7 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, pa
 }
 
 function TradeForm({ onSubmit, submitLabel,
-  tradeType, setTradeType, tradeDate, setTradeDate,
+  tradeType, setTradeType, tradeModel, setTradeModel, tradeDate, setTradeDate,
   currency, setCurrency, title, setTitle,
   pair, setPair, direction, setDirection,
   risk, setRisk, gain, setGain,
@@ -2224,6 +2224,16 @@ function TradeForm({ onSubmit, submitLabel,
               {t==="Live Trade" ? "📈 Live Trade" : "🔬 Backtest"}
             </button>
           ))}
+        </div>
+      </div>
+      <div>
+        <label>Trading Model (optional)</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          <button key="TA MODEL" onClick={() => setTradeModel(tradeModel==="TA MODEL"?"":"TA MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA MODEL"?"#6B9FFF20":"transparent", color:tradeModel==="TA MODEL"?"#6B9FFF":C.grey, borderColor:tradeModel==="TA MODEL"?"#6B9FFF50":C.border }}>TA MODEL</button>
+            <button key="FOREVER MODEL" onClick={() => setTradeModel(tradeModel==="FOREVER MODEL"?"":"FOREVER MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="FOREVER MODEL"?"#4CB88020":"transparent", color:tradeModel==="FOREVER MODEL"?"#4CB880":C.grey, borderColor:tradeModel==="FOREVER MODEL"?"#4CB88050":C.border }}>FOREVER MODEL</button>
+            <button key="PM SESSION MODEL" onClick={() => setTradeModel(tradeModel==="PM SESSION MODEL"?"":"PM SESSION MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="PM SESSION MODEL"?"#C9A84C20":"transparent", color:tradeModel==="PM SESSION MODEL"?"#C9A84C":C.grey, borderColor:tradeModel==="PM SESSION MODEL"?"#C9A84C50":C.border }}>PM SESSION MODEL</button>
+            <button key="TA 2.0 MODEL" onClick={() => setTradeModel(tradeModel==="TA 2.0 MODEL"?"":"TA 2.0 MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA 2.0 MODEL"?"#FF709620":"transparent", color:tradeModel==="TA 2.0 MODEL"?"#FF7096":C.grey, borderColor:tradeModel==="TA 2.0 MODEL"?"#FF709650":C.border }}>TA 2.0 MODEL</button>
+            <button key="TA MMXM MODEL" onClick={() => setTradeModel(tradeModel==="TA MMXM MODEL"?"":"TA MMXM MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA MMXM MODEL"?"#C96BFF20":"transparent", color:tradeModel==="TA MMXM MODEL"?"#C96BFF":C.grey, borderColor:tradeModel==="TA MMXM MODEL"?"#C96BFF50":C.border }}>TA MMXM MODEL</button>
         </div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
@@ -2319,6 +2329,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [lesson, setLesson] = React.useState("");
   const [chartImg, setChartImg] = React.useState([]);
   const [tradeType, setTradeType] = React.useState("Live Trade");
+  const [tradeModel, setTradeModel] = React.useState("");
+  const [filterModel, setFilterModel] = React.useState("All");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
   const [err, setErr] = React.useState("");
@@ -2354,7 +2366,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try { await addJournal(entry); resetForm(); setErr("saved"); setTimeout(() => setView("list"), 800); }
     catch(e) { setErr("Failed to save. Please try again."); }
   };
@@ -2363,7 +2375,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!editing) return;
     if (!title.trim() || !pair.trim() || !analysis.trim()) { setErr("Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeDate, currency };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, tradeDate, currency };
     try {
       await deleteJournal(editing.id);
       await addJournal(updated);
@@ -2379,6 +2391,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
     setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
     setTradeType(j.tradeType||"Live Trade");
+    setTradeModel(j.tradeModel||"");
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
     setCurrency(j.currency||"ZAR"); setChartImg(j.images&&j.images.length?j.images:(j.image?[j.image]:[])); setErr("");
     setEditing(j); setView("edit");
@@ -2386,7 +2399,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     } catch(e) { console.error("openEdit error:", e); }
   };
 
-  const formProps = { tradeType, setTradeType, tradeDate, setTradeDate, currency, setCurrency,
+  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, tradeDate, setTradeDate, currency, setCurrency,
     title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
     pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
     lesson, setLesson, image: chartImg||[], setImage: setChartImg, err, userId: user.id, compressImage };
@@ -2436,6 +2449,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               <h2 style={{ fontFamily:S, fontSize:22, fontWeight:700, marginBottom:6 }}>{j.title}</h2>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:6 }}>
                 {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.tradeType}</span>}
+                {j.tradeModel && <span style={{ background:"rgba(107,159,255,.12)", color:"#6B9FFF", border:"1px solid rgba(107,159,255,.3)", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.tradeModel}</span>}
                 {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.currency}</span>}
               </div>
               <div style={{ fontSize:12, color:C.grey }}>{j.tradeDate ? new Date(j.tradeDate+"T12:00:00").toLocaleDateString("en-ZA",{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : new Date(j.createdAt).toLocaleDateString("en-ZA",{year:"numeric",month:"long",day:"numeric"})}</div>
@@ -2478,6 +2492,15 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         </div>
         <Btn onClick={() => { resetForm(); setView("new"); }}>+ New Entry</Btn>
       </div>
+      {/* Model filter */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
+        {["All","TA MODEL","FOREVER MODEL","PM SESSION MODEL","TA 2.0 MODEL","TA MMXM MODEL"].map(m => (
+          <button key={m} onClick={() => setFilterModel(m)} style={{ padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s",
+            background:filterModel===m?(m==="All"?C.gold:"rgba(107,159,255,.15)"):"transparent",
+            color:filterModel===m?(m==="All"?"#08090E":"#6B9FFF"):C.grey,
+            borderColor:filterModel===m?(m==="All"?C.gold:"rgba(107,159,255,.5)"):C.border }}>{m==="All"?"All Models":m}</button>
+        ))}
+      </div>
       {myJournals.length === 0 && (
         <div style={{ textAlign:"center", padding:"60px 0" }}>
           <div style={{ fontSize:48, marginBottom:16, opacity:.3 }}>📓</div>
@@ -2486,7 +2509,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {myJournals.map(j => (
+        {myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel).map(j => (
           <div key={j.id} style={{ background:C.card, border:"1.5px solid "+(j.adminComment?"rgba(201,168,76,.35)":C.border), borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
             onClick={() => { setSelected(j.id); setView("detail"); }}
             onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
@@ -2496,6 +2519,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                 <div style={{ fontFamily:S, fontSize:16, fontWeight:700, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.title}</div>
                 <div style={{ display:"flex", gap:8, fontSize:12, color:C.grey, flexWrap:"wrap", alignItems:"center" }}>
                   {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.tradeType}</span>}
+                  {j.tradeModel && <span style={{ background:"rgba(107,159,255,.12)", color:"#6B9FFF", border:"1px solid rgba(107,159,255,.3)", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.tradeModel}</span>}
                   {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.currency}</span>}
                   <span>{j.pair}</span><span>·</span><span>{j.direction}</span>
                   {j.pnl && <><span>·</span><span style={{ color:j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold }}>{j.pnl}</span></>}
@@ -2823,7 +2847,7 @@ function App() {
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
@@ -2954,7 +2978,7 @@ function App() {
   };
 
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
