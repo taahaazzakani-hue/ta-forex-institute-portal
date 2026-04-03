@@ -663,10 +663,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loginSessions, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "security", l: "🔐 Security" }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -695,6 +695,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
+        {tab === "security" && <SecurityTab loginSessions={loginSessions} users={users} />}
         {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
       </div>
     </div>
@@ -2879,61 +2880,118 @@ const PLAYBOOK_DATA = {
     color: "#4CB880",
     icon: "♾️",
     tagline: "Patience is the edge. One setup. One entry.",
-    description: "The Forever Model is about finding the one clean setup per week and executing it flawlessly. Quality over quantity. This model produces the most consistent results for disciplined traders.",
+    description: "The Forever Model uses the 4H timeframe to establish directional bias and identify institutional interest areas, then drills into M5 for the same precise entry models used in TA MODEL. Quality over quantity.",
     rules: [
-      "Maximum 1-2 setups per week",
-      "Must have confluence from at least 3 timeframes",
-      "Only trade premium/discount zones",
-      "RR must be minimum 1:3",
-      "No trading on Monday or Friday",
+      "4H BOS or MSS — establish your directional bias on the 4 hour first",
+      "4H FVG — identify a valid Fair Value Gap on the 4H for your area of interest",
+      "Additional confluence: 4H SMT at a key level — this is the primary extra filter",
+      "Entry timeframe is M5 — same as the TA MODEL",
+      "M5 Entry Option 1 (MSS Model): M5 MSS + M5 FVG (premium or discount optional)",
+      "M5 Entry Option 2 (IFVG Model): A+ liquidity sweep + IFVG (break through, candle closure, or retest)",
+      "Target: Minimum 1:2 RR — no exceptions",
+      "Extended targets: PDH, PDL, previous session high/low, 4H highs or lows",
     ],
-    dos: ["Mark weekly levels on Sunday", "Screenshot your setup before entry", "Let the trade fully play out"],
-    donts: ["Force setups mid-week", "Enter without multi-timeframe confirmation", "Scale in prematurely"],
+    dos: [
+      "Always confirm 4H BOS or MSS before any entry",
+      "Mark your 4H FVG zones before the session opens",
+      "Use 4H SMT at a key level as your primary extra confluence",
+      "Use the same MSS or IFVG entry model as TA MODEL on M5",
+      "Let price come to your level — do not chase",
+    ],
+    donts: [
+      "Enter without 4H bias confirmation",
+      "Skip the 4H SMT confluence check",
+      "Enter from the 4H directly — always drop to M5",
+      "Accept anything less than 1:2 RR",
+      "Force a trade when SMT is not present at the key level",
+    ],
+    extra: {
+      title: "Entry Models (same as TA MODEL)",
+      sections: [
+        {
+          name: "MSS Entry Model",
+          color: "#4CB880",
+          steps: ["M5 MSS (Market Structure Shift)", "M5 FVG (Premium or Discount zone — optional confluence)"],
+        },
+        {
+          name: "IFVG Entry Model",
+          color: "#6B9FFF",
+          steps: ["A+ Liquidity Sweep (clean sweep of a high/low)", "IFVG — enter on break through, candle closure above/below, or retest"],
+        },
+      ],
+    },
   },
   "PM SESSION MODEL": {
     color: "#C9A84C",
     icon: "🌆",
-    tagline: "The PM edge. Precision in the afternoon session.",
-    description: "The PM Session Model exploits the afternoon reversal or continuation plays that occur during the New York PM session (2pm-5pm EST / 8pm-11pm SAST). High probability setups with tight stops.",
+    tagline: "Lunch hour precision. M1 entries. Maximum discipline.",
+    description: "The PM Session Model targets the New York lunch hour (12-1pm US time) and the M15 window (1-1:15pm US time). Entries are on the M1 timeframe using the same MSS and IFVG models as TA and Forever Model.",
     rules: [
-      "Only enter between 8pm-11pm SAST",
-      "Must have clear NY AM high/low to reference",
-      "Trade reversals at previous session extremes",
-      "Tight stops — max 15 pips on FX, 50 points on indices",
-      "Close all trades by 11pm SAST",
+      "Session window 1 — Lunch Hour: 12:00pm to 1:00pm US time (watch for high or low forming)",
+      "Session window 2 — M15 Window: 1:00pm to 1:15pm US time (optional — see decision below)",
+      "Entry timeframe is M1 — tightest entries of all models",
+      "Wait for the Lunch Hour High (for sells) or Lunch Hour Low (for buys) to be swept",
+      "After sweep — apply M1 MSS or IFVG entry model (same as TA and Forever Model)",
+      "Decision: you can choose to ALSO wait for the M15 window to form (1-1:15pm), wait for price to sweep its high or low, then apply the same entry models",
+      "Both approaches are valid — choose one and stay consistent",
     ],
-    dos: ["Mark NY AM high and low before session", "Look for liquidity grabs at session extremes", "Use 5m/15m for entries"],
-    donts: ["Carry trades overnight from this model", "Enter without AM reference points", "Trade first 30 min of PM session"],
+    dos: [
+      "Mark the Lunch Hour high and low as it forms between 12pm-1pm",
+      "Wait for a clean sweep of the lunch high or low before entering",
+      "Use M1 MSS or IFVG entry model after the sweep — same rules apply",
+      "If using M15 window: mark the 1pm-1:15pm high/low and wait for sweep",
+      "Be patient — the sweep must happen before any entry",
+    ],
+    donts: [
+      "Enter before the lunch high or low is swept",
+      "Use a higher timeframe for entries — this model is M1 only",
+      "Mix both window approaches in the same session — pick one",
+      "Ignore the sweep requirement and enter on pure direction",
+      "Hold positions beyond the session without a clear target",
+    ],
+    extra: {
+      title: "Session Windows Breakdown",
+      sections: [
+        {
+          name: "Lunch Hour Window (12-1pm US)",
+          color: "#C9A84C",
+          steps: [
+            "12:00pm-1:00pm US time — watch the range form",
+            "Wait for Lunch High (sell bias) or Lunch Low (buy bias) to be swept",
+            "Apply M1 MSS or M1 IFVG entry model after sweep",
+          ],
+        },
+        {
+          name: "M15 Window (1:00-1:15pm US)",
+          color: "#FF7096",
+          steps: [
+            "1:00pm-1:15pm US time — optional additional window",
+            "Wait for the M15 window high or low to be swept",
+            "Apply same M1 MSS or M1 IFVG entry model after sweep",
+          ],
+        },
+      ],
+    },
   },
   "TA 2.0 MODEL": {
     color: "#FF7096",
-    icon: "🚀",
-    tagline: "The evolved model. Refined price action.",
-    description: "TA 2.0 is the advanced evolution of the original TA Model, incorporating Order Block theory, Fair Value Gaps, and institutional candle patterns for higher precision entries.",
-    rules: [
-      "Identify a valid Order Block before any entry",
-      "Wait for price to return to the OB",
-      "Confirm with a Fair Value Gap fill",
-      "Enter on the 1m or 5m after OB reaction",
-      "Minimum RR 1:3 due to tight entries",
-    ],
-    dos: ["Mark OBs on 15m/1H first", "Look for mitigation candles", "Track OB quality in your journal"],
-    donts: ["Enter an OB that has already been mitigated", "Skip FVG confirmation", "Use this model without mastering TA MODEL first"],
+    icon: "🔜",
+    tagline: "Coming Soon",
+    description: "This model is currently in development. Coach Taaha is refining the rules and will release it to members shortly. Stay consistent with the models you have for now.",
+    rules: ["This model is coming soon — stay tuned"],
+    dos: ["Focus on mastering the current models first"],
+    donts: ["Rush to learn this before mastering TA MODEL"],
+    comingSoon: true,
   },
   "TA MMXM MODEL": {
     color: "#C96BFF",
-    icon: "⚡",
-    tagline: "Manipulation. Movement. The full cycle.",
-    description: "The MMXM Model tracks the full market cycle: Manipulation, Movement, eXpansion, and Mitigation. It identifies where smart money runs stops before the real move begins.",
-    rules: [
-      "Identify the manipulation phase (stop hunt)",
-      "Wait for the displacement candle confirming the move",
-      "Enter on the retracement into the FVG/OB",
-      "Target the opposite liquidity pool",
-      "Only trade during power hours",
-    ],
-    dos: ["Mark buy-side and sell-side liquidity", "Wait for full manipulation before entry", "Target the full range liquidity"],
-    donts: ["Enter during the manipulation phase", "Miss the displacement — it is your signal", "Set targets at random levels"],
+    icon: "🔜",
+    tagline: "Coming Soon",
+    description: "The MMXM Model is being prepared for release. Coach Taaha will drop this model when the time is right. For now, focus on executing your current models with precision.",
+    rules: ["This model is coming soon — stay tuned"],
+    dos: ["Keep journalling and reviewing your current models"],
+    donts: ["Wait for this model before being consistent"],
+    comingSoon: true,
   },
 };
 
@@ -2967,7 +3025,15 @@ function ModelPlaybook() {
       </div>
 
       {/* Active model card */}
-      <div style={{ background: C.card, border: "2px solid " + m.color + "40", borderRadius: 20, overflow: "hidden" }}>
+      <div style={{ background: C.card, border: "2px solid " + m.color + "40", borderRadius: 20, overflow: "hidden", position: "relative" }}>
+        {m.comingSoon && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(7,9,15,.85)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 20 }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🔜</div>
+            <h3 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: m.color, marginBottom: 10 }}>{activeModel}</h3>
+            <p style={{ fontSize: 15, color: C.grey, textAlign: "center", maxWidth: 320, lineHeight: 1.7 }}>{m.description}</p>
+            <div style={{ marginTop: 24, padding: "10px 24px", background: m.color + "20", border: "1.5px solid " + m.color + "50", borderRadius: 20, fontSize: 13, fontWeight: 700, color: m.color }}>Coming Soon</div>
+          </div>
+        )}
         {/* Banner */}
         <div style={{ background: "linear-gradient(135deg," + m.color + "25," + m.color + "08)", padding: "28px 28px 24px", borderBottom: "1px solid " + m.color + "30" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -3400,6 +3466,142 @@ function AdminWeeklyReviewTab({ reviews, patchReview, users, weeklyPrompts, addP
 }
 
 
+/* ── SECURITY TAB ────────────────────────────────────────────────────────── */
+function SecurityTab({ loginSessions, users }) {
+  const [selectedUser, setSelectedUser] = React.useState("all");
+  const approvedUsers = users.filter(u => u.status === "approved");
+
+  const filtered = (loginSessions || []).filter(s => selectedUser === "all" || s.userId === selectedUser);
+
+  // Group by user
+  const byUser = {};
+  (loginSessions || []).forEach(s => {
+    if (!byUser[s.userId]) byUser[s.userId] = { name: s.userName, sessions: [] };
+    byUser[s.userId].sessions.push(s);
+  });
+
+  // Detect suspicious: same user, different IP within 1 hour
+  const isSuspicious = (sessions) => {
+    const recent = sessions.filter(s => Date.now() - s.createdAt < 24 * 60 * 60 * 1000);
+    const ips = [...new Set(recent.map(s => s.ip))];
+    return ips.length > 2;
+  };
+
+  const getDeviceLabel = (ua) => {
+    if (!ua) return "Unknown";
+    if (/iPhone|iPad|iPod/i.test(ua)) return "iOS Device";
+    if (/Android/i.test(ua)) return "Android Device";
+    if (/Windows/i.test(ua)) return "Windows PC";
+    if (/Macintosh|Mac OS/i.test(ua)) return "Mac";
+    if (/Linux/i.test(ua)) return "Linux";
+    return "Unknown Device";
+  };
+
+  const getBrowser = (ua) => {
+    if (!ua) return "";
+    if (/Chrome/i.test(ua) && !/Chromium|Edg/i.test(ua)) return "Chrome";
+    if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "Safari";
+    if (/Firefox/i.test(ua)) return "Firefox";
+    if (/Edg/i.test(ua)) return "Edge";
+    return "Browser";
+  };
+
+  const suspicious = Object.entries(byUser).filter(([, v]) => isSuspicious(v.sessions));
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      {/* Alert banner */}
+      {suspicious.length > 0 && (
+        <div style={{ background: "rgba(217,96,96,.1)", border: "1.5px solid rgba(217,96,96,.4)", borderRadius: 14, padding: "16px 20px" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 20 }}>🚨</span>
+            <span style={{ fontFamily: S, fontSize: 16, fontWeight: 700, color: C.red }}>Suspicious Activity Detected</span>
+          </div>
+          <p style={{ fontSize: 13, color: C.dim, marginBottom: 10 }}>The following students have logged in from more than 2 different IP addresses in the last 24 hours. This may indicate credential sharing.</p>
+          {suspicious.map(([uid, v]) => (
+            <div key={uid} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+              <span style={{ color: C.red, fontSize: 12 }}>⚠</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.red }}>{v.name}</span>
+              <span style={{ fontSize: 12, color: C.grey }}>— {[...new Set(v.sessions.slice(0,10).map(s=>s.ip))].length} different IPs in 24h</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12 }}>
+        {[
+          { label: "Total Logins", value: (loginSessions||[]).length, color: C.gold },
+          { label: "Active Students", value: Object.keys(byUser).length, color: C.green },
+          { label: "Flagged Accounts", value: suspicious.length, color: suspicious.length > 0 ? C.red : C.green },
+          { label: "Unique IPs Today", value: [...new Set((loginSessions||[]).filter(s=>Date.now()-s.createdAt<86400000).map(s=>s.ip))].length, color: "#6B9FFF" },
+        ].map(s => (
+          <div key={s.label} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "16px", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-student breakdown */}
+      <Card style={{ padding: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase" }}>Login Sessions by Student</div>
+          <select value={selectedUser} onChange={e => setSelectedUser(e.target.value)} style={{ width: "auto", padding: "8px 12px", fontSize: 12 }}>
+            <option value="all">All Students</option>
+            {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+
+        {Object.entries(byUser)
+          .filter(([uid]) => selectedUser === "all" || uid === selectedUser)
+          .sort((a,b) => b[1].sessions[0]?.createdAt - a[1].sessions[0]?.createdAt)
+          .map(([uid, v]) => {
+            const uniqueIPs = [...new Set(v.sessions.map(s => s.ip))];
+            const uniqueDevices = [...new Set(v.sessions.map(s => getDeviceLabel(s.device)))];
+            const flagged = isSuspicious(v.sessions);
+            return (
+              <div key={uid} style={{ marginBottom: 16, background: flagged ? "rgba(217,96,96,.05)" : C.bg, border: "1px solid " + (flagged ? C.red + "40" : C.border), borderRadius: 12, overflow: "hidden" }}>
+                {/* Student header */}
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: flagged ? C.red : C.gold }}>{v.name}</span>
+                    {flagged && <span style={{ background: C.red + "20", color: C.red, border: "1px solid " + C.red + "40", padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700 }}>⚠ FLAGGED</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 12, fontSize: 11, color: C.grey }}>
+                    <span>🌐 {uniqueIPs.length} IP{uniqueIPs.length !== 1 ? "s" : ""}</span>
+                    <span>📱 {uniqueDevices.join(", ")}</span>
+                    <span>🔑 {v.sessions.length} login{v.sessions.length !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+                {/* Recent sessions */}
+                <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                  {v.sessions.slice(0, 10).map((s, i) => (
+                    <div key={i} style={{ padding: "10px 16px", borderBottom: i < Math.min(v.sessions.length, 10) - 1 ? "1px solid " + C.border + "60" : "none", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontSize: 14 }}>{/iPhone|iPad|iPod/i.test(s.device||"") ? "📱" : /Android/i.test(s.device||"") ? "📱" : "💻"}</span>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.dim }}>{getDeviceLabel(s.device)} — {getBrowser(s.device)}</div>
+                          <div style={{ fontSize: 11, color: C.grey, marginTop: 1, fontFamily: "monospace" }}>IP: {s.ip}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.faint, flexShrink: 0 }}>
+                        {new Date(s.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })} {new Date(s.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                  ))}
+                  {v.sessions.length > 10 && <div style={{ padding: "8px 16px", fontSize: 11, color: C.faint, textAlign: "center" }}>+ {v.sessions.length - 10} older sessions</div>}
+                </div>
+              </div>
+            );
+          })}
+        {Object.keys(byUser).length === 0 && <p style={{ color: C.faint, fontSize: 13, textAlign: "center", padding: "20px 0" }}>No login sessions recorded yet.</p>}
+      </Card>
+    </div>
+  );
+}
+
+
 function App() {
   const [users,    setUsers]    = React.useState([]);
   const [courses,  setCourses]  = React.useState([]);
@@ -3412,6 +3614,7 @@ function App() {
   const [lastWatch, setLastWatch] = React.useState({});
   const [reviews,   setReviews]   = React.useState([]);
   const [weeklyPrompts, setWeeklyPrompts] = React.useState([]);
+  const [loginSessions, setLoginSessions] = React.useState([]);
   const [screen,   setScreen]   = React.useState("login");
   const [me,       setMe]       = React.useState(null);
   const [loading,  setLoading]  = React.useState(true);
@@ -3434,7 +3637,7 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j, com, hw, hws, rev, wp] = await Promise.all([
+      const [u, c, sec, v, j, com, hw, hws, rev, wp, ls] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
@@ -3453,10 +3656,12 @@ function App() {
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
       if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
+      if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
       if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
+      if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, device:x.device_info, createdAt:x.created_at })));
       // Build lastWatched map
       if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
     } catch(e) { console.error("loadAll error:", e); }
@@ -3626,6 +3831,18 @@ function App() {
     if (!u) { setMsg("Incorrect email or password."); return; }
     setMe(u);
     setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
+    // Track login session — fetch IP and store device info
+    if (u.status === "approved") {
+      try {
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        const ip = ipData.ip || "Unknown";
+        const device = navigator.userAgent;
+        const sessionEntry = { ip, device: device.slice(0, 200), ts: Date.now() };
+        // Store in Supabase login_sessions table
+        await sb("login_sessions", { method: "POST", prefer: "return=minimal", body: { id: uid(), user_id: u.id, user_name: u.name, ip_address: ip, device_info: device.slice(0, 200), created_at: Date.now() } });
+      } catch(e) { console.log("Session tracking skipped:", e.message); }
+    }
   };
 
   const register = async (name, email, pass, setMsg) => {
@@ -3659,7 +3876,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loginSessions={loginSessions} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
