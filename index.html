@@ -721,10 +721,9 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
 /* ── SUBSCRIBE PAGE ──────────────────────────────────────────────────────── */
 function SubscribePage({ user }) {
   const alreadySubscribed = (user.levels || []).includes("Private Mentorship");
-  const MERCHANT_ID = "34251665";
-  const RETURN_URL  = window.location.origin;
-  const CANCEL_URL  = window.location.origin;
-  const NOTIFY_URL  = "https://qpjnzhmuwklvqmevlxjm.supabase.co/functions/v1/payfast-webhook";
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  const BACKEND = "https://tafx-paystack-backend-production.up.railway.app";
 
   const plans = [
     {
@@ -740,47 +739,33 @@ function SubscribePage({ user }) {
         "Priority support & feedback",
         "Monthly debit order — cancel anytime",
       ],
-      itemName: "TA Forex Private Mentorship",
     },
   ];
 
-  const subscribe = (plan) => {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "https://www.payfast.co.za/eng/process";
-    form.target = "_blank";
-
-    const fields = {
-      merchant_id:      MERCHANT_ID,
-      merchant_key:     "zti3m0fkd4jhz",
-      return_url:       RETURN_URL,
-      cancel_url:       CANCEL_URL,
-      notify_url:       NOTIFY_URL,
-      name_first:       user.name.split(" ")[0] || user.name,
-      name_last:        user.name.split(" ").slice(1).join(" ") || "",
-      email_address:    user.email,
-      m_payment_id:     user.id + "_" + Date.now(),
-      amount:           plan.price.toFixed(2),
-      item_name:        plan.itemName,
-      subscription_type: "1",
-      billing_date:     new Date().toISOString().split("T")[0],
-      recurring_amount:  plan.price.toFixed(2),
-      frequency:        "3",
-      cycles:           "0",
-      custom_str1:      user.id,
-      custom_str2:      plan.name,
-      passphrase:       "YoussefRajaa2003",
-    };
-
-    Object.entries(fields).forEach(([k, v]) => {
-      const input = document.createElement("input");
-      input.type = "hidden"; input.name = k; input.value = v;
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  const subscribe = async (plan) => {
+    setLoading(true); setErr("");
+    try {
+      const res = await fetch(BACKEND + "/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.name,
+          plan: plan.name,
+          userId: user.id,
+          amount: plan.price,
+        }),
+      });
+      const data = await res.json();
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        setErr(data.error || "Payment failed. Please try again.");
+      }
+    } catch(e) {
+      setErr("Could not connect to payment server. Please try again.");
+    }
+    setLoading(false);
   };
 
   return (
@@ -825,11 +810,12 @@ function SubscribePage({ user }) {
         </div>
       ))}
 
+      {err && <div style={{ color: C.red, fontSize: 13, textAlign: "center", marginTop: 8 }}>{err}</div>}
       <div style={{ marginTop: 24, padding: "18px 20px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ fontSize: 24, flexShrink: 0 }}>🔒</div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.white, marginBottom: 2 }}>Secure Payment via PayFast</div>
-          <div style={{ fontSize: 12, color: C.grey, lineHeight: 1.6 }}>Payments are processed securely by PayFast. Your card details are never stored on this portal. You will be redirected to PayFast secure checkout to complete your subscription.</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.white, marginBottom: 2 }}>Secure Payment via Paystack</div>
+          <div style={{ fontSize: 12, color: C.grey, lineHeight: 1.6 }}>Payments are processed securely by Paystack — trusted by thousands of SA businesses. You will be redirected to Paystack checkout to complete your subscription. Cancel anytime.</div>
         </div>
       </div>
     </div>
