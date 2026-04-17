@@ -3726,7 +3726,7 @@ function App() {
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
         sb("videos?order=created_at.asc"),
-        sb("journals?order=created_at.desc"),
+        sb("journals?order=created_at.desc&limit=2000&select=*"),
         sb("comments?order=created_at.asc"),
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
@@ -3738,7 +3738,7 @@ function App() {
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+      if (j && j.length > 0) setJournals(prev => { const incoming = j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:x.images||[], tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })); const prevMap = {}; prev.forEach(p => prevMap[p.id] = p); incoming.forEach(i => prevMap[i.id] = i); return Object.values(prevMap).sort((a,b) => b.createdAt - a.createdAt); });
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
@@ -3894,8 +3894,8 @@ function App() {
   };
 
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
-    setJournals(prev => [j, ...prev]);
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, images:j.images||[], trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    setJournals(prev => { if (prev.find(p => p.id === j.id)) return prev; return [j, ...prev]; });
   };
   const deleteJournalDB = async (id) => {
     await sb("journals?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
