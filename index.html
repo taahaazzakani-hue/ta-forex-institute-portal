@@ -676,10 +676,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loginSessions, onLogout, loadAll }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loginSessions, loadJournalsDB, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "security", l: "🔐 Security" }, { k: "membership", l: "Membership" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -705,7 +705,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
-        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} />}
+        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} loadJournals={loadJournalsDB} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
         {tab === "security" && <SecurityTab loginSessions={loginSessions} users={users} />
@@ -3698,7 +3698,6 @@ function App() {
   const [lastWatch, setLastWatch] = React.useState({});
   const [reviews,   setReviews]   = React.useState([]);
   const [weeklyPrompts, setWeeklyPrompts] = React.useState([]);
-  const [loginSessions, setLoginSessions] = React.useState([]);
   const [screen,   setScreen]   = React.useState("login");
   const [me,       setMe]       = React.useState(null);
   const [loading,  setLoading]  = React.useState(true);
@@ -3721,37 +3720,46 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j, com, hw, hws, rev, wp, ls] = await Promise.all([
+      const [u, c, sec, v, j, com, hw, hws] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
-        sb("videos?order=created_at.asc"),
-        sb("journals?order=created_at.desc&limit=2000&select=*"),
-        sb("comments?order=created_at.asc"),
+        sb("videos?order=created_at.asc&select=id,course_id,section_id,title,url,description,notes,pdf_url,pdf_name,sort_order,created_at"),
+        sb("journals?order=created_at.desc&limit=100&select=id,user_id,user_name,title,pair,direction,risk,gain,result,pnl,analysis,lesson,image,trade_type,trade_model,trade_date,currency,admin_comment,admin_comment_at,admin_seen,created_at"),
+        sb("comments?order=created_at.asc&select=id,video_id,user_id,user_name,text,parent_id,is_admin,timestamp,created_at"),
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
-        sb("weekly_reviews?order=created_at.desc").catch(()=>null),
-        sb("weekly_prompts?order=created_at.asc").catch(()=>null),
-        sb("login_sessions?order=created_at.desc&limit=500").catch(()=>null),
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j && j.length > 0) setJournals(prev => { const incoming = j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:x.images||[], tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })); const prevMap = {}; prev.forEach(p => prevMap[p.id] = p); incoming.forEach(i => prevMap[i.id] = i); return Object.values(prevMap).sort((a,b) => b.createdAt - a.createdAt); });
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
-      if (rev) setReviews(rev.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, weekLabel:x.week_label, answers:x.answers||{}, coachFeedback:x.coach_feedback||null, createdAt:x.created_at })));
-      if (wp) setWeeklyPrompts(wp.map(x => ({ id:x.id, question:x.question, required:x.required!==false, active:x.active!==false, createdAt:x.created_at })));
-      if (ls) setLoginSessions(ls.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, ip:x.ip_address, city:x.city||null, country:x.country||null, device:x.device_info, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       // Build lastWatched map
       if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
-    } catch(e) { console.error("loadAll error:", e); }
+    } catch(e) { console.error("loadAll error:", e); if (e?.message?.includes('exceed_egress_quota') || JSON.stringify(e)?.includes('egress')) { setLoading(false); alert('Portal is temporarily unavailable due to high traffic. It will be back on May 1st. All your data is safe.'); } }
     if (showSpinner) setLoading(false);
   };
   React.useEffect(() => { loadAll(true); }, []);
+
+  // ── Fetch only this user's journals (called after login) ──
+  const fetchUserJournals = async (userId) => {
+    try {
+      const data = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500&select=id,user_id,user_name,title,pair,direction,risk,gain,result,pnl,analysis,lesson,image,trade_type,trade_model,trade_date,currency,admin_comment,admin_comment_at,admin_seen,created_at");
+      if (data && data.length > 0) {
+        setJournals(prev => {
+          const map = {};
+          prev.forEach(p => map[p.id] = p);
+          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
+          return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
+        });
+      }
+    } catch(e) { console.log("fetchUserJournals error:", e.message); }
+  };
 
   // ── Setters that also persist to Supabase ──
   const saveUsers = async (newUsers) => {
@@ -3893,9 +3901,13 @@ function App() {
     setComments(prev => prev.filter(c => c.id !== id && c.parentId !== id));
   };
 
+  const loadJournalsDB = async () => {
+    const j = await sb("journals?order=created_at.desc&limit=2000").catch(()=>null);
+    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+  };
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, images:j.images||[], trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
-    setJournals(prev => { if (prev.find(p => p.id === j.id)) return prev; return [j, ...prev]; });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
     await sb("journals?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
@@ -3910,42 +3922,29 @@ function App() {
     setJournals(prev => prev.map(j => j.id === id ? { ...j, ...patch } : j));
   };
 
+  const loadUserJournals = async (userId) => {
+    try {
+      const j = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500");
+      if (j && j.length > 0) setJournals(prev => {
+        const map = {}; prev.forEach(p => { map[p.id] = p; });
+        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
+        return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
+      });
+    } catch(e) { console.log("loadUserJournals:", e); }
+  };
+
   const login = async (email, pass, setMsg) => {
     const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
     if (!u) { setMsg("Incorrect email or password."); return; }
-    // Fire-and-forget session tracking BEFORE state changes
-    if (u.status === "approved") {
-      const sessionId = uid();
-      const device = navigator.userAgent.slice(0, 200);
-      const createdAt = Date.now();
-      const SB_URL = "https://qpjnzhmuwklvqmevlxjm.supabase.co";
-      const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwam56aG11d2tsdnFtZXZseGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjQ1ODUsImV4cCI6MjA4OTg0MDU4NX0.OlFw50GiD4vNzrLZ2-dFXVdAD8OxG1-g0xP_erR_n98";
-      // Step 1: get IP
-      fetch("https://api.ipify.org?format=json")
-        .then(r => r.json())
-        .then(ipData => {
-          const ip = ipData.ip || "Unknown";
-          // Step 2: geo lookup
-          return fetch("https://ip-api.com/json/" + ip + "?fields=status,city,country,countryCode")
-            .then(r => r.json())
-            .then(geo => ({ ip, city: geo.city || null, country: geo.country || null, countryCode: geo.countryCode || null }))
-            .catch(() => ({ ip, city: null, country: null, countryCode: null }));
-        })
-        .then(({ ip, city, country, countryCode }) => {
-          // Step 3: save to Supabase
-          return fetch(SB_URL + "/rest/v1/login_sessions", {
-            method: "POST",
-            headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-            body: JSON.stringify({ id: sessionId, user_id: u.id, user_name: u.name, ip_address: ip, city, country, country_code: countryCode, device_info: device, created_at: createdAt })
-          }).then(() => ({ ip, city, country, countryCode }));
-        })
-        .then(({ ip, city, country }) => {
-          setLoginSessions(prev => [{ id: sessionId, userId: u.id, userName: u.name, ip, city, country, device, createdAt }, ...prev]);
-        })
-        .catch(e => console.log("Session tracking:", e.message));
-    }
+
     setMe(u);
     setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
+    // Load only this user's journals to reduce egress
+    if (u.status === "approved") {
+      sb("journals?user_id=eq." + u.id + "&order=created_at.desc&limit=500").then(uj => {
+        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+      }).catch(()=>{});
+    }
   };
 
   const register = async (name, email, pass, setMsg) => {
@@ -3979,7 +3978,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loginSessions={loginSessions} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loginSessions={loginSessions} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
