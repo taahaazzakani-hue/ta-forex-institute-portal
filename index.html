@@ -687,6 +687,7 @@ function SubscriptionsTab({ sb }) {
   const [msgFor, setMsgFor] = useState(null);
   const [channel, setChannel] = useState("whatsapp");
   const [copyStatus, setCopyStatus] = useState("");
+  const [showOverdueBanner, setShowOverdueBanner] = useState(true);
 
   const COACH_FIRST = "Taaha";
   const COACH_FULL = "Taaha Azzakani";
@@ -732,13 +733,13 @@ function SubscriptionsTab({ sb }) {
     const first = (s.name || "").split(" ")[0];
     const amt = "R" + s.amount;
     if (ch === "whatsapp") {
-      if (st.kind === "overdue") return "Hi " + first + ", hope you're well. Just a friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " was due on " + date + " and is currently outstanding. Could you send through proof of payment when you get a chance? Let me know if there's anything I can help with. — " + COACH_FIRST;
+      if (st.kind === "overdue") return "Hi " + first + ", hope you're well. Just a friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " was due on " + date + " and is currently outstanding. Could you send through proof of payment when you get a chance? Let me know if theres anything I can help with. — " + COACH_FIRST;
       if (st.days === 0) return "Hi " + first + ", hope you're well. Just a reminder that your " + BRAND + " mentorship subscription of " + amt + " is due today. Please send through proof of payment once done. Looking forward to another solid month of trading together. — " + COACH_FIRST;
       return "Hi " + first + ", hope you're well. Friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " is due on " + date + ". Let me know if you need the banking details again. — " + COACH_FIRST;
     }
     if (ch === "email") {
       const od = st.kind === "overdue";
-      return "Hi " + first + ",\n\nI hope you're doing well and trading is going strong.\n\nThis is a " + (od ? "follow-up" : "friendly") + " reminder that your monthly " + BRAND + " mentorship subscription of " + amt + " " + (od ? "was due on " + date + " and is currently outstanding" : "is due on " + date) + ".\n\nPlease send through proof of payment once completed. If you need the banking details resent or have any questions, just reply to this email.\n\nThanks for being part of the mentorship — looking forward to another month of growth.\n\nBest regards,\n" + COACH_FULL + "\n" + BRAND;
+      return "Hi " + first + ",\n\nI hope you're doing well and trading is going strong.\n\nThis is a " + (od ? "follow-up" : "friendly") + " reminder that your monthly " + BRAND + " mentorship subscription of " + amt + " " + (od ? "was due on " + date + " and is currently outstanding" : "is due on " + date) + ".\n\nPlease send through proof of payment once completed. If you need the banking details resent or have any questions, just reply to this email.\n\nThanks for being part of the mentorship.\n\nBest regards,\n" + COACH_FULL + "\n" + BRAND;
     }
     if (ch === "sms") {
       if (st.kind === "overdue") return "TA Forex: Hi " + first + ", your " + amt + " subscription was due " + date + " and is outstanding. Please send POP. — " + COACH_FIRST;
@@ -748,6 +749,12 @@ function SubscriptionsTab({ sb }) {
   };
 
   const buildSubject = (s) => getStatus(s).kind === "overdue" ? BRAND + " — outstanding payment reminder" : BRAND + " — monthly subscription reminder";
+
+  const openMessage = (s) => {
+    setChannel("whatsapp");
+    setCopyStatus("");
+    setMsgFor(s);
+  };
 
   const saveStudent = async (form) => {
     const payload = {
@@ -788,58 +795,110 @@ function SubscriptionsTab({ sb }) {
     const body = buildMsg(msgFor, channel);
     const text = channel === "email" ? "Subject: " + buildSubject(msgFor) + "\n\n" + body : body;
     try { await navigator.clipboard.writeText(text); setCopyStatus("✓ Copied"); setTimeout(() => setCopyStatus(""), 2000); }
-    catch { setCopyStatus("Copy failed"); }
+    catch (e) { setCopyStatus("Copy failed - select text manually"); }
   };
 
-  const enriched = students.map(s => ({ ...s, _st: getStatus(s) }));
+  const sendNow = (s, ch) => {
+    const body = buildMsg(s, ch);
+    const subject = buildSubject(s);
+    const phone = (s.phone || "").replace(/[^\d+]/g, "");
+    let url = null;
+    if (ch === "whatsapp" && phone) url = "https://wa.me/" + phone.replace(/^\+/, "") + "?text=" + encodeURIComponent(body);
+    else if (ch === "email" && s.email) url = "mailto:" + s.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    else if (ch === "sms" && phone) url = "sms:" + phone + "?body=" + encodeURIComponent(body);
+    if (url) window.open(url, "_blank");
+  };
+
+  const enriched = students.map(s => Object.assign({}, s, { _st: getStatus(s) }));
   const filtered = enriched
     .filter(s => filter === "all" || s._st.kind === filter)
     .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a._st.days - b._st.days);
 
+  const overdueList = enriched.filter(s => s._st.kind === "overdue").sort((a,b) => a._st.days - b._st.days);
+  const dueSoonList = enriched.filter(s => s._st.kind === "due").sort((a,b) => a._st.days - b._st.days);
+
   const totalMonthly = students.reduce((sum, s) => sum + Number(s.amount || 0), 0);
-  const dueCount = enriched.filter(s => s._st.kind === "due").length;
-  const overdueCount = enriched.filter(s => s._st.kind === "overdue").length;
 
   const pillStyle = (kind) => {
-    const map = { paid: [C.green, "#081A0E"], due: [C.gold, "#1A1200"], overdue: [C.red, "#1A0808"] };
-    const arr = map[kind] || [C.grey, C.card];
-    const col = arr[0], bg = arr[1];
+    let col = C.grey, bg = C.card;
+    if (kind === "paid") { col = C.green; bg = "#081A0E"; }
+    else if (kind === "due") { col = C.gold; bg = "#1A1200"; }
+    else if (kind === "overdue") { col = C.red; bg = "#1A0808"; }
     return { background: bg, color: col, border: "1px solid " + col + "30", padding: "3px 11px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", whiteSpace: "nowrap" };
   };
 
   return (
     <div className="fu">
+      {/* BIG OVERDUE BANNER */}
+      {overdueList.length > 0 && showOverdueBanner && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(217,96,96,.18), rgba(217,96,96,.08))",
+          border: "1.5px solid " + C.red,
+          borderRadius: 14,
+          padding: 18,
+          marginBottom: 18,
+          animation: "pulse 2.5s ease-in-out infinite",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.red, textTransform: "uppercase", fontFamily: S, marginBottom: 4 }}>⚠ Action Required</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: C.white, fontFamily: S, lineHeight: 1.2 }}>{overdueList.length} student{overdueList.length === 1 ? "" : "s"} overdue</p>
+              <p style={{ fontSize: 13, color: C.dim, marginTop: 4 }}>Total outstanding: <strong style={{ color: C.red }}>R{overdueList.reduce((s,x) => s + Number(x.amount||0), 0).toLocaleString()}</strong></p>
+            </div>
+            <button onClick={() => setShowOverdueBanner(false)} style={{ background: "transparent", color: C.grey, fontSize: 18, padding: 4 }}>✕</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+            {overdueList.slice(0, 5).map(s => (
+              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(7,9,15,.4)", borderRadius: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: C.white }}>{s.name}</p>
+                  <p style={{ fontSize: 11, color: C.grey }}>R{s.amount} · {Math.abs(s._st.days)} days overdue</p>
+                </div>
+                <Btn v="gold" sz="sm" onClick={() => openMessage(s)}>Send Reminder</Btn>
+              </div>
+            ))}
+            {overdueList.length > 5 && (
+              <button onClick={() => setFilter("overdue")} style={{ background: "transparent", color: C.gold, fontSize: 12, fontWeight: 600, padding: "8px", textAlign: "center", letterSpacing: ".05em" }}>
+                + {overdueList.length - 5} more — view all overdue →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Metrics */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 22 }}>
-        {[
-          { l: "Students", v: students.length, c: C.white },
-          { l: "Due Soon", v: dueCount, c: C.gold },
-          { l: "Overdue", v: overdueCount, c: C.red },
-          { l: "Monthly", v: "R" + totalMonthly.toLocaleString(), c: C.green },
-        ].map((m, i) => (
-          <Card key={i} style={{ padding: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>{m.l}</p>
-            <p style={{ fontSize: 22, fontWeight: 700, color: m.c, fontFamily: S }}>{m.v}</p>
-          </Card>
-        ))}
+        <Card style={{ padding: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Students</p>
+          <p style={{ fontSize: 22, fontWeight: 700, color: C.white, fontFamily: S }}>{students.length}</p>
+        </Card>
+        <Card style={{ padding: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Due Soon</p>
+          <p style={{ fontSize: 22, fontWeight: 700, color: C.gold, fontFamily: S }}>{dueSoonList.length}</p>
+        </Card>
+        <Card style={{ padding: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Overdue</p>
+          <p style={{ fontSize: 22, fontWeight: 700, color: C.red, fontFamily: S }}>{overdueList.length}</p>
+        </Card>
+        <Card style={{ padding: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Monthly</p>
+          <p style={{ fontSize: 22, fontWeight: 700, color: C.green, fontFamily: S }}>R{totalMonthly.toLocaleString()}</p>
+        </Card>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+      {/* Search + Add */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 1, minWidth: 200 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students..." />
         <Btn v="gold" onClick={() => { setEditing(null); setShowForm(true); }}>+ Add Student</Btn>
       </div>
+
+      {/* Filter pills */}
       <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
-        {[["all","All"],["due","Due Soon"],["overdue","Overdue"],["paid","Paid"]].map(arr => {
-          const k = arr[0], l = arr[1];
-          return (
-            <button key={k} onClick={() => setFilter(k)} style={{
-              padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase",
-              background: filter === k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
-              color: filter === k ? "#08090E" : C.grey,
-              border: filter === k ? "none" : "1.5px solid " + C.border,
-            }}>{l}</button>
-          );
-        })}
+        <button onClick={() => setFilter("all")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "all" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "all" ? "#08090E" : C.grey, border: filter === "all" ? "none" : "1.5px solid " + C.border }}>All ({students.length})</button>
+        <button onClick={() => setFilter("overdue")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "overdue" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "overdue" ? "#08090E" : C.grey, border: filter === "overdue" ? "none" : "1.5px solid " + C.border }}>Overdue ({overdueList.length})</button>
+        <button onClick={() => setFilter("due")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "due" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "due" ? "#08090E" : C.grey, border: filter === "due" ? "none" : "1.5px solid " + C.border }}>Due Soon ({dueSoonList.length})</button>
+        <button onClick={() => setFilter("paid")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "paid" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "paid" ? "#08090E" : C.grey, border: filter === "paid" ? "none" : "1.5px solid " + C.border }}>Paid</button>
       </div>
 
       {loading ? (
@@ -851,7 +910,7 @@ function SubscriptionsTab({ sb }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map(s => (
-            <Card key={s.id} style={{ padding: 14 }}>
+            <Card key={s.id} style={{ padding: 14, borderColor: s._st.kind === "overdue" ? "rgba(217,96,96,.4)" : C.border }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: C.white, fontFamily: S, marginBottom: 3 }}>{s.name}</p>
@@ -861,7 +920,7 @@ function SubscriptionsTab({ sb }) {
                 <span style={pillStyle(s._st.kind)}>{s._st.label}</span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <Btn v="gold" sz="sm" onClick={() => { setMsgFor(s); setChannel("whatsapp"); setCopyStatus(""); }}>Message</Btn>
+                <Btn v="gold" sz="sm" onClick={() => openMessage(s)}>Message</Btn>
                 <Btn v="navy" sz="sm" onClick={() => markPaid(s)}>Mark Paid</Btn>
                 <Btn v="outline" sz="sm" onClick={() => { setEditing(s); setShowForm(true); }}>Edit</Btn>
                 <Btn v="danger" sz="sm" onClick={() => archive(s.id)}>Archive</Btn>
@@ -872,7 +931,7 @@ function SubscriptionsTab({ sb }) {
       )}
 
       {showForm && <StudentFormModal initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }} />}
-      {msgFor && <MsgModal student={msgFor} channel={channel} setChannel={setChannel} body={buildMsg(msgFor, channel)} subject={buildSubject(msgFor)} onClose={() => setMsgFor(null)} onCopy={copyMsg} copyStatus={copyStatus} />}
+      {msgFor && <MsgModal student={msgFor} channel={channel} setChannel={setChannel} body={buildMsg(msgFor, channel)} subject={buildSubject(msgFor)} onClose={() => setMsgFor(null)} onCopy={copyMsg} onSend={() => sendNow(msgFor, channel)} copyStatus={copyStatus} />}
     </div>
   );
 }
@@ -914,37 +973,30 @@ function StudentFormModal({ initial, onClose, onSave }) {
   );
 }
 
-function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy, copyStatus }) {
+function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy, onSend, copyStatus }) {
   const phone = (student.phone || "").replace(/[^\d+]/g, "");
-  let actionLink = null, actionLabel = null;
-  if (channel === "whatsapp" && phone) { actionLink = "https://wa.me/" + phone.replace(/^\+/, "") + "?text=" + encodeURIComponent(body); actionLabel = "Open WhatsApp"; }
-  else if (channel === "email" && student.email) { actionLink = "mailto:" + student.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body); actionLabel = "Open Mail"; }
-  else if (channel === "sms" && phone) { actionLink = "sms:" + phone + "?body=" + encodeURIComponent(body); actionLabel = "Open Messages"; }
+  let canSend = false, sendLabel = "Send";
+  if (channel === "whatsapp" && phone) { canSend = true; sendLabel = "Open WhatsApp"; }
+  else if (channel === "email" && student.email) { canSend = true; sendLabel = "Open Mail"; }
+  else if (channel === "sms" && phone) { canSend = true; sendLabel = "Open Messages"; }
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(7,9,15,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: C.surf, border: "1.5px solid " + C.border, borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
         <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 4 }}>Reminder for {student.name}</h2>
         <p style={{ fontSize: 12, color: C.grey, marginBottom: 16 }}>Pick a channel and send</p>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          {[["whatsapp","WhatsApp"],["email","Email"],["sms","SMS"]].map(arr => {
-            const k = arr[0], l = arr[1];
-            return (
-              <button key={k} onClick={() => setChannel(k)} style={{
-                flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
-                background: channel === k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
-                color: channel === k ? "#08090E" : C.grey,
-                border: channel === k ? "none" : "1.5px solid " + C.border,
-              }}>{l}</button>
-            );
-          })}
+          <button onClick={() => setChannel("whatsapp")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "whatsapp" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "whatsapp" ? "#08090E" : C.grey, border: channel === "whatsapp" ? "none" : "1.5px solid " + C.border }}>WhatsApp</button>
+          <button onClick={() => setChannel("email")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "email" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "email" ? "#08090E" : C.grey, border: channel === "email" ? "none" : "1.5px solid " + C.border }}>Email</button>
+          <button onClick={() => setChannel("sms")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "sms" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "sms" ? "#08090E" : C.grey, border: channel === "sms" ? "none" : "1.5px solid " + C.border }}>SMS</button>
         </div>
         {channel === "email" && <div style={{ marginBottom: 12 }}><label>Subject</label><input readOnly value={subject} /></div>}
         <div style={{ marginBottom: 12 }}><label>Message</label><textarea readOnly value={body} rows={9} style={{ resize: "vertical" }} /></div>
+        {!canSend && <p style={{ fontSize: 12, color: C.gold, marginBottom: 10 }}>⚠ No {channel === "email" ? "email" : "phone number"} on file. Add one via Edit, or just copy the message.</p>}
         {copyStatus && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{copyStatus}</p>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Btn v="navy" onClick={onClose}>Close</Btn>
           <Btn v="outline" onClick={onCopy}>Copy</Btn>
-          {actionLink && <a href={actionLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><Btn v="gold">{actionLabel}</Btn></a>}
+          {canSend && <Btn v="gold" onClick={onSend}>{sendLabel}</Btn>}
         </div>
       </div>
     </div>
