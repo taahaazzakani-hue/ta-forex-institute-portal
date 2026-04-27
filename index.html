@@ -676,10 +676,285 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loadJournalsDB, onLogout, loadAll }) {
+/* ── SUBSCRIPTIONS TAB ───────────────────────────────────────────────────── */
+function SubscriptionsTab({ sb }) {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [msgFor, setMsgFor] = useState(null);
+  const [channel, setChannel] = useState("whatsapp");
+  const [copyStatus, setCopyStatus] = useState("");
+
+  const COACH_FIRST = "Taaha";
+  const COACH_FULL = "Taaha Azzakani";
+  const BRAND = "TA Forex Institute";
+
+  const load = async () => {
+    setLoading(true);
+    const data = await sb("subscription_students?active=eq.true&order=created_at.desc");
+    if (data) setStudents(data);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const getNextDate = (s) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (s.last_paid_date) {
+      const ref = new Date(s.last_paid_date);
+      let next = new Date(ref.getFullYear(), ref.getMonth() + 1, s.billing_day);
+      while (next < today) next = new Date(next.getFullYear(), next.getMonth() + 1, s.billing_day);
+      return next;
+    }
+    const start = new Date(s.start_date);
+    let next = new Date(start.getFullYear(), start.getMonth(), s.billing_day);
+    if (next < start) next = new Date(next.getFullYear(), next.getMonth() + 1, s.billing_day);
+    return next;
+  };
+
+  const getStatus = (s) => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const next = getNextDate(s);
+    const days = Math.ceil((next - today) / 86400000);
+    if (days < 0) return { label: "Overdue " + Math.abs(days) + "d", kind: "overdue", days, next };
+    if (days === 0) return { label: "Due today", kind: "due", days, next };
+    if (days <= 5) return { label: "Due in " + days + "d", kind: "due", days, next };
+    return { label: days + "d left", kind: "paid", days, next };
+  };
+
+  const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+  const buildMsg = (s, ch) => {
+    const st = getStatus(s);
+    const date = fmtDate(st.next);
+    const first = (s.name || "").split(" ")[0];
+    const amt = "R" + s.amount;
+    if (ch === "whatsapp") {
+      if (st.kind === "overdue") return "Hi " + first + ", hope you're well. Just a friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " was due on " + date + " and is currently outstanding. Could you send through proof of payment when you get a chance? Let me know if there's anything I can help with. — " + COACH_FIRST;
+      if (st.days === 0) return "Hi " + first + ", hope you're well. Just a reminder that your " + BRAND + " mentorship subscription of " + amt + " is due today. Please send through proof of payment once done. Looking forward to another solid month of trading together. — " + COACH_FIRST;
+      return "Hi " + first + ", hope you're well. Friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " is due on " + date + ". Let me know if you need the banking details again. — " + COACH_FIRST;
+    }
+    if (ch === "email") {
+      const od = st.kind === "overdue";
+      return "Hi " + first + ",\n\nI hope you're doing well and trading is going strong.\n\nThis is a " + (od ? "follow-up" : "friendly") + " reminder that your monthly " + BRAND + " mentorship subscription of " + amt + " " + (od ? "was due on " + date + " and is currently outstanding" : "is due on " + date) + ".\n\nPlease send through proof of payment once completed. If you need the banking details resent or have any questions, just reply to this email.\n\nThanks for being part of the mentorship — looking forward to another month of growth.\n\nBest regards,\n" + COACH_FULL + "\n" + BRAND;
+    }
+    if (ch === "sms") {
+      if (st.kind === "overdue") return "TA Forex: Hi " + first + ", your " + amt + " subscription was due " + date + " and is outstanding. Please send POP. — " + COACH_FIRST;
+      return "TA Forex: Hi " + first + ", reminder your " + amt + " subscription is due " + date + ". — " + COACH_FIRST;
+    }
+    return "";
+  };
+
+  const buildSubject = (s) => getStatus(s).kind === "overdue" ? BRAND + " — outstanding payment reminder" : BRAND + " — monthly subscription reminder";
+
+  const saveStudent = async (form) => {
+    const payload = {
+      name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      amount: Number(form.amount),
+      start_date: form.start_date,
+      billing_day: Number(form.billing_day),
+      notes: form.notes ? form.notes.trim() : null,
+    };
+    if (!payload.name || !payload.start_date || !payload.amount) { alert("Name, start date, and amount are required"); return false; }
+    if (editing) {
+      await sb("subscription_students?id=eq." + editing.id, { method: "PATCH", body: payload });
+    } else {
+      await sb("subscription_students", { method: "POST", body: payload });
+    }
+    await load();
+    return true;
+  };
+
+  const archive = async (id) => {
+    if (!confirm("Archive this student? They will be hidden but payment history is kept.")) return;
+    await sb("subscription_students?id=eq." + id, { method: "PATCH", body: { active: false } });
+    await load();
+  };
+
+  const markPaid = async (s) => {
+    const today = new Date().toISOString();
+    await sb("subscription_students?id=eq." + s.id, { method: "PATCH", body: { last_paid_date: today } });
+    await sb("subscription_payments", { method: "POST", body: { student_id: s.id, amount: s.amount, paid_on: new Date().toISOString().split("T")[0] } });
+    await load();
+    setMsgFor(null);
+  };
+
+  const copyMsg = async () => {
+    if (!msgFor) return;
+    const body = buildMsg(msgFor, channel);
+    const text = channel === "email" ? "Subject: " + buildSubject(msgFor) + "\n\n" + body : body;
+    try { await navigator.clipboard.writeText(text); setCopyStatus("✓ Copied"); setTimeout(() => setCopyStatus(""), 2000); }
+    catch { setCopyStatus("Copy failed"); }
+  };
+
+  const enriched = students.map(s => ({ ...s, _st: getStatus(s) }));
+  const filtered = enriched
+    .filter(s => filter === "all" || s._st.kind === filter)
+    .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a._st.days - b._st.days);
+
+  const totalMonthly = students.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+  const dueCount = enriched.filter(s => s._st.kind === "due").length;
+  const overdueCount = enriched.filter(s => s._st.kind === "overdue").length;
+
+  const pillStyle = (kind) => {
+    const map = { paid: [C.green, "#081A0E"], due: [C.gold, "#1A1200"], overdue: [C.red, "#1A0808"] };
+    const arr = map[kind] || [C.grey, C.card];
+    const col = arr[0], bg = arr[1];
+    return { background: bg, color: col, border: "1px solid " + col + "30", padding: "3px 11px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", whiteSpace: "nowrap" };
+  };
+
+  return (
+    <div className="fu">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 22 }}>
+        {[
+          { l: "Students", v: students.length, c: C.white },
+          { l: "Due Soon", v: dueCount, c: C.gold },
+          { l: "Overdue", v: overdueCount, c: C.red },
+          { l: "Monthly", v: "R" + totalMonthly.toLocaleString(), c: C.green },
+        ].map((m, i) => (
+          <Card key={i} style={{ padding: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>{m.l}</p>
+            <p style={{ fontSize: 22, fontWeight: 700, color: m.c, fontFamily: S }}>{m.v}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+        <input style={{ flex: 1, minWidth: 200 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students..." />
+        <Btn v="gold" onClick={() => { setEditing(null); setShowForm(true); }}>+ Add Student</Btn>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+        {[["all","All"],["due","Due Soon"],["overdue","Overdue"],["paid","Paid"]].map(arr => {
+          const k = arr[0], l = arr[1];
+          return (
+            <button key={k} onClick={() => setFilter(k)} style={{
+              padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase",
+              background: filter === k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
+              color: filter === k ? "#08090E" : C.grey,
+              border: filter === k ? "none" : "1.5px solid " + C.border,
+            }}>{l}</button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <p style={{ textAlign: "center", color: C.grey, padding: 40 }}>Loading...</p>
+      ) : filtered.length === 0 ? (
+        <Card style={{ padding: 40, textAlign: "center" }}>
+          <p style={{ color: C.grey, fontSize: 14 }}>{students.length === 0 ? "No students yet. Tap + Add Student to begin." : "No students match this view."}</p>
+        </Card>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.map(s => (
+            <Card key={s.id} style={{ padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: C.white, fontFamily: S, marginBottom: 3 }}>{s.name}</p>
+                  <p style={{ fontSize: 12, color: C.grey }}>R{s.amount} · next {fmtDate(s._st.next)}</p>
+                  {s.phone && <p style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>{s.phone}</p>}
+                </div>
+                <span style={pillStyle(s._st.kind)}>{s._st.label}</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Btn v="gold" sz="sm" onClick={() => { setMsgFor(s); setChannel("whatsapp"); setCopyStatus(""); }}>Message</Btn>
+                <Btn v="navy" sz="sm" onClick={() => markPaid(s)}>Mark Paid</Btn>
+                <Btn v="outline" sz="sm" onClick={() => { setEditing(s); setShowForm(true); }}>Edit</Btn>
+                <Btn v="danger" sz="sm" onClick={() => archive(s.id)}>Archive</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {showForm && <StudentFormModal initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }} />}
+      {msgFor && <MsgModal student={msgFor} channel={channel} setChannel={setChannel} body={buildMsg(msgFor, channel)} subject={buildSubject(msgFor)} onClose={() => setMsgFor(null)} onCopy={copyMsg} copyStatus={copyStatus} />}
+    </div>
+  );
+}
+
+function StudentFormModal({ initial, onClose, onSave }) {
+  const [form, setForm] = useState({
+    name: initial?.name || "",
+    phone: initial?.phone || "",
+    email: initial?.email || "",
+    amount: initial?.amount || 500,
+    start_date: initial?.start_date || new Date().toISOString().split("T")[0],
+    billing_day: initial?.billing_day || new Date().getDate(),
+    notes: initial?.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(7,9,15,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.surf, border: "1.5px solid " + C.border, borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
+        <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 18 }}>{initial ? "Edit Student" : "Add Student"}</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div><label>Full Name</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div><label>Phone</label><input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+27..." /></div>
+            <div><label>Monthly Fee (R)</label><input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+          </div>
+          <div><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="optional" /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div><label>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} /></div>
+            <div><label>Billing Day</label><input type="number" min="1" max="31" value={form.billing_day} onChange={e => setForm({...form, billing_day: e.target.value})} /></div>
+          </div>
+          <div><label>Notes</label><textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="optional" style={{ resize: "vertical" }} /></div>
+        </div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22 }}>
+          <Btn v="navy" onClick={onClose}>Cancel</Btn>
+          <Btn v="gold" onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }} disabled={saving}>{saving ? "Saving..." : "Save"}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy, copyStatus }) {
+  const phone = (student.phone || "").replace(/[^\d+]/g, "");
+  let actionLink = null, actionLabel = null;
+  if (channel === "whatsapp" && phone) { actionLink = "https://wa.me/" + phone.replace(/^\+/, "") + "?text=" + encodeURIComponent(body); actionLabel = "Open WhatsApp"; }
+  else if (channel === "email" && student.email) { actionLink = "mailto:" + student.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body); actionLabel = "Open Mail"; }
+  else if (channel === "sms" && phone) { actionLink = "sms:" + phone + "?body=" + encodeURIComponent(body); actionLabel = "Open Messages"; }
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(7,9,15,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.surf, border: "1.5px solid " + C.border, borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
+        <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 4 }}>Reminder for {student.name}</h2>
+        <p style={{ fontSize: 12, color: C.grey, marginBottom: 16 }}>Pick a channel and send</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {[["whatsapp","WhatsApp"],["email","Email"],["sms","SMS"]].map(arr => {
+            const k = arr[0], l = arr[1];
+            return (
+              <button key={k} onClick={() => setChannel(k)} style={{
+                flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase",
+                background: channel === k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
+                color: channel === k ? "#08090E" : C.grey,
+                border: channel === k ? "none" : "1.5px solid " + C.border,
+              }}>{l}</button>
+            );
+          })}
+        </div>
+        {channel === "email" && <div style={{ marginBottom: 12 }}><label>Subject</label><input readOnly value={subject} /></div>}
+        <div style={{ marginBottom: 12 }}><label>Message</label><textarea readOnly value={body} rows={9} style={{ resize: "vertical" }} /></div>
+        {copyStatus && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{copyStatus}</p>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <Btn v="navy" onClick={onClose}>Close</Btn>
+          <Btn v="outline" onClick={onCopy}>Copy</Btn>
+          {actionLink && <a href={actionLink} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><Btn v="gold">{actionLabel}</Btn></a>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loadJournalsDB, onLogout, loadAll, sb }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 HW" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Member" }, { k: "subscriptions", l: "💰 Subs" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -709,6 +984,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
         {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
+        {tab === "subscriptions" && <SubscriptionsTab sb={sb} />}
       </div>
     </div>
   );
@@ -3976,7 +4252,7 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} sb={sb} />}
       {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
