@@ -1056,6 +1056,9 @@ function StudentFormModal({ initial, onClose, onSave }) {
 }
 
 function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy, onSend, copyStatus }) {
+  if (!student) return null;
+  const safeBody = body || "(message not generated)";
+  const safeSubject = subject || "TA Forex Institute";
   const phone = (student.phone || "").replace(/[^\d+]/g, "");
   let canSend = false, sendLabel = "Send";
   if (channel === "whatsapp" && phone) { canSend = true; sendLabel = "Open WhatsApp"; }
@@ -1067,12 +1070,15 @@ function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy
         <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 4 }}>Reminder for {student.name}</h2>
         <p style={{ fontSize: 12, color: C.grey, marginBottom: 16 }}>Pick a channel and send</p>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          <button onClick={() => setChannel("whatsapp")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "whatsapp" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "whatsapp" ? "#08090E" : C.grey, border: channel === "whatsapp" ? "none" : "1.5px solid " + C.border }}>WhatsApp</button>
-          <button onClick={() => setChannel("email")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "email" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "email" ? "#08090E" : C.grey, border: channel === "email" ? "none" : "1.5px solid " + C.border }}>Email</button>
-          <button onClick={() => setChannel("sms")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "sms" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "sms" ? "#08090E" : C.grey, border: channel === "sms" ? "none" : "1.5px solid " + C.border }}>SMS</button>
+          <button onClick={() => setChannel("whatsapp")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "whatsapp" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "whatsapp" ? "#08090E" : C.grey, border: channel === "whatsapp" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>WhatsApp</button>
+          <button onClick={() => setChannel("email")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "email" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "email" ? "#08090E" : C.grey, border: channel === "email" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>Email</button>
+          <button onClick={() => setChannel("sms")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "sms" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "sms" ? "#08090E" : C.grey, border: channel === "sms" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>SMS</button>
         </div>
-        {channel === "email" && <div style={{ marginBottom: 12 }}><label>Subject</label><input readOnly value={subject} /></div>}
-        <div style={{ marginBottom: 12 }}><label>Message</label><textarea readOnly value={body} rows={9} style={{ resize: "vertical" }} /></div>
+        {channel === "email" && <div style={{ marginBottom: 12 }}><label>Subject</label><input readOnly value={safeSubject} /></div>}
+        <div style={{ marginBottom: 12 }}>
+          <label>Message Preview</label>
+          <textarea readOnly value={safeBody} rows={9} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }} />
+        </div>
         {!canSend && <p style={{ fontSize: 12, color: C.gold, marginBottom: 10 }}>⚠ No {channel === "email" ? "email" : "phone number"} on file. Add one via Edit, or just copy the message.</p>}
         {copyStatus && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{copyStatus}</p>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -1635,11 +1641,40 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout, sb }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
   const [openS, setOpenS]   = useState({});
+  const [mySub, setMySub] = useState(null);
+  const [showSubBanner, setShowSubBanner] = useState(true);
+
+  // Load this user's subscription record by name match
+  useEffect(() => {
+    if (!sb || !user?.name) return;
+    (async () => {
+      const data = await sb("subscription_students?name=ilike." + encodeURIComponent(user.name) + "&active=eq.true");
+      if (data && data[0]) setMySub(data[0]);
+    })();
+  }, [user?.name]);
+
+  // Calculate subscription status
+  const subStatus = (() => {
+    if (!mySub) return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    let next;
+    if (mySub.last_paid_date) {
+      const ref = new Date(mySub.last_paid_date);
+      next = new Date(ref.getFullYear(), ref.getMonth() + 1, mySub.billing_day);
+      while (next < today) next = new Date(next.getFullYear(), next.getMonth() + 1, mySub.billing_day);
+    } else {
+      const start = new Date(mySub.start_date);
+      next = new Date(start.getFullYear(), start.getMonth(), mySub.billing_day);
+      if (next < start) next = new Date(next.getFullYear(), next.getMonth() + 1, mySub.billing_day);
+    }
+    const days = Math.ceil((next - today) / 86400000);
+    return { days, next, amount: mySub.amount };
+  })();
 
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
@@ -1795,6 +1830,37 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ══ HOME ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
+          {/* ── PAYMENT DUE BANNER ── */}
+          {subStatus && showSubBanner && (subStatus.days <= 5) && (
+            <div style={{
+              background: subStatus.days < 0
+                ? "linear-gradient(135deg, rgba(217,96,96,.22), rgba(217,96,96,.10))"
+                : "linear-gradient(135deg, rgba(201,168,76,.22), rgba(201,168,76,.10))",
+              borderBottom: "2px solid " + (subStatus.days < 0 ? C.red : C.gold),
+              padding: "20px 24px",
+              animation: "pulse 2.5s ease-in-out infinite",
+            }}>
+              <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".22em", color: subStatus.days < 0 ? C.red : C.gold, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>
+                    {subStatus.days < 0 ? "⚠ Payment Overdue" : subStatus.days === 0 ? "💰 Payment Due Today" : "📅 Payment Reminder"}
+                  </p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: C.white, fontFamily: S, lineHeight: 1.3, marginBottom: 4 }}>
+                    {subStatus.days < 0
+                      ? "Your Private Mentorship subscription of R" + subStatus.amount + " was due " + Math.abs(subStatus.days) + " day" + (Math.abs(subStatus.days) === 1 ? "" : "s") + " ago"
+                      : subStatus.days === 0
+                      ? "Your Private Mentorship subscription of R" + subStatus.amount + " is due today"
+                      : "Your Private Mentorship subscription of R" + subStatus.amount + " is due in " + subStatus.days + " day" + (subStatus.days === 1 ? "" : "s")}
+                  </p>
+                  <p style={{ fontSize: 13, color: C.dim }}>
+                    Please send proof of payment to Taaha to keep your access active.
+                  </p>
+                </div>
+                <button onClick={() => setShowSubBanner(false)} style={{ background: "transparent", color: C.grey, fontSize: 22, padding: 6, alignSelf: "flex-start" }}>✕</button>
+              </div>
+            </div>
+          )}
+
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
             {/* Background video loop */}
@@ -4387,7 +4453,7 @@ function App() {
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
       {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} sb={sb} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} sb={sb} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
