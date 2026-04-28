@@ -865,7 +865,7 @@ function SubscriptionsTab({ sb }) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
             {overdueList.slice(0, 5).map(s => (
-              <OverdueBannerRow key={s.id} student={s} onMessage={() => openMessage(s)} onQuickSend={() => quickWhatsApp(s)} onSavePhone={(p) => updatePhone(s.id, p)} />
+              <OverdueBannerRow key={s.id} student={s} onQuickSend={() => sendNow(s, "whatsapp")} onSavePhone={(p) => updatePhone(s.id, p)} />
             ))}
             {overdueList.length > 5 && (
               <button onClick={() => setFilter("overdue")} style={{ background: "transparent", color: C.gold, fontSize: 12, fontWeight: 600, padding: "8px", textAlign: "center", letterSpacing: ".05em" }}>
@@ -932,25 +932,61 @@ function SubscriptionsTab({ sb }) {
                 </div>
                 <span style={pillStyle(s._st.kind)}>{s._st.label}</span>
               </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {s.phone && <Btn v="gold" sz="sm" onClick={() => quickWhatsApp(s)}>📱 WhatsApp</Btn>}
-                <Btn v={s.phone ? "outline" : "gold"} sz="sm" onClick={() => openMessage(s)}>Message</Btn>
-                <Btn v="navy" sz="sm" onClick={() => markPaid(s)}>Mark Paid</Btn>
-                <Btn v="outline" sz="sm" onClick={() => { setEditing(s); setShowForm(true); }}>Edit</Btn>
-                <Btn v="danger" sz="sm" onClick={() => archive(s.id)}>Archive</Btn>
-              </div>
+              <StudentActions
+                student={s}
+                onWhatsApp={() => sendNow(s, "whatsapp")}
+                onEmail={() => sendNow(s, "email")}
+                onSms={() => sendNow(s, "sms")}
+                onCopy={async () => { try { await navigator.clipboard.writeText(buildMsg(s, "whatsapp")); alert("Message copied to clipboard"); } catch { prompt("Copy this message:", buildMsg(s, "whatsapp")); } }}
+                onMarkPaid={() => markPaid(s)}
+                onEdit={() => { setEditing(s); setShowForm(true); }}
+                onArchive={() => archive(s.id)}
+              />
             </Card>
           ))}
         </div>
       )}
 
       {showForm && <StudentFormModal initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }} />}
-      {msgFor && <MsgModal student={msgFor} channel={channel} setChannel={setChannel} body={buildMsg(msgFor, channel)} subject={buildSubject(msgFor)} onClose={() => setMsgFor(null)} onCopy={copyMsg} onSend={() => sendNow(msgFor, channel)} copyStatus={copyStatus} />}
     </div>
   );
 }
 
-function OverdueBannerRow({ student, onMessage, onQuickSend, onSavePhone }) {
+function StudentActions({ student, onWhatsApp, onEmail, onSms, onCopy, onMarkPaid, onEdit, onArchive }) {
+  const [showMore, setShowMore] = useState(false);
+  const hasPhone = !!student.phone;
+  const hasEmail = !!student.email;
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {hasPhone && <Btn v="gold" sz="sm" onClick={onWhatsApp}>📱 WhatsApp</Btn>}
+        <Btn v={hasPhone ? "outline" : "gold"} sz="sm" onClick={() => setShowMore(!showMore)}>
+          {showMore ? "✕ Close" : "Message"}
+        </Btn>
+        <Btn v="navy" sz="sm" onClick={onMarkPaid}>Mark Paid</Btn>
+        <Btn v="outline" sz="sm" onClick={onEdit}>Edit</Btn>
+        <Btn v="danger" sz="sm" onClick={onArchive}>Archive</Btn>
+      </div>
+      {showMore && (
+        <div style={{ marginTop: 10, padding: 12, background: "rgba(7,9,15,.5)", borderRadius: 8, border: "1px solid " + C.border }}>
+          <p style={{ fontSize: 11, color: C.grey, marginBottom: 8, letterSpacing: ".05em" }}>Send via:</p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {hasPhone && <Btn v="outline" sz="sm" onClick={onWhatsApp}>WhatsApp</Btn>}
+            {hasEmail && <Btn v="outline" sz="sm" onClick={onEmail}>Email</Btn>}
+            {hasPhone && <Btn v="outline" sz="sm" onClick={onSms}>SMS</Btn>}
+            <Btn v="outline" sz="sm" onClick={onCopy}>📋 Copy text</Btn>
+          </div>
+          {!hasPhone && !hasEmail && (
+            <p style={{ fontSize: 11, color: C.gold, marginTop: 8 }}>⚠ No phone or email on file. Use Edit to add contact info, or Copy text to paste manually.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverdueBannerRow({ student, onQuickSend, onSavePhone }) {
   const [editing, setEditing] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -972,10 +1008,7 @@ function OverdueBannerRow({ student, onMessage, onQuickSend, onSavePhone }) {
         <p style={{ fontSize: 11, color: C.grey }}>R{student.amount} · {Math.abs(student._st.days)} days overdue</p>
       </div>
       {hasPhone ? (
-        <div style={{ display: "flex", gap: 6 }}>
-          <Btn v="gold" sz="sm" onClick={onQuickSend}>📱 WhatsApp</Btn>
-          <Btn v="outline" sz="sm" onClick={onMessage}>More</Btn>
-        </div>
+        <Btn v="gold" sz="sm" onClick={onQuickSend}>📱 Send Reminder</Btn>
       ) : editing ? (
         <div style={{ display: "flex", gap: 6, alignItems: "center", flex: "1 1 200px" }}>
           <input autoFocus type="tel" value={phoneInput} onChange={e => setPhoneInput(e.target.value)} placeholder="+27..." onKeyDown={e => e.key === "Enter" && save()} style={{ flex: 1, padding: "6px 10px", fontSize: 12 }} />
