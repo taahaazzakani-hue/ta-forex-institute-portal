@@ -702,13 +702,13 @@ function SubscriptionsTab({ sb }) {
   useEffect(() => { load(); }, []);
 
   const getNextDate = (s) => {
-    const today = new Date(); today.setHours(0,0,0,0);
     if (s.last_paid_date) {
+      // Next due = exactly one month after the last payment, on the billing day
       const ref = new Date(s.last_paid_date);
-      let next = new Date(ref.getFullYear(), ref.getMonth() + 1, s.billing_day);
-      while (next < today) next = new Date(next.getFullYear(), next.getMonth() + 1, s.billing_day);
-      return next;
+      return new Date(ref.getFullYear(), ref.getMonth() + 1, s.billing_day);
     }
+    // No payment yet — next due is the next occurrence of billing_day from start_date
+    const today = new Date(); today.setHours(0,0,0,0);
     const start = new Date(s.start_date);
     let next = new Date(start.getFullYear(), start.getMonth(), s.billing_day);
     if (next < start) next = new Date(next.getFullYear(), next.getMonth() + 1, s.billing_day);
@@ -1743,9 +1743,9 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
     const today = new Date(); today.setHours(0,0,0,0);
     let next;
     if (mySub.last_paid_date) {
+      // Next due = exactly one month after the last payment
       const ref = new Date(mySub.last_paid_date);
       next = new Date(ref.getFullYear(), ref.getMonth() + 1, mySub.billing_day);
-      while (next < today) next = new Date(next.getFullYear(), next.getMonth() + 1, mySub.billing_day);
     } else {
       const start = new Date(mySub.start_date);
       next = new Date(start.getFullYear(), start.getMonth(), mySub.billing_day);
