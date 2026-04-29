@@ -899,8 +899,20 @@ function SubscriptionsTab({ sb }) {
       {/* Search + Add */}
       <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 1, minWidth: 200 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students..." />
-        <Btn v="gold" onClick={() => { setEditing(null); setShowForm(true); }}>+ Add Student</Btn>
+        <Btn v="gold" onClick={() => { setEditing(null); setShowForm(!showForm || editing !== null); }}>{showForm && !editing ? "✕ Cancel" : "+ Add Student"}</Btn>
       </div>
+
+      {/* Inline Add/Edit Form */}
+      {showForm && (
+        <Card style={{ padding: 18, marginBottom: 18, borderColor: C.gold + "60" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", fontFamily: S, marginBottom: 12 }}>{editing ? "Edit " + editing.name : "New Student"}</p>
+          <StudentInlineForm
+            initial={editing}
+            onCancel={() => { setShowForm(false); setEditing(null); }}
+            onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }}
+          />
+        </Card>
+      )}
 
       {/* Filter pills */}
       <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
@@ -939,7 +951,7 @@ function SubscriptionsTab({ sb }) {
                 onSms={() => sendNow(s, "sms")}
                 onCopy={async () => { try { await navigator.clipboard.writeText(buildMsg(s, "whatsapp")); alert("Message copied to clipboard"); } catch { prompt("Copy this message:", buildMsg(s, "whatsapp")); } }}
                 onMarkPaid={() => markPaid(s)}
-                onEdit={() => { setEditing(s); setShowForm(true); }}
+                onEdit={() => { setEditing(s); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                 onArchive={() => archive(s.id)}
               />
             </Card>
@@ -947,7 +959,7 @@ function SubscriptionsTab({ sb }) {
         </div>
       )}
 
-      {showForm && <StudentFormModal initial={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }} />}
+      {/* No modals — form is inline above */}
     </div>
   );
 }
@@ -1047,6 +1059,40 @@ function InlinePhoneAdd({ onSave }) {
       <input autoFocus type="tel" value={phoneInput} onChange={e => setPhoneInput(e.target.value)} placeholder="+27..." onKeyDown={e => e.key === "Enter" && save()} style={{ flex: 1, padding: "5px 9px", fontSize: 11 }} />
       <button onClick={save} disabled={saving || !phoneInput.trim()} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", color: "#08090E", opacity: saving || !phoneInput.trim() ? .5 : 1 }}>{saving ? "..." : "✓"}</button>
       <button onClick={() => { setEditing(false); setPhoneInput(""); }} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, color: C.grey, background: "transparent" }}>✕</button>
+    </div>
+  );
+}
+
+function StudentInlineForm({ initial, onCancel, onSave }) {
+  const [form, setForm] = useState({
+    name: initial?.name || "",
+    phone: initial?.phone || "",
+    email: initial?.email || "",
+    amount: initial?.amount || 500,
+    start_date: initial?.start_date || new Date().toISOString().split("T")[0],
+    billing_day: initial?.billing_day || new Date().getDate(),
+    notes: initial?.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div><label>Full Name</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label>Phone</label><input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+27..." /></div>
+          <div><label>Monthly Fee (R)</label><input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+        </div>
+        <div><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="optional" /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} /></div>
+          <div><label>Billing Day</label><input type="number" min="1" max="31" value={form.billing_day} onChange={e => setForm({...form, billing_day: e.target.value})} /></div>
+        </div>
+        <div><label>Notes</label><textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="optional" style={{ resize: "vertical" }} /></div>
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
+        <Btn v="navy" onClick={onCancel}>Cancel</Btn>
+        <Btn v="gold" onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }} disabled={saving}>{saving ? "Saving..." : "Save Student"}</Btn>
+      </div>
     </div>
   );
 }
@@ -3513,13 +3559,84 @@ const PLAYBOOK_DATA = {
   },
   "TA MMXM MODEL": {
     color: "#C96BFF",
-    icon: "🔜",
-    tagline: "Coming Soon",
-    description: "The MMXM Model is being prepared for release. Coach Taaha will drop this model when the time is right. For now, focus on executing your current models with precision.",
-    rules: ["This model is coming soon — stay tuned"],
-    dos: ["Keep journalling and reviewing your current models"],
-    donts: ["Wait for this model before being consistent"],
-    comingSoon: true,
+    icon: "🎯",
+    tagline: "Multi-timeframe top-down precision. HTF tap → ITF stop hunt → LTF entry.",
+    description: "The MMXM is a multi-timeframe top-down model. Work from a high timeframe level down to a low timeframe entry through a strict sequence: HTF level tap → ITF stop hunt + EOM marking → LTF entry trigger. Uses ICT concepts (liquidity, FVGs, ERLs/IRLs, MSS, IFVG) but the timeframe combinations, sequence, and EOM logic are the framework.",
+    pmOnly: true,
+    rules: [
+      "Pick ONE path per setup — do not mix timeframes mid-trade",
+      "PATH A: Daily HTF → 1H ITF → 5m LTF",
+      "PATH B: 4H HTF → 15m ITF → 2m LTF (M1 acceptable as fallback if no M2)",
+      "HTF: Mark IRL (FVGs, order blocks) or ERL (swing highs/lows) — NOT PDH/PDL on Daily (PDH/PDL OK on 4H)",
+      "Wait for HTF level to be tapped or swept — reactive, never predictive",
+      "ITF stop hunt MUST happen AFTER HTF tap — bullish: ITF low swept; bearish: ITF high swept",
+      "Mark EOM (End of Model) AFTER stop hunt — bullish: nearest ITF high; bearish: nearest ITF low",
+      "LTF entry: MSS + FVG (Model 1) OR liquidity sweep + IFVG (Model 2)",
+      "Base target: 1:2 RR on every trade — no exceptions",
+      "Extended target: EOM (only when structure supports it)",
+      "Hard limits: 1% max daily risk on funded · 1-2 trades per day max",
+    ],
+    dos: [
+      "Pick your path before the setup begins (Path A or Path B)",
+      "Mark the HTF level (IRL or ERL) BEFORE waiting for the tap",
+      "Wait for the full sequence: HTF tap → ITF stop hunt → EOM mark → LTF entry trigger",
+      "Mark EOM clearly on the chart before entering",
+      "Default to 1:2 RR — earn the EOM extension, don't assume it",
+      "Use M2 for Path B LTF whenever possible — only fall back to M1 if M2 unavailable",
+      "Size trades to keep within the 1% daily risk cap",
+    ],
+    donts: [
+      "Use PDH/PDL as your HTF level on the Daily timeframe (only valid on 4H)",
+      "Mix timeframe paths in a single setup (no Daily HTF + M15 ITF combos)",
+      "Enter without a confirmed HTF tap → ITF stop hunt sequence",
+      "Enter without EOM marked — it's not optional",
+      "Loosen your SL on M1 to compensate for noise — if it doesn't fit 1% risk, skip it",
+      "Predict the HTF tap or stop hunt — react only",
+      "Take more than 2 trades in a day",
+    ],
+    extra: {
+      title: "The Full Sequence (Top-Down Checklist)",
+      sections: [
+        {
+          name: "Step 1 — HTF Analysis",
+          color: "#C96BFF",
+          steps: [
+            "Mark IRL (FVG, order block, internal level) OR ERL (swing high, swing low, external sweep)",
+            "Daily timeframe: PDH/PDL is NOT valid — use FVGs, OBs, swing points only",
+            "4H timeframe: PDH/PDL IS valid",
+          ],
+        },
+        {
+          name: "Step 2 — Wait for HTF Tap",
+          color: "#9F4FCC",
+          steps: [
+            "Price must tap or sweep the marked HTF level",
+            "Until the tap happens, there is NO setup",
+            "Reactive only — do not anticipate",
+          ],
+        },
+        {
+          name: "Step 3 — ITF Stop Hunt + EOM",
+          color: "#7A35A8",
+          steps: [
+            "Stop hunt = liquidity grab on the ITF AFTER the HTF tap",
+            "Bullish: sweep of an ITF low after HTF tap",
+            "Bearish: sweep of an ITF high after HTF tap",
+            "Mark the EOM: nearest ITF high (bullish) or ITF low (bearish) AFTER the stop hunt",
+            "EOM = your extended target, not your base target",
+          ],
+        },
+        {
+          name: "Step 4 — LTF Entry",
+          color: "#5A1E80",
+          steps: [
+            "Entry Model 1: MSS (Market Structure Shift) + FVG — enter on the FVG",
+            "Entry Model 2: Liquidity sweep + IFVG (Inverted FVG) — enter on the IFVG",
+            "Base target: 1:2 RR · Extended target: EOM",
+          ],
+        },
+      ],
+    },
   },
 };
 
@@ -3541,7 +3658,7 @@ function ModelPlaybook({ user }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
         {models.map(mod => {
           const d = PLAYBOOK_DATA[mod];
-          const isPMOnly = mod === "FOREVER MODEL" || mod === "PM SESSION MODEL";
+          const isPMOnly = mod === "FOREVER MODEL" || mod === "PM SESSION MODEL" || mod === "TA MMXM MODEL";
           const hasPM = (user.levels||[]).includes("Private Mentorship");
           const locked = isPMOnly && !hasPM;
           return (
