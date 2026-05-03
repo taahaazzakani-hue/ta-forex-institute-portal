@@ -1191,86 +1191,43 @@ function RiskCalculator() {
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   const [hovered, setHovered] = React.useState(null);
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px 100px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: 48 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 3, height: 28, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", borderRadius: 2 }} />
-          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase" }}>Education Portal</span>
-        </div>
-        <h1 style={{ fontFamily: S, fontSize: 38, fontWeight: 700, lineHeight: 1.1, marginBottom: 10, letterSpacing: "-.01em" }}>Your Courses</h1>
-        <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7 }}>Master the models. Execute with discipline.</p>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px 100px" }}>
+      <div style={{ marginBottom: 40 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Education</p>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em", color: C.white, marginBottom: 8 }}>My Courses</h1>
+        <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.6 }}>Select a course to begin learning.</p>
       </div>
 
       {courses.length === 0 && (
-        <div style={{ textAlign: "center", padding: "80px 0" }}>
-          <div style={{ fontSize: 48, marginBottom: 16, opacity: .2 }}>◈</div>
-          <p style={{ color: C.grey, fontSize: 14 }}>No courses available for your membership level.</p>
+        <div style={{ textAlign: "center", padding: "80px 0", color: C.grey, fontSize: 14 }}>
+          No courses available for your membership level.
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {courses.map((c, ci) => {
           const total = videos.filter(v => v.courseId === c.id).length;
           const sects = sections.filter(s => s.courseId === c.id).length;
-          const isHovered = hovered === c.id;
+          const isHov = hovered === c.id;
           return (
-            <div key={c.id}
-              onClick={() => onSelectCourse(c)}
+            <div key={c.id} onClick={() => onSelectCourse(c)}
               onMouseEnter={() => setHovered(c.id)}
               onMouseLeave={() => setHovered(null)}
-              style={{ position: "relative", cursor: "pointer", borderRadius: 16, overflow: "hidden",
-                background: isHovered ? C.card : C.surf,
-                border: "1px solid " + (isHovered ? C.gold + "50" : C.border),
-                transition: "all .25s cubic-bezier(.22,1,.36,1)",
-                transform: isHovered ? "translateY(-2px)" : "none",
-                boxShadow: isHovered ? "0 20px 60px rgba(0,0,0,.4), 0 0 0 1px " + C.gold + "20" : "none",
-              }}>
-              {/* Gold accent line */}
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
-                background: "linear-gradient(90deg," + C.gold + "," + C.goldLt + ",transparent)",
-                opacity: isHovered ? 1 : 0, transition: "opacity .25s" }} />
-
-              <div style={{ padding: "28px 32px", display: "flex", alignItems: "center", gap: 24 }}>
-                {/* Index number */}
-                <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 12,
-                  background: isHovered ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : C.bg,
-                  border: "1px solid " + (isHovered ? "transparent" : C.border),
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all .25s" }}>
-                  <span style={{ fontFamily: S, fontSize: 20, fontWeight: 700,
-                    color: isHovered ? "#08090E" : C.gold }}>
-                    {String(ci + 1).padStart(2, "0")}
-                  </span>
-                </div>
-
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700, color: C.white,
-                    marginBottom: 6, lineHeight: 1.2, letterSpacing: "-.01em" }}>{c.title}</h3>
-                  {c.desc && <p style={{ fontSize: 13, color: C.grey, marginBottom: 12, lineHeight: 1.6,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.desc}</p>}
-                  <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: C.faint, fontWeight: 600, letterSpacing: ".05em" }}>
-                      {sects} SECTION{sects !== 1 ? "S" : ""}
-                    </span>
-                    <span style={{ width: 3, height: 3, borderRadius: "50%", background: C.border }} />
-                    <span style={{ fontSize: 11, color: C.faint, fontWeight: 600, letterSpacing: ".05em" }}>
-                      {total} LESSON{total !== 1 ? "S" : ""}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Arrow */}
-                <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
-                  background: isHovered ? C.gold : "transparent",
-                  border: "1.5px solid " + (isHovered ? C.gold : C.border),
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all .25s" }}>
-                  <span style={{ color: isHovered ? "#08090E" : C.grey, fontSize: 18, fontWeight: 700,
-                    marginLeft: 2, transition: "all .25s" }}>→</span>
+              style={{ background: isHov ? C.card : C.surf, border: "1px solid " + (isHov ? C.borderH : C.border),
+                borderRadius: 12, padding: "22px 24px", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 20,
+                transition: "all .2s", transform: isHov ? "translateX(4px)" : "none" }}>
+              <div style={{ width: 2, height: 40, background: isHov ? C.gold : C.border, borderRadius: 1, flexShrink: 0, transition: "background .2s" }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: C.white, marginBottom: 5, letterSpacing: "-.01em" }}>{c.title}</div>
+                {c.desc && <div style={{ fontSize: 13, color: C.grey, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.desc}</div>}
+                <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: C.faint }}>
+                  <span>{sects} section{sects !== 1 ? "s" : ""}</span>
+                  <span>·</span>
+                  <span>{total} lesson{total !== 1 ? "s" : ""}</span>
                 </div>
               </div>
+              <span style={{ color: isHov ? C.gold : C.faint, fontSize: 18, transition: "color .2s" }}>→</span>
             </div>
           );
         })}
@@ -1347,50 +1304,71 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         <div style={{ position:"absolute", top:20, right:20, color:"#fff", fontSize:28, cursor:"pointer" }}>✕</div>
       </div>
 
-      <Rule />
-
       {/* ── HEADER ── */}
-      <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F0", backdropFilter: "blur(18px)", borderBottom: "1px solid " + C.border }}>
-        <div style={{ maxWidth: 920, margin: "0 auto", padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo w={100} onClick={() => { goHome(); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-<Btn v={showJournal ? "gold" : "outline"} onClick={() => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📓 Journal</Btn>
-            {(user.levels||[]).includes("Private Mentorship") && <Btn v={showHomework ? "gold" : "outline"} onClick={() => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📝 Homework</Btn>}
-            <Btn v={showPlaybook ? "gold" : "outline"} onClick={() => { setShowPlaybook(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📘 Playbook</Btn>
-            <Btn v={showChecklist ? "gold" : "outline"} onClick={() => { setShowChecklist(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>✅ Checklist</Btn>
-            <Btn v={showReview ? "gold" : "outline"} onClick={() => { setShowReview(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📅 Review</Btn>
-            <Btn v={showCalc ? "gold" : "outline"} onClick={() => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>🧮 Risk Calc</Btn>
-            <Btn v={showCourses ? "gold" : "outline"} onClick={() => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>📚 Courses</Btn>
-            <Btn v={showSubscribe ? "gold" : "outline"} onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }} sz="sm" style={{ fontSize: 12 }}>💳 Upgrade</Btn>
-            <div style={{ width: 1, height: 30, background: C.border }} />
-            {/* Notification bell */}
+      <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F4", backdropFilter: "blur(20px)", borderBottom: "1px solid " + C.border }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
+
+          {/* Logo */}
+          <Logo w={90} onClick={() => { setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
+
+          {/* Nav links */}
+          <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {[
+              { label: "Courses", state: showCourses, toggle: () => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              { label: "Journal", state: showJournal, toggle: () => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              { label: "Playbook", state: showPlaybook, toggle: () => { setShowPlaybook(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              { label: "Checklist", state: showChecklist, toggle: () => { setShowChecklist(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowReview(false); goHome(); } },
+              { label: "Risk Calc", state: showCalc, toggle: () => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              ...(hasPM ? [{ label: "Homework", state: showHomework, toggle: () => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } }] : []),
+            ].map(item => (
+              <button key={item.label} onClick={item.toggle}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 13, fontWeight: item.state ? 700 : 400,
+                  color: item.state ? C.gold : C.grey, transition: "color .15s",
+                  borderBottom: item.state ? "2px solid " + C.gold : "2px solid transparent" }}
+                onMouseEnter={e => { if (!item.state) e.currentTarget.style.color = C.dim; }}
+                onMouseLeave={e => { if (!item.state) e.currentTarget.style.color = C.grey; }}>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Right side */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Bell */}
             <div style={{ position: "relative" }}>
-              <button onClick={() => setShowNotif(p => !p)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, position: "relative" }}>
-                <span style={{ fontSize: 20 }}>🔔</span>
-                {notifications.length > 0 && <span style={{ position: "absolute", top: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifications.length}</span>}
+              <button onClick={() => setShowNotif(p => !p)}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 8, display: "flex", alignItems: "center", position: "relative" }}>
+                <span style={{ fontSize: 16, color: C.grey }}>🔔</span>
+                {notifications.length > 0 && <span style={{ position: "absolute", top: 2, right: 4, width: 8, height: 8, borderRadius: "50%", background: C.red }} />}
               </button>
               {showNotif && (
-                <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: 300, background: C.card, border: "1px solid " + C.border, borderRadius: 14, boxShadow: "0 8px 32px rgba(0,0,0,.5)", zIndex: 999, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 16px", borderBottom: "1px solid " + C.border, fontFamily: S, fontSize: 14, fontWeight: 700 }}>Notifications</div>
-                  <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                    {notifications.length === 0
-                      ? <div style={{ padding: "20px 16px", color: C.grey, fontSize: 13, textAlign: "center" }}>You are all caught up!</div>
-                      : notifications.map((n, i) => (
-                        <div key={i} style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <span style={{ fontSize: 16, flexShrink: 0 }}>{n.urgent ? "🚨" : n.type === "hw" ? "📚" : n.type === "video" ? "▶" : "📓"}</span>
-                          <span style={{ fontSize: 13, color: n.urgent ? C.red : C.dim, lineHeight: 1.5 }}>{n.msg}</span>
-                        </div>
-                      ))
-                    }
-                  </div>
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 280, background: C.card, border: "1px solid " + C.border, borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,.5)", zIndex: 999, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid " + C.border, fontSize: 13, fontWeight: 600, color: C.white }}>Notifications</div>
+                  {notifications.length === 0
+                    ? <div style={{ padding: "20px 16px", color: C.grey, fontSize: 13, textAlign: "center" }}>All caught up</div>
+                    : notifications.map((n, i) => (
+                      <div key={i} style={{ padding: "11px 16px", borderBottom: i < notifications.length-1 ? "1px solid " + C.border : "none", fontSize: 13, color: n.urgent ? C.red : C.dim, lineHeight: 1.5 }}>{n.msg}</div>
+                    ))
+                  }
                 </div>
               )}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".08em", textTransform: "uppercase" }}>Member</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{user.name}</div>
+
+            {/* Upgrade */}
+            {!hasPM && <button onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }}
+              style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", color: C.gold, fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", letterSpacing: ".02em" }}>
+              Upgrade
+            </button>}
+
+            {/* User + Sign out */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 12, borderLeft: "1px solid " + C.border }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: C.dim }}>{user.name.split(" ")[0]}</div>
+              <button onClick={onLogout} style={{ background: "transparent", border: "1px solid " + C.border, color: C.grey, fontSize: 12, padding: "5px 12px", borderRadius: 8, cursor: "pointer", transition: "all .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderH; e.currentTarget.style.color = C.white; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.grey; }}>
+                Sign out
+              </button>
             </div>
-            <Btn v="outline" onClick={onLogout} sz="sm">Sign Out</Btn>
           </div>
         </div>
       </div>
@@ -1606,79 +1584,56 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ COURSE ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px 100px" }}>
-
-          {/* Back */}
-          <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 36, padding: 0, fontWeight: 600 }}>
-            <span style={{ fontSize: 16 }}>←</span> All Courses
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px 100px" }}>
+          <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 32, padding: 0 }}>
+            ← Back to Courses
           </button>
 
-          {/* Course header */}
-          <div style={{ marginBottom: 44 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-              <div style={{ width: 3, height: 24, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", borderRadius: 2 }} />
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase" }}>Course</span>
-            </div>
-            <h1 style={{ fontFamily: S, fontSize: 36, fontWeight: 700, lineHeight: 1.1, marginBottom: 12, letterSpacing: "-.01em" }}>{course.title}</h1>
-            {course.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75, maxWidth: 560, marginBottom: 20 }}>{course.desc}</p>}
-            <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-              <div style={{ padding: "6px 14px", background: C.card, border: "1px solid " + C.border, borderRadius: 20, fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: ".08em" }}>
-                {cSecs.length} SECTION{cSecs.length !== 1 ? "S" : ""}
-              </div>
-              <div style={{ padding: "6px 14px", background: C.card, border: "1px solid " + C.border, borderRadius: 20, fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: ".08em" }}>
-                {cVideos.length} LESSON{cVideos.length !== 1 ? "S" : ""}
-              </div>
+          <div style={{ marginBottom: 36, paddingBottom: 28, borderBottom: "1px solid " + C.border }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Course</p>
+            <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-.02em", color: C.white, marginBottom: 8 }}>{course.title}</h1>
+            {course.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.65, marginBottom: 14 }}>{course.desc}</p>}
+            <div style={{ display: "flex", gap: 20, fontSize: 13, color: C.grey }}>
+              <span>{cSecs.length} section{cSecs.length !== 1 ? "s" : ""}</span>
+              <span>·</span>
+              <span>{cVideos.length} lesson{cVideos.length !== 1 ? "s" : ""}</span>
             </div>
           </div>
 
-          {cSecs.length === 0 && <p style={{ color: C.grey }}>No content yet.</p>}
+          {cSecs.length === 0 && <p style={{ color: C.grey, fontSize: 14 }}>No content yet.</p>}
 
-          {/* Sections */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {cSecs.map((s, si) => {
               const sv = videos.filter(v => v.sectionId === s.id);
               const open = openS[s.id] !== false;
               return (
-                <div key={s.id} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid " + (open ? C.gold + "30" : C.border), transition: "border-color .2s" }}>
-                  {/* Section header */}
-                  <div onClick={() => toggleS(s.id)} style={{ padding: "18px 24px", background: open ? "rgba(201,168,76,.04)" : C.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none", transition: "background .2s" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: open ? C.goldDim : C.bg, border: "1px solid " + (open ? C.gold + "40" : C.border), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .2s" }}>
-                        <span style={{ fontFamily: S, fontSize: 13, fontWeight: 700, color: open ? C.gold : C.faint }}>{String(si + 1).padStart(2, "0")}</span>
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, lineHeight: 1.2 }}>{s.title}</div>
-                        <div style={{ fontSize: 11, color: C.faint, marginTop: 3, fontWeight: 600, letterSpacing: ".05em" }}>{sv.length} LESSON{sv.length !== 1 ? "S" : ""}</div>
-                      </div>
+                <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden", transition: "border-color .2s" }}>
+                  <div onClick={() => toggleS(s.id)}
+                    style={{ padding: "16px 20px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Section {si + 1}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: C.white }}>{s.title}</div>
+                      <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
                     </div>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.bg, border: "1px solid " + C.border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "transform .25s", transform: open ? "rotate(180deg)" : "none" }}>
-                      <span style={{ color: C.gold, fontSize: 12, lineHeight: 1 }}>▼</span>
-                    </div>
+                    <span style={{ color: C.grey, fontSize: 13, transition: "transform .2s", display: "block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
                   </div>
 
-                  {/* Lesson list */}
                   {open && (
-                    <div style={{ background: C.bg + "AA" }}>
-                      {sv.length === 0 && <div style={{ padding: "14px 24px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
-                      {sv.map((v, vi) => {
-                        const isLast = vi === sv.length - 1;
-                        return (
-                          <div key={v.id} onClick={() => play(v)}
-                            style={{ padding: "15px 24px 15px 76px", borderTop: "1px solid " + C.border + "60", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "background .15s" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "rgba(201,168,76,.04)"}
-                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                            {/* Play button */}
-                            <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.card, border: "1px solid " + C.border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .2s" }}>
-                              <span style={{ color: C.gold, fontSize: 10, marginLeft: 2 }}>▶</span>
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 600, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                              {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.desc}</div>}
-                            </div>
-                            <span style={{ color: C.faint, fontSize: 13, flexShrink: 0 }}>→</span>
+                    <div>
+                      {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
+                      {sv.map((v, vi) => (
+                        <div key={v.id} onClick={() => play(v)}
+                          style={{ padding: "14px 20px 14px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+                          onMouseEnter={e => e.currentTarget.style.background = C.card}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                          <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                            {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
                           </div>
-                        );
-                      })}
+                          <span style={{ color: C.faint, fontSize: 12 }}>→</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1695,104 +1650,83 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         const next    = secVids[idx + 1] || null;
         return (
           <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
-            {/* Back breadcrumb */}
-            <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.faint, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0 }}>Courses</button>
+            {/* Breadcrumb */}
+            <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid " + C.border }}>
+              <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 12, cursor: "pointer", padding: 0 }}>Courses</button>
               <span style={{ color: C.faint, fontSize: 12 }}>›</span>
-              <button onClick={() => openCourse(course)} style={{ background: "transparent", border: "none", color: C.faint, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{course?.title}</button>
+              <button onClick={() => openCourse(course)} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 12, cursor: "pointer", padding: 0, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{course?.title}</button>
               <span style={{ color: C.faint, fontSize: 12 }}>›</span>
-              <span style={{ color: C.grey, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{video.title}</span>
+              <span style={{ color: C.dim, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{video.title}</span>
             </div>
 
-            {/* Video player - full width, cinematic */}
-            <div style={{ margin: "16px 0 0", background: "#000", position: "relative" }}>
+            {/* Video */}
+            <div style={{ background: "#000" }}>
               <VideoPlayer url={video.url} title={video.title} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 0, alignItems: "start" }}>
-              {/* Left — video info + comments */}
-              <div style={{ padding: "28px 24px", borderRight: "1px solid " + C.border }}>
-                {sec && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                    <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".3em", color: C.gold, textTransform: "uppercase" }}>{sec.title}</span>
-                  </div>
-                )}
-                <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, marginBottom: 10, lineHeight: 1.2, letterSpacing: "-.01em" }}>{video.title}</h2>
-                {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75, marginBottom: 20 }}>{video.desc}</p>}
+            {/* Two column layout */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 0 }}>
+              {/* Left */}
+              <div style={{ padding: "28px 28px 0", borderRight: "1px solid " + C.border }}>
+                {sec && <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</p>}
+                <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: C.white, marginBottom: 8, lineHeight: 1.3 }}>{video.title}</h2>
+                {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>{video.desc}</p>}
 
-                {/* Up next card */}
                 {next && (
-                  <div style={{ marginBottom: 28, padding: "16px 18px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "border-color .2s" }}
-                    onClick={() => play(next)}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = C.gold + "50"}
+                  <div onClick={() => play(next)} style={{ background: C.surf, border: "1px solid " + C.border, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", marginBottom: 24, transition: "border-color .2s" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.borderH}
                     onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                    <div style={{ flexShrink: 0 }}>
-                      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Up Next</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{next.title}</div>
-                      {next.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{next.desc}</div>}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".15em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Up Next</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: C.white }}>{next.title}</div>
                     </div>
-                    <div style={{ marginLeft: "auto", width: 36, height: 36, borderRadius: "50%", background: C.goldDim, border: "1px solid " + C.gold + "40", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ color: C.gold, fontSize: 14, marginLeft: 2 }}>▶</span>
-                    </div>
+                    <span style={{ color: C.grey, fontSize: 16 }}>→</span>
                   </div>
                 )}
 
-                {/* Notes */}
                 {(video.notes || video.pdfUrl) && (
-                  <div style={{ marginBottom: 28, padding: "18px 20px", background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 12 }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 12 }}>Lesson Notes</div>
+                  <div style={{ background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 10, padding: "18px 20px", marginBottom: 24 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Notes</div>
                     {video.notes && <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: video.pdfUrl ? 14 : 0 }}>{video.notes}</p>}
                     {video.pdfUrl && (
                       <a href={video.pdfUrl} download={video.pdfName || "notes.pdf"}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "9px 16px", borderRadius: 9, fontSize: 12, fontWeight: 700, textDecoration: "none", letterSpacing: ".04em" }}>
+                        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "30", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                         ↓ {video.pdfName || "Download PDF"}
                       </a>
                     )}
                   </div>
                 )}
 
-                {/* Q&A */}
                 <VideoComments videoId={video.id} videoTitle={video.title} user={user} comments={comments} addComment={addComment} deleteComment={deleteComment} />
               </div>
 
-              {/* Right — lesson list sidebar */}
+              {/* Right sidebar */}
               {secVids.length > 1 && (
-                <div style={{ padding: "28px 20px", position: "sticky", top: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".25em", color: C.faint, textTransform: "uppercase", marginBottom: 16 }}>
-                    {sec?.title} · {secVids.length} Lessons
+                <div style={{ padding: "20px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".15em", color: C.grey, textTransform: "uppercase", marginBottom: 14 }}>
+                    {sec?.title}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     {secVids.map((v, i) => {
                       const active = v.id === video.id;
                       return (
                         <div key={v.id} onClick={() => play(v)}
-                          style={{ padding: "11px 14px", borderRadius: 10, cursor: "pointer",
-                            display: "flex", alignItems: "center", gap: 12, transition: "all .15s",
+                          style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
                             background: active ? C.goldDim : "transparent",
-                            border: "1px solid " + (active ? C.gold + "40" : "transparent") }}
-                          onMouseEnter={e => { if(!active) e.currentTarget.style.background = C.card; }}
+                            transition: "background .15s" }}
+                          onMouseEnter={e => { if(!active) e.currentTarget.style.background = C.surf; }}
                           onMouseLeave={e => { if(!active) e.currentTarget.style.background = "transparent"; }}>
-                          <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                            background: active ? C.gold : completed[v.id] ? C.green + "20" : C.bg,
-                            border: "1px solid " + (active ? C.gold : completed[v.id] ? C.green : C.border),
-                            display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {completed[v.id] && !active
-                              ? <span style={{ color: C.green, fontSize: 10, fontWeight: 900 }}>✓</span>
-                              : active
-                                ? <span style={{ color: "#08090E", fontSize: 9, marginLeft: 1 }}>▶</span>
-                                : <span style={{ fontFamily: S, fontSize: 11, color: C.faint, fontWeight: 700 }}>{i+1}</span>
-                            }
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: active ? 700 : 400,
-                            color: active ? C.gold : completed[v.id] ? C.grey : C.white,
+                          <span style={{ fontSize: 10, color: active ? C.gold : C.faint, fontWeight: 600, width: 16, flexShrink: 0, textAlign: "center" }}>
+                            {completed[v.id] && !active ? "✓" : (i + 1)}
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? C.gold : completed[v.id] ? C.grey : C.dim,
                             flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             textDecoration: completed[v.id] && !active ? "line-through" : "none",
                             opacity: completed[v.id] && !active ? 0.5 : 1 }}>{v.title}</span>
                           {!active && (
                             <div onClick={e => { e.stopPropagation(); toggleComplete(v.id); }}
-                              style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: "pointer",
-                                border: "2px solid " + (completed[v.id] ? C.green : C.faint),
+                              style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: "pointer",
+                                border: "1.5px solid " + (completed[v.id] ? C.green : C.faint),
                                 background: completed[v.id] ? C.green : "transparent",
                                 display: "flex", alignItems: "center", justifyContent: "center" }}>
                               {completed[v.id] && <span style={{ color: "#fff", fontSize: 9, fontWeight: 900 }}>✓</span>}
