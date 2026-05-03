@@ -78,9 +78,6 @@ const Logo = ({ w = 160, onClick }) => (
       flexShrink: 0,
       opacity: 1,
       filter: "invert(1)",
-      backgroundColor: C.bg,
-      padding: 8,
-      borderRadius: 8,
     }}
   />
 );
@@ -1309,7 +1306,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
 
           {/* Logo */}
-          <Logo w={90} onClick={() => { setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
+          <Logo w={80} onClick={() => { setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
 
           {/* Nav links */}
           <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -3046,13 +3043,64 @@ const PLAYBOOK_DATA = {
   },
   "TA MMXM MODEL": {
     color: "#C96BFF",
-    icon: "🔜",
-    tagline: "Coming Soon",
-    description: "The MMXM Model is being prepared for release. Coach Taaha will drop this model when the time is right. For now, focus on executing your current models with precision.",
-    rules: ["This model is coming soon — stay tuned"],
-    dos: ["Keep journalling and reviewing your current models"],
-    donts: ["Wait for this model before being consistent"],
-    comingSoon: true,
+    icon: "⚡",
+    tagline: "Multi-timeframe precision. React. Don't predict.",
+    description: "The MMXM is a top-down model working from a High Timeframe level down through an Intermediate Timeframe stop hunt to a Low Timeframe entry. Every step must be confirmed before moving to the next.",
+    rules: [
+      "Pick ONE path and stay on it — Path A: Daily → H1 → M5 | Path B: 4H → M15 → M2 (M1 acceptable if no M2)",
+      "HTF: Mark your level — IRL (FVGs, order blocks) or ERL (swing highs/lows). PDH/PDL is NOT valid on Daily — only valid on 4H",
+      "WAIT for price to tap or sweep the HTF level. Do not anticipate. This is reactive, not predictive",
+      "ITF: Confirm the stop hunt AFTER the HTF tap — bullish = ITF low swept, bearish = ITF high swept",
+      "ITF: Mark the EOM (End of Model) — bullish = nearest ITF high after stop hunt, bearish = nearest ITF low after stop hunt",
+      "LTF: Wait for entry trigger — Model 1: MSS + FVG | Model 2: Liquidity sweep + IFVG",
+      "Base target: 1:2 RR. Extended target: EOM — only ride to EOM when structure supports it",
+      "Max 1% daily risk on funded accounts. Max 1–2 trades per day",
+    ],
+    dos: [
+      "Follow the sequence in order — HTF tap → ITF stop hunt → EOM marked → LTF entry",
+      "Mark EOM before entering — it is not optional",
+      "Use M2 as LTF if available, M1 only as fallback on Path B",
+      "React to the HTF tap — never predict or anticipate it",
+      "Backtest the model before trading live capital",
+    ],
+    donts: [
+      "Never mix timeframe paths — no Daily HTF with M15 ITF",
+      "Never use PDH/PDL as HTF level on the Daily timeframe",
+      "Never enter without a confirmed HTF tap → ITF stop hunt sequence",
+      "Never enter without EOM marked",
+      "Never risk more than 1% per day on a funded account",
+    ],
+    extra: {
+      title: "The Two Valid Paths",
+      sections: [
+        {
+          name: "Path A — Daily / H1 / M5",
+          color: "#C96BFF",
+          steps: [
+            "HTF: Daily — mark IRL or ERL (NOT PDH/PDL on Daily)",
+            "ITF: 1 Hour — confirm stop hunt + mark EOM",
+            "LTF: 5 Minute — wait for MSS+FVG or Liq sweep+IFVG",
+          ],
+        },
+        {
+          name: "Path B — 4H / M15 / M2",
+          color: "#6B9FFF",
+          steps: [
+            "HTF: 4 Hour — mark IRL or ERL (PDH/PDL valid here)",
+            "ITF: 15 Minute — confirm stop hunt + mark EOM",
+            "LTF: 2 Minute (M1 acceptable fallback) — entry trigger",
+          ],
+        },
+      ],
+    },
+    sequence: [
+      "HTF: Mark the level (IRL or ERL)",
+      "Wait — does price tap or sweep the level?",
+      "ITF: Did a stop hunt occur after the HTF tap?",
+      "ITF: Mark the EOM",
+      "LTF: Wait for entry trigger (MSS+FVG or Liq+IFVG)",
+      "Enter — base target 1:2 RR, extended target EOM",
+    ],
   },
 };
 
@@ -3178,6 +3226,24 @@ function ModelPlaybook({ user }) {
                         <span style={{ fontSize: 12, color: C.dim, lineHeight: 1.6 }}>{step}</span>
                       </div>
                     ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sequence checklist */}
+          {m.sequence && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                <span style={{ fontSize: 18 }}>☑️</span>
+                <h4 style={{ fontFamily: S, fontSize: 15, fontWeight: 700, color: C.white }}>Full Sequence — Top Down Checklist</h4>
+              </div>
+              <div style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 12, overflow: "hidden" }}>
+                {m.sequence.map((step, i) => (
+                  <div key={i} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 18px", borderBottom: i < m.sequence.length-1 ? "1px solid " + C.border : "none" }}>
+                    <span style={{ background: m.color + "20", color: m.color, width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{i+1}</span>
+                    <span style={{ fontSize: 13, color: C.dim, lineHeight: 1.5 }}>{step}</span>
                   </div>
                 ))}
               </div>
