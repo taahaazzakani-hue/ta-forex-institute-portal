@@ -676,504 +676,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-/* ── SUBSCRIPTIONS TAB ───────────────────────────────────────────────────── */
-function SubscriptionsTab({ sb }) {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [msgFor, setMsgFor] = useState(null);
-  const [channel, setChannel] = useState("whatsapp");
-  const [copyStatus, setCopyStatus] = useState("");
-  const [showOverdueBanner, setShowOverdueBanner] = useState(true);
-
-  const COACH_FIRST = "Taaha";
-  const COACH_FULL = "Taaha Azzakani";
-  const BRAND = "TA Forex Institute";
-
-  const load = async () => {
-    setLoading(true);
-    const data = await sb("subscription_students?active=eq.true&order=created_at.desc");
-    if (data) setStudents(data);
-    setLoading(false);
-  };
-  useEffect(() => { load(); }, []);
-
-  const getNextDate = (s) => {
-    if (s.last_paid_date) {
-      // Next due = exactly one month after the last payment, on the billing day
-      const ref = new Date(s.last_paid_date);
-      return new Date(ref.getFullYear(), ref.getMonth() + 1, s.billing_day);
-    }
-    // No payment yet — next due is the next occurrence of billing_day from start_date
-    const today = new Date(); today.setHours(0,0,0,0);
-    const start = new Date(s.start_date);
-    let next = new Date(start.getFullYear(), start.getMonth(), s.billing_day);
-    if (next < start) next = new Date(next.getFullYear(), next.getMonth() + 1, s.billing_day);
-    return next;
-  };
-
-  const getStatus = (s) => {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const next = getNextDate(s);
-    const days = Math.ceil((next - today) / 86400000);
-    if (days < 0) return { label: "Overdue " + Math.abs(days) + "d", kind: "overdue", days, next };
-    if (days === 0) return { label: "Due today", kind: "due", days, next };
-    if (days <= 5) return { label: "Due in " + days + "d", kind: "due", days, next };
-    return { label: days + "d left", kind: "paid", days, next };
-  };
-
-  const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-  const buildMsg = (s, ch) => {
-    const st = getStatus(s);
-    const date = fmtDate(st.next);
-    const first = (s.name || "").split(" ")[0];
-    const amt = "R" + s.amount;
-    if (ch === "whatsapp") {
-      if (st.kind === "overdue") return "Hi " + first + ", hope you're well. Just a friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " was due on " + date + " and is currently outstanding. Could you send through proof of payment when you get a chance? Let me know if theres anything I can help with. — " + COACH_FIRST;
-      if (st.days === 0) return "Hi " + first + ", hope you're well. Just a reminder that your " + BRAND + " mentorship subscription of " + amt + " is due today. Please send through proof of payment once done. Looking forward to another solid month of trading together. — " + COACH_FIRST;
-      return "Hi " + first + ", hope you're well. Friendly reminder that your " + BRAND + " mentorship subscription of " + amt + " is due on " + date + ". Let me know if you need the banking details again. — " + COACH_FIRST;
-    }
-    if (ch === "email") {
-      const od = st.kind === "overdue";
-      return "Hi " + first + ",\n\nI hope you're doing well and trading is going strong.\n\nThis is a " + (od ? "follow-up" : "friendly") + " reminder that your monthly " + BRAND + " mentorship subscription of " + amt + " " + (od ? "was due on " + date + " and is currently outstanding" : "is due on " + date) + ".\n\nPlease send through proof of payment once completed. If you need the banking details resent or have any questions, just reply to this email.\n\nThanks for being part of the mentorship.\n\nBest regards,\n" + COACH_FULL + "\n" + BRAND;
-    }
-    if (ch === "sms") {
-      if (st.kind === "overdue") return "TA Forex: Hi " + first + ", your " + amt + " subscription was due " + date + " and is outstanding. Please send POP. — " + COACH_FIRST;
-      return "TA Forex: Hi " + first + ", reminder your " + amt + " subscription is due " + date + ". — " + COACH_FIRST;
-    }
-    return "";
-  };
-
-  const buildSubject = (s) => getStatus(s).kind === "overdue" ? BRAND + " — outstanding payment reminder" : BRAND + " — monthly subscription reminder";
-
-  const openMessage = (s) => {
-    setChannel("whatsapp");
-    setCopyStatus("");
-    setMsgFor(s);
-  };
-
-  const saveStudent = async (form) => {
-    const payload = {
-      name: form.name.trim(),
-      phone: form.phone.trim() || null,
-      email: form.email.trim() || null,
-      amount: Number(form.amount),
-      start_date: form.start_date,
-      billing_day: Number(form.billing_day),
-      notes: form.notes ? form.notes.trim() : null,
-    };
-    if (!payload.name || !payload.start_date || !payload.amount) { alert("Name, start date, and amount are required"); return false; }
-    if (editing) {
-      await sb("subscription_students?id=eq." + editing.id, { method: "PATCH", body: payload });
-    } else {
-      await sb("subscription_students", { method: "POST", body: payload });
-    }
-    await load();
-    return true;
-  };
-
-  const archive = async (id) => {
-    if (!confirm("Archive this student? They will be hidden but payment history is kept.")) return;
-    await sb("subscription_students?id=eq." + id, { method: "PATCH", body: { active: false } });
-    await load();
-  };
-
-  const markPaid = async (s) => {
-    const today = new Date().toISOString();
-    await sb("subscription_students?id=eq." + s.id, { method: "PATCH", body: { last_paid_date: today } });
-    await sb("subscription_payments", { method: "POST", body: { student_id: s.id, amount: s.amount, paid_on: new Date().toISOString().split("T")[0] } });
-    await load();
-    setMsgFor(null);
-  };
-
-  const copyMsg = async () => {
-    if (!msgFor) return;
-    const body = buildMsg(msgFor, channel);
-    const text = channel === "email" ? "Subject: " + buildSubject(msgFor) + "\n\n" + body : body;
-    try { await navigator.clipboard.writeText(text); setCopyStatus("✓ Copied"); setTimeout(() => setCopyStatus(""), 2000); }
-    catch (e) { setCopyStatus("Copy failed - select text manually"); }
-  };
-
-  const sendNow = (s, ch) => {
-    const body = buildMsg(s, ch);
-    const subject = buildSubject(s);
-    const phone = (s.phone || "").replace(/[^\d+]/g, "");
-    let url = null;
-    if (ch === "whatsapp" && phone) url = "https://wa.me/" + phone.replace(/^\+/, "") + "?text=" + encodeURIComponent(body);
-    else if (ch === "email" && s.email) url = "mailto:" + s.email + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-    else if (ch === "sms" && phone) url = "sms:" + phone + "?body=" + encodeURIComponent(body);
-    if (url) window.open(url, "_blank");
-  };
-
-  // Quick send WhatsApp directly from card (one-tap)
-  const quickWhatsApp = (s) => {
-    const phone = (s.phone || "").replace(/[^\d+]/g, "");
-    if (!phone) return;
-    const body = buildMsg(s, "whatsapp");
-    window.open("https://wa.me/" + phone.replace(/^\+/, "") + "?text=" + encodeURIComponent(body), "_blank");
-  };
-
-  // Inline phone update
-  const updatePhone = async (id, phone) => {
-    const cleaned = (phone || "").trim() || null;
-    await sb("subscription_students?id=eq." + id, { method: "PATCH", body: { phone: cleaned } });
-    await load();
-  };
-
-  const enriched = students.map(s => Object.assign({}, s, { _st: getStatus(s) }));
-  const filtered = enriched
-    .filter(s => filter === "all" || s._st.kind === filter)
-    .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => a._st.days - b._st.days);
-
-  const overdueList = enriched.filter(s => s._st.kind === "overdue").sort((a,b) => a._st.days - b._st.days);
-  const dueSoonList = enriched.filter(s => s._st.kind === "due").sort((a,b) => a._st.days - b._st.days);
-
-  const totalMonthly = students.reduce((sum, s) => sum + Number(s.amount || 0), 0);
-
-  const pillStyle = (kind) => {
-    let col = C.grey, bg = C.card;
-    if (kind === "paid") { col = C.green; bg = "#081A0E"; }
-    else if (kind === "due") { col = C.gold; bg = "#1A1200"; }
-    else if (kind === "overdue") { col = C.red; bg = "#1A0808"; }
-    return { background: bg, color: col, border: "1px solid " + col + "30", padding: "3px 11px", borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: ".09em", textTransform: "uppercase", whiteSpace: "nowrap" };
-  };
-
-  return (
-    <div className="fu">
-      {/* BIG OVERDUE BANNER */}
-      {overdueList.length > 0 && showOverdueBanner && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(217,96,96,.18), rgba(217,96,96,.08))",
-          border: "1.5px solid " + C.red,
-          borderRadius: 14,
-          padding: 18,
-          marginBottom: 18,
-          animation: "pulse 2.5s ease-in-out infinite",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.red, textTransform: "uppercase", fontFamily: S, marginBottom: 4 }}>⚠ Action Required</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: C.white, fontFamily: S, lineHeight: 1.2 }}>{overdueList.length} student{overdueList.length === 1 ? "" : "s"} overdue</p>
-              <p style={{ fontSize: 13, color: C.dim, marginTop: 4 }}>Total outstanding: <strong style={{ color: C.red }}>R{overdueList.reduce((s,x) => s + Number(x.amount||0), 0).toLocaleString()}</strong></p>
-            </div>
-            <button onClick={() => setShowOverdueBanner(false)} style={{ background: "transparent", color: C.grey, fontSize: 18, padding: 4 }}>✕</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-            {overdueList.slice(0, 5).map(s => (
-              <OverdueBannerRow key={s.id} student={s} onQuickSend={() => sendNow(s, "whatsapp")} onSavePhone={(p) => updatePhone(s.id, p)} />
-            ))}
-            {overdueList.length > 5 && (
-              <button onClick={() => setFilter("overdue")} style={{ background: "transparent", color: C.gold, fontSize: 12, fontWeight: 600, padding: "8px", textAlign: "center", letterSpacing: ".05em" }}>
-                + {overdueList.length - 5} more — view all overdue →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 22 }}>
-        <Card style={{ padding: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Students</p>
-          <p style={{ fontSize: 22, fontWeight: 700, color: C.white, fontFamily: S }}>{students.length}</p>
-        </Card>
-        <Card style={{ padding: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Due Soon</p>
-          <p style={{ fontSize: 22, fontWeight: 700, color: C.gold, fontFamily: S }}>{dueSoonList.length}</p>
-        </Card>
-        <Card style={{ padding: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Overdue</p>
-          <p style={{ fontSize: 22, fontWeight: 700, color: C.red, fontFamily: S }}>{overdueList.length}</p>
-        </Card>
-        <Card style={{ padding: 14 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>Monthly</p>
-          <p style={{ fontSize: 22, fontWeight: 700, color: C.green, fontFamily: S }}>R{totalMonthly.toLocaleString()}</p>
-        </Card>
-      </div>
-
-      {/* Search + Add */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <input style={{ flex: 1, minWidth: 200 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students..." />
-        <Btn v="gold" onClick={() => { setEditing(null); setShowForm(!showForm || editing !== null); }}>{showForm && !editing ? "✕ Cancel" : "+ Add Student"}</Btn>
-      </div>
-
-      {/* Inline Add/Edit Form */}
-      {showForm && (
-        <Card style={{ padding: 18, marginBottom: 18, borderColor: C.gold + "60" }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", fontFamily: S, marginBottom: 12 }}>{editing ? "Edit " + editing.name : "New Student"}</p>
-          <StudentInlineForm
-            initial={editing}
-            onCancel={() => { setShowForm(false); setEditing(null); }}
-            onSave={async (f) => { const ok = await saveStudent(f); if (ok) { setShowForm(false); setEditing(null); } }}
-          />
-        </Card>
-      )}
-
-      {/* Filter pills */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
-        <button onClick={() => setFilter("all")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "all" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "all" ? "#08090E" : C.grey, border: filter === "all" ? "none" : "1.5px solid " + C.border }}>All ({students.length})</button>
-        <button onClick={() => setFilter("overdue")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "overdue" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "overdue" ? "#08090E" : C.grey, border: filter === "overdue" ? "none" : "1.5px solid " + C.border }}>Overdue ({overdueList.length})</button>
-        <button onClick={() => setFilter("due")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "due" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "due" ? "#08090E" : C.grey, border: filter === "due" ? "none" : "1.5px solid " + C.border }}>Due Soon ({dueSoonList.length})</button>
-        <button onClick={() => setFilter("paid")} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", background: filter === "paid" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: filter === "paid" ? "#08090E" : C.grey, border: filter === "paid" ? "none" : "1.5px solid " + C.border }}>Paid</button>
-      </div>
-
-      {loading ? (
-        <p style={{ textAlign: "center", color: C.grey, padding: 40 }}>Loading...</p>
-      ) : filtered.length === 0 ? (
-        <Card style={{ padding: 40, textAlign: "center" }}>
-          <p style={{ color: C.grey, fontSize: 14 }}>{students.length === 0 ? "No students yet. Tap + Add Student to begin." : "No students match this view."}</p>
-        </Card>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(s => (
-            <Card key={s.id} style={{ padding: 14, borderColor: s._st.kind === "overdue" ? "rgba(217,96,96,.4)" : C.border }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: C.white, fontFamily: S, marginBottom: 3 }}>{s.name}</p>
-                  <p style={{ fontSize: 12, color: C.grey }}>R{s.amount} · next {fmtDate(s._st.next)}</p>
-                  {s.phone ? (
-                    <p style={{ fontSize: 11, color: C.faint, marginTop: 2 }}>📱 {s.phone}</p>
-                  ) : (
-                    <InlinePhoneAdd onSave={(p) => updatePhone(s.id, p)} />
-                  )}
-                </div>
-                <span style={pillStyle(s._st.kind)}>{s._st.label}</span>
-              </div>
-              <StudentActions
-                student={s}
-                onWhatsApp={() => sendNow(s, "whatsapp")}
-                onEmail={() => sendNow(s, "email")}
-                onSms={() => sendNow(s, "sms")}
-                onCopy={async () => { try { await navigator.clipboard.writeText(buildMsg(s, "whatsapp")); alert("Message copied to clipboard"); } catch { prompt("Copy this message:", buildMsg(s, "whatsapp")); } }}
-                onMarkPaid={() => markPaid(s)}
-                onEdit={() => { setEditing(s); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                onArchive={() => archive(s.id)}
-              />
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* No modals — form is inline above */}
-    </div>
-  );
-}
-
-function StudentActions({ student, onWhatsApp, onEmail, onSms, onCopy, onMarkPaid, onEdit, onArchive }) {
-  const [showMore, setShowMore] = useState(false);
-  const hasPhone = !!student.phone;
-  const hasEmail = !!student.email;
-
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {hasPhone && <Btn v="gold" sz="sm" onClick={onWhatsApp}>📱 WhatsApp</Btn>}
-        <Btn v={hasPhone ? "outline" : "gold"} sz="sm" onClick={() => setShowMore(!showMore)}>
-          {showMore ? "✕ Close" : "Message"}
-        </Btn>
-        <Btn v="navy" sz="sm" onClick={onMarkPaid}>Mark Paid</Btn>
-        <Btn v="outline" sz="sm" onClick={onEdit}>Edit</Btn>
-        <Btn v="danger" sz="sm" onClick={onArchive}>Archive</Btn>
-      </div>
-      {showMore && (
-        <div style={{ marginTop: 10, padding: 12, background: "rgba(7,9,15,.5)", borderRadius: 8, border: "1px solid " + C.border }}>
-          <p style={{ fontSize: 11, color: C.grey, marginBottom: 8, letterSpacing: ".05em" }}>Send via:</p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {hasPhone && <Btn v="outline" sz="sm" onClick={onWhatsApp}>WhatsApp</Btn>}
-            {hasEmail && <Btn v="outline" sz="sm" onClick={onEmail}>Email</Btn>}
-            {hasPhone && <Btn v="outline" sz="sm" onClick={onSms}>SMS</Btn>}
-            <Btn v="outline" sz="sm" onClick={onCopy}>📋 Copy text</Btn>
-          </div>
-          {!hasPhone && !hasEmail && (
-            <p style={{ fontSize: 11, color: C.gold, marginTop: 8 }}>⚠ No phone or email on file. Use Edit to add contact info, or Copy text to paste manually.</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OverdueBannerRow({ student, onQuickSend, onSavePhone }) {
-  const [editing, setEditing] = useState(false);
-  const [phoneInput, setPhoneInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const hasPhone = !!student.phone;
-
-  const save = async () => {
-    if (!phoneInput.trim()) return;
-    setSaving(true);
-    await onSavePhone(phoneInput);
-    setSaving(false);
-    setEditing(false);
-    setPhoneInput("");
-  };
-
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 12px", background: "rgba(7,9,15,.4)", borderRadius: 8, flexWrap: "wrap" }}>
-      <div style={{ flex: 1, minWidth: 140 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: C.white }}>{student.name}</p>
-        <p style={{ fontSize: 11, color: C.grey }}>R{student.amount} · {Math.abs(student._st.days)} days overdue</p>
-      </div>
-      {hasPhone ? (
-        <Btn v="gold" sz="sm" onClick={onQuickSend}>📱 Send Reminder</Btn>
-      ) : editing ? (
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flex: "1 1 200px" }}>
-          <input autoFocus type="tel" value={phoneInput} onChange={e => setPhoneInput(e.target.value)} placeholder="+27..." onKeyDown={e => e.key === "Enter" && save()} style={{ flex: 1, padding: "6px 10px", fontSize: 12 }} />
-          <Btn v="gold" sz="sm" onClick={save} disabled={saving || !phoneInput.trim()}>{saving ? "..." : "✓"}</Btn>
-          <Btn v="ghost" sz="sm" onClick={() => { setEditing(false); setPhoneInput(""); }}>✕</Btn>
-        </div>
-      ) : (
-        <Btn v="outline" sz="sm" onClick={() => setEditing(true)}>+ Add Phone</Btn>
-      )}
-    </div>
-  );
-}
-
-function InlinePhoneAdd({ onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [phoneInput, setPhoneInput] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    if (!phoneInput.trim()) return;
-    setSaving(true);
-    await onSave(phoneInput);
-    setSaving(false);
-    setEditing(false);
-    setPhoneInput("");
-  };
-
-  if (!editing) {
-    return (
-      <button onClick={() => setEditing(true)} style={{ background: "transparent", color: C.gold, fontSize: 11, marginTop: 4, padding: "2px 0", letterSpacing: ".05em" }}>+ Add phone for one-tap WhatsApp</button>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", gap: 5, marginTop: 5, alignItems: "center" }}>
-      <input autoFocus type="tel" value={phoneInput} onChange={e => setPhoneInput(e.target.value)} placeholder="+27..." onKeyDown={e => e.key === "Enter" && save()} style={{ flex: 1, padding: "5px 9px", fontSize: 11 }} />
-      <button onClick={save} disabled={saving || !phoneInput.trim()} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", color: "#08090E", opacity: saving || !phoneInput.trim() ? .5 : 1 }}>{saving ? "..." : "✓"}</button>
-      <button onClick={() => { setEditing(false); setPhoneInput(""); }} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11, color: C.grey, background: "transparent" }}>✕</button>
-    </div>
-  );
-}
-
-function StudentInlineForm({ initial, onCancel, onSave }) {
-  const [form, setForm] = useState({
-    name: initial?.name || "",
-    phone: initial?.phone || "",
-    email: initial?.email || "",
-    amount: initial?.amount || 500,
-    start_date: initial?.start_date || new Date().toISOString().split("T")[0],
-    billing_day: initial?.billing_day || new Date().getDate(),
-    notes: initial?.notes || "",
-  });
-  const [saving, setSaving] = useState(false);
-  return (
-    <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div><label>Full Name</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div><label>Phone</label><input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+27..." /></div>
-          <div><label>Monthly Fee (R)</label><input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
-        </div>
-        <div><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="optional" /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div><label>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} /></div>
-          <div><label>Billing Day</label><input type="number" min="1" max="31" value={form.billing_day} onChange={e => setForm({...form, billing_day: e.target.value})} /></div>
-        </div>
-        <div><label>Notes</label><textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="optional" style={{ resize: "vertical" }} /></div>
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 18 }}>
-        <Btn v="navy" onClick={onCancel}>Cancel</Btn>
-        <Btn v="gold" onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }} disabled={saving}>{saving ? "Saving..." : "Save Student"}</Btn>
-      </div>
-    </div>
-  );
-}
-
-function StudentFormModal({ initial, onClose, onSave }) {
-  const [form, setForm] = useState({
-    name: initial?.name || "",
-    phone: initial?.phone || "",
-    email: initial?.email || "",
-    amount: initial?.amount || 500,
-    start_date: initial?.start_date || new Date().toISOString().split("T")[0],
-    billing_day: initial?.billing_day || new Date().getDate(),
-    notes: initial?.notes || "",
-  });
-  const [saving, setSaving] = useState(false);
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(7,9,15,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: C.surf, border: "1.5px solid " + C.border, borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
-        <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 18 }}>{initial ? "Edit Student" : "Add Student"}</h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div><label>Full Name</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="John Doe" /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label>Phone</label><input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+27..." /></div>
-            <div><label>Monthly Fee (R)</label><input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
-          </div>
-          <div><label>Email</label><input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="optional" /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} /></div>
-            <div><label>Billing Day</label><input type="number" min="1" max="31" value={form.billing_day} onChange={e => setForm({...form, billing_day: e.target.value})} /></div>
-          </div>
-          <div><label>Notes</label><textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="optional" style={{ resize: "vertical" }} /></div>
-        </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22 }}>
-          <Btn v="navy" onClick={onClose}>Cancel</Btn>
-          <Btn v="gold" onClick={async () => { setSaving(true); await onSave(form); setSaving(false); }} disabled={saving}>{saving ? "Saving..." : "Save"}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MsgModal({ student, channel, setChannel, body, subject, onClose, onCopy, onSend, copyStatus }) {
-  if (!student) return null;
-  const safeBody = body || "(message not generated)";
-  const safeSubject = subject || "TA Forex Institute";
-  const phone = (student.phone || "").replace(/[^\d+]/g, "");
-  let canSend = false, sendLabel = "Send";
-  if (channel === "whatsapp" && phone) { canSend = true; sendLabel = "Open WhatsApp"; }
-  else if (channel === "email" && student.email) { canSend = true; sendLabel = "Open Mail"; }
-  else if (channel === "sms" && phone) { canSend = true; sendLabel = "Open Messages"; }
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(7,9,15,.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: C.surf, border: "1.5px solid " + C.border, borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto" }}>
-        <h2 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 4 }}>Reminder for {student.name}</h2>
-        <p style={{ fontSize: 12, color: C.grey, marginBottom: 16 }}>Pick a channel and send</p>
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          <button onClick={() => setChannel("whatsapp")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "whatsapp" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "whatsapp" ? "#08090E" : C.grey, border: channel === "whatsapp" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>WhatsApp</button>
-          <button onClick={() => setChannel("email")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "email" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "email" ? "#08090E" : C.grey, border: channel === "email" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>Email</button>
-          <button onClick={() => setChannel("sms")} style={{ flex: 1, padding: "10px", borderRadius: 9, fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: channel === "sms" ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent", color: channel === "sms" ? "#08090E" : C.grey, border: channel === "sms" ? "none" : "1.5px solid " + C.border, cursor: "pointer" }}>SMS</button>
-        </div>
-        {channel === "email" && <div style={{ marginBottom: 12 }}><label>Subject</label><input readOnly value={safeSubject} /></div>}
-        <div style={{ marginBottom: 12 }}>
-          <label>Message Preview</label>
-          <textarea readOnly value={safeBody} rows={9} style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }} />
-        </div>
-        {!canSend && <p style={{ fontSize: 12, color: C.gold, marginBottom: 10 }}>⚠ No {channel === "email" ? "email" : "phone number"} on file. Add one via Edit, or just copy the message.</p>}
-        {copyStatus && <p style={{ fontSize: 12, color: C.green, marginBottom: 10 }}>{copyStatus}</p>}
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <Btn v="navy" onClick={onClose}>Close</Btn>
-          <Btn v="outline" onClick={onCopy}>Copy</Btn>
-          {canSend && <Btn v="gold" onClick={onSend}>{sendLabel}</Btn>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loadJournalsDB, onLogout, loadAll, sb }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loadJournalsDB, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 HW" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Member" }, { k: "subscriptions", l: "💰 Subs" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -1203,7 +709,6 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
         {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
-        {tab === "subscriptions" && <SubscriptionsTab sb={sb} />}
       </div>
     </div>
   );
@@ -1684,35 +1189,89 @@ function RiskCalculator() {
 
 /* ── STUDENT HOMEWORK ────────────────────────────────────────────────────── */
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
+  const [hovered, setHovered] = React.useState(null);
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
-      <div style={{ marginBottom: 24 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>Your Access</p>
-        <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>My Courses</h2>
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px 100px" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 48 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 3, height: 28, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", borderRadius: 2 }} />
+          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase" }}>Education Portal</span>
+        </div>
+        <h1 style={{ fontFamily: S, fontSize: 38, fontWeight: 700, lineHeight: 1.1, marginBottom: 10, letterSpacing: "-.01em" }}>Your Courses</h1>
+        <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7 }}>Master the models. Execute with discipline.</p>
       </div>
-      {courses.length === 0 && <div style={{ textAlign: "center", padding: "60px 0", color: C.grey }}><div style={{ fontSize: 40, marginBottom: 12, opacity: .3 }}>📚</div><p>No courses available for your membership level.</p></div>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {courses.map(c => {
+
+      {courses.length === 0 && (
+        <div style={{ textAlign: "center", padding: "80px 0" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: .2 }}>◈</div>
+          <p style={{ color: C.grey, fontSize: 14 }}>No courses available for your membership level.</p>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gap: 16 }}>
+        {courses.map((c, ci) => {
           const total = videos.filter(v => v.courseId === c.id).length;
           const sects = sections.filter(s => s.courseId === c.id).length;
+          const isHovered = hovered === c.id;
           return (
-            <Card key={c.id} hover onClick={() => onSelectCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex" }}>
-              <div style={{ width: 5, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", flexShrink: 0 }} />
-              <div style={{ flex: 1, padding: "18px 18px 18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+            <div key={c.id}
+              onClick={() => onSelectCourse(c)}
+              onMouseEnter={() => setHovered(c.id)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ position: "relative", cursor: "pointer", borderRadius: 16, overflow: "hidden",
+                background: isHovered ? C.card : C.surf,
+                border: "1px solid " + (isHovered ? C.gold + "50" : C.border),
+                transition: "all .25s cubic-bezier(.22,1,.36,1)",
+                transform: isHovered ? "translateY(-2px)" : "none",
+                boxShadow: isHovered ? "0 20px 60px rgba(0,0,0,.4), 0 0 0 1px " + C.gold + "20" : "none",
+              }}>
+              {/* Gold accent line */}
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                background: "linear-gradient(90deg," + C.gold + "," + C.goldLt + ",transparent)",
+                opacity: isHovered ? 1 : 0, transition: "opacity .25s" }} />
+
+              <div style={{ padding: "28px 32px", display: "flex", alignItems: "center", gap: 24 }}>
+                {/* Index number */}
+                <div style={{ flexShrink: 0, width: 52, height: 52, borderRadius: 12,
+                  background: isHovered ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : C.bg,
+                  border: "1px solid " + (isHovered ? "transparent" : C.border),
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .25s" }}>
+                  <span style={{ fontFamily: S, fontSize: 20, fontWeight: 700,
+                    color: isHovered ? "#08090E" : C.gold }}>
+                    {String(ci + 1).padStart(2, "0")}
+                  </span>
+                </div>
+
+                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: C.white, marginBottom: 4 }}>{c.title}</div>
-                  {c.desc && <div style={{ fontSize: 12, color: C.grey, marginBottom: 8 }}>{c.desc}</div>}
-                  <div style={{ display: "flex", gap: 14, fontSize: 12, color: C.grey }}>
-                    <span>{sects} section{sects !== 1 ? "s" : ""}</span>
-                    <span>{total} lesson{total !== 1 ? "s" : ""}</span>
-                    {c.level && <span style={{ color: C.gold }}>• {c.level}</span>}
+                  <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700, color: C.white,
+                    marginBottom: 6, lineHeight: 1.2, letterSpacing: "-.01em" }}>{c.title}</h3>
+                  {c.desc && <p style={{ fontSize: 13, color: C.grey, marginBottom: 12, lineHeight: 1.6,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.desc}</p>}
+                  <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: C.faint, fontWeight: 600, letterSpacing: ".05em" }}>
+                      {sects} SECTION{sects !== 1 ? "S" : ""}
+                    </span>
+                    <span style={{ width: 3, height: 3, borderRadius: "50%", background: C.border }} />
+                    <span style={{ fontSize: 11, color: C.faint, fontWeight: 600, letterSpacing: ".05em" }}>
+                      {total} LESSON{total !== 1 ? "S" : ""}
+                    </span>
                   </div>
                 </div>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ color: "#08090E", fontSize: 18, fontWeight: 900, marginLeft: 2 }}>›</span>
+
+                {/* Arrow */}
+                <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
+                  background: isHovered ? C.gold : "transparent",
+                  border: "1.5px solid " + (isHovered ? C.gold : C.border),
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .25s" }}>
+                  <span style={{ color: isHovered ? "#08090E" : C.grey, fontSize: 18, fontWeight: 700,
+                    marginLeft: 2, transition: "all .25s" }}>→</span>
                 </div>
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
@@ -1720,40 +1279,12 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   );
 }
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout, sb }) {
+
+function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
   const [openS, setOpenS]   = useState({});
-  const [mySub, setMySub] = useState(null);
-  const [showSubBanner, setShowSubBanner] = useState(true);
-
-  // Load this user's subscription record by name match
-  useEffect(() => {
-    if (!sb || !user?.name) return;
-    (async () => {
-      const data = await sb("subscription_students?name=ilike." + encodeURIComponent(user.name) + "&active=eq.true");
-      if (data && data[0]) setMySub(data[0]);
-    })();
-  }, [user?.name]);
-
-  // Calculate subscription status
-  const subStatus = (() => {
-    if (!mySub) return null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    let next;
-    if (mySub.last_paid_date) {
-      // Next due = exactly one month after the last payment
-      const ref = new Date(mySub.last_paid_date);
-      next = new Date(ref.getFullYear(), ref.getMonth() + 1, mySub.billing_day);
-    } else {
-      const start = new Date(mySub.start_date);
-      next = new Date(start.getFullYear(), start.getMonth(), mySub.billing_day);
-      if (next < start) next = new Date(next.getFullYear(), next.getMonth() + 1, mySub.billing_day);
-    }
-    const days = Math.ceil((next - today) / 86400000);
-    return { days, next, amount: mySub.amount };
-  })();
 
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
@@ -1909,37 +1440,6 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
       {/* ══ HOME ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
-          {/* ── PAYMENT DUE BANNER ── */}
-          {subStatus && showSubBanner && (subStatus.days <= 5) && (
-            <div style={{
-              background: subStatus.days < 0
-                ? "linear-gradient(135deg, rgba(217,96,96,.22), rgba(217,96,96,.10))"
-                : "linear-gradient(135deg, rgba(201,168,76,.22), rgba(201,168,76,.10))",
-              borderBottom: "2px solid " + (subStatus.days < 0 ? C.red : C.gold),
-              padding: "20px 24px",
-              animation: "pulse 2.5s ease-in-out infinite",
-            }}>
-              <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 240 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".22em", color: subStatus.days < 0 ? C.red : C.gold, textTransform: "uppercase", fontFamily: S, marginBottom: 6 }}>
-                    {subStatus.days < 0 ? "⚠ Payment Overdue" : subStatus.days === 0 ? "💰 Payment Due Today" : "📅 Payment Reminder"}
-                  </p>
-                  <p style={{ fontSize: 18, fontWeight: 700, color: C.white, fontFamily: S, lineHeight: 1.3, marginBottom: 4 }}>
-                    {subStatus.days < 0
-                      ? "Your Private Mentorship subscription of R" + subStatus.amount + " was due " + Math.abs(subStatus.days) + " day" + (Math.abs(subStatus.days) === 1 ? "" : "s") + " ago"
-                      : subStatus.days === 0
-                      ? "Your Private Mentorship subscription of R" + subStatus.amount + " is due today"
-                      : "Your Private Mentorship subscription of R" + subStatus.amount + " is due in " + subStatus.days + " day" + (subStatus.days === 1 ? "" : "s")}
-                  </p>
-                  <p style={{ fontSize: 13, color: C.dim }}>
-                    Please send proof of payment to Taaha to keep your access active.
-                  </p>
-                </div>
-                <button onClick={() => setShowSubBanner(false)} style={{ background: "transparent", color: C.grey, fontSize: 22, padding: 6, alignSelf: "flex-start" }}>✕</button>
-              </div>
-            </div>
-          )}
-
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #0D1B3E 0%, #07090F 60%)" }}>
             {/* Background video loop */}
@@ -2106,64 +1606,76 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ COURSE ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px 80px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px 100px" }}>
+
+          {/* Back */}
+          <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 36, padding: 0, fontWeight: 600 }}>
+            <span style={{ fontSize: 16 }}>←</span> All Courses
+          </button>
+
           {/* Course header */}
-          <div style={{ marginBottom: 28, padding: "24px 0 24px", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".15em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Course</div>
-            <h2 style={{ fontFamily: S, fontSize: 30, fontWeight: 700, marginBottom: 8, lineHeight: 1.2 }}>{course.title}</h2>
-            {course.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.65, marginBottom: 14 }}>{course.desc}</p>}
-            <div style={{ display: "flex", gap: 20, fontSize: 12, color: C.grey }}>
-              <span>{cSecs.length} section{cSecs.length !== 1 ? "s" : ""}</span>
-              <span>{cVideos.length} lesson{cVideos.length !== 1 ? "s" : ""}</span>
+          <div style={{ marginBottom: 44 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div style={{ width: 3, height: 24, background: "linear-gradient(180deg," + C.goldLt + "," + C.gold + ")", borderRadius: 2 }} />
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase" }}>Course</span>
+            </div>
+            <h1 style={{ fontFamily: S, fontSize: 36, fontWeight: 700, lineHeight: 1.1, marginBottom: 12, letterSpacing: "-.01em" }}>{course.title}</h1>
+            {course.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75, maxWidth: 560, marginBottom: 20 }}>{course.desc}</p>}
+            <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+              <div style={{ padding: "6px 14px", background: C.card, border: "1px solid " + C.border, borderRadius: 20, fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: ".08em" }}>
+                {cSecs.length} SECTION{cSecs.length !== 1 ? "S" : ""}
+              </div>
+              <div style={{ padding: "6px 14px", background: C.card, border: "1px solid " + C.border, borderRadius: 20, fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: ".08em" }}>
+                {cVideos.length} LESSON{cVideos.length !== 1 ? "S" : ""}
+              </div>
             </div>
           </div>
 
           {cSecs.length === 0 && <p style={{ color: C.grey }}>No content yet.</p>}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* Sections */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {cSecs.map((s, si) => {
               const sv = videos.filter(v => v.sectionId === s.id);
               const open = openS[s.id] !== false;
               return (
-                <div key={s.id} style={{ border: `1.5px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+                <div key={s.id} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid " + (open ? C.gold + "30" : C.border), transition: "border-color .2s" }}>
                   {/* Section header */}
-                  <div onClick={() => toggleS(s.id)} style={{ padding: "16px 20px", background: C.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none" }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Section {si + 1}</div>
-                      <div style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: C.white }}>{s.title}</div>
-                      <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
+                  <div onClick={() => toggleS(s.id)} style={{ padding: "18px 24px", background: open ? "rgba(201,168,76,.04)" : C.card, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", userSelect: "none", transition: "background .2s" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: open ? C.goldDim : C.bg, border: "1px solid " + (open ? C.gold + "40" : C.border), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .2s" }}>
+                        <span style={{ fontFamily: S, fontSize: 13, fontWeight: 700, color: open ? C.gold : C.faint }}>{String(si + 1).padStart(2, "0")}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, lineHeight: 1.2 }}>{s.title}</div>
+                        <div style={{ fontSize: 11, color: C.faint, marginTop: 3, fontWeight: 600, letterSpacing: ".05em" }}>{sv.length} LESSON{sv.length !== 1 ? "S" : ""}</div>
+                      </div>
                     </div>
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.bg, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", transition: "transform .25s", transform: open ? "rotate(180deg)" : "none", flexShrink: 0 }}>
-                      <span style={{ color: C.gold, fontSize: 14 }}>∨</span>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: C.bg, border: "1px solid " + C.border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "transform .25s", transform: open ? "rotate(180deg)" : "none" }}>
+                      <span style={{ color: C.gold, fontSize: 12, lineHeight: 1 }}>▼</span>
                     </div>
                   </div>
 
                   {/* Lesson list */}
                   {open && (
-                    <div style={{ background: `${C.card}AA` }}>
-                      {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No videos in this section yet.</div>}
+                    <div style={{ background: C.bg + "AA" }}>
+                      {sv.length === 0 && <div style={{ padding: "14px 24px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
                       {sv.map((v, vi) => {
-                        const dv = detect(v.url);
-                        const isExt = dv?.type === "ext";
+                        const isLast = vi === sv.length - 1;
                         return (
                           <div key={v.id} onClick={() => play(v)}
-                            style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14, borderTop: `1px solid ${C.border}`, cursor: "pointer", transition: "background .15s" }}
-                            onMouseEnter={e => e.currentTarget.style.background = C.cardHov}
+                            style={{ padding: "15px 24px 15px 76px", borderTop: "1px solid " + C.border + "60", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "background .15s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(201,168,76,.04)"}
                             onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                            {/* Number badge */}
-                            <div style={{ width: 38, height: 38, borderRadius: 9, background: C.goldDim, border: `1px solid ${C.gold}28`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <span style={{ fontFamily: S, fontSize: 16, color: C.gold, fontWeight: 700 }}>{vi + 1}</span>
+                            {/* Play button */}
+                            <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.card, border: "1px solid " + C.border, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .2s" }}>
+                              <span style={{ color: C.gold, fontSize: 10, marginLeft: 2 }}>▶</span>
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 14, fontWeight: 600, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                              {v.desc && <div style={{ fontSize: 12, color: C.grey, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{v.desc}</div>}
+                              {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.desc}</div>}
                             </div>
-                            {isExt
-                              ? <div style={{ fontSize: 11, color: C.grey, flexShrink: 0, whiteSpace: "nowrap" }}>Opens in {dv.label} ↗</div>
-                              : <div style={{ width: 34, height: 34, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                  <span style={{ color: "#08090E", fontSize: 12, marginLeft: 2 }}>▶</span>
-                                </div>
-                            }
+                            <span style={{ color: C.faint, fontSize: 13, flexShrink: 0 }}>→</span>
                           </div>
                         );
                       })}
@@ -2175,7 +1687,6 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
           </div>
         </div>
       )}
-
       {/* ══ PLAYER ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
@@ -2183,75 +1694,117 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         const idx     = secVids.findIndex(v => v.id === video.id);
         const next    = secVids[idx + 1] || null;
         return (
-          <div style={{ maxWidth: 900, margin: "0 auto", paddingBottom: 80 }}>
-            {/* Player */}
-            <div style={{ background: "#000", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
+            {/* Back breadcrumb */}
+            <div style={{ padding: "16px 20px 0", display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.faint, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0 }}>Courses</button>
+              <span style={{ color: C.faint, fontSize: 12 }}>›</span>
+              <button onClick={() => openCourse(course)} style={{ background: "transparent", border: "none", color: C.faint, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{course?.title}</button>
+              <span style={{ color: C.faint, fontSize: 12 }}>›</span>
+              <span style={{ color: C.grey, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{video.title}</span>
+            </div>
+
+            {/* Video player - full width, cinematic */}
+            <div style={{ margin: "16px 0 0", background: "#000", position: "relative" }}>
               <VideoPlayer url={video.url} title={video.title} />
             </div>
 
-            <div style={{ padding: "24px 20px 0" }}>
-              {sec && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</div>}
-              <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, marginBottom: 10, lineHeight: 1.2 }}>{video.title}</h2>
-              {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75 }}>{video.desc}</p>}
-            </div>
-
-            {/* Up next */}
-            {next && (
-              <div style={{ margin: "28px 20px 0" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.grey, textTransform: "uppercase", marginBottom: 12 }}>Up Next</div>
-                <Card hover onClick={() => play(next)} style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 9, background: C.goldDim, border: `1px solid ${C.gold}28`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontFamily: S, fontSize: 16, color: C.gold, fontWeight: 700 }}>{idx + 2}</span>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 0, alignItems: "start" }}>
+              {/* Left — video info + comments */}
+              <div style={{ padding: "28px 24px", borderRight: "1px solid " + C.border }}>
+                {sec && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <div style={{ width: 2, height: 14, background: C.gold, borderRadius: 1 }} />
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".3em", color: C.gold, textTransform: "uppercase" }}>{sec.title}</span>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{next.title}</div>
-                    {next.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{next.desc}</div>}
-                  </div>
-                  <span style={{ color: C.gold, fontSize: 24, flexShrink: 0 }}>›</span>
-                </Card>
-              </div>
-            )}
-
-            {/* Video Notes & PDF */}
-            {(video.notes || video.pdfUrl) && (
-              <div style={{ margin: "20px 20px 0", padding: "18px 20px", background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.2)", borderRadius: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>📝 Lesson Notes</div>
-                {video.notes && <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: video.pdfUrl ? 14 : 0 }}>{video.notes}</p>}
-                {video.pdfUrl && (
-                  <a href={video.pdfUrl} download={video.pdfName || "notes.pdf"}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "9px 16px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-                    📥 Download PDF — {video.pdfName || "Notes"}
-                  </a>
                 )}
+                <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, marginBottom: 10, lineHeight: 1.2, letterSpacing: "-.01em" }}>{video.title}</h2>
+                {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.75, marginBottom: 20 }}>{video.desc}</p>}
+
+                {/* Up next card */}
+                {next && (
+                  <div style={{ marginBottom: 28, padding: "16px 18px", background: C.card, border: "1px solid " + C.border, borderRadius: 12, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "border-color .2s" }}
+                    onClick={() => play(next)}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.gold + "50"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                    <div style={{ flexShrink: 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Up Next</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{next.title}</div>
+                      {next.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{next.desc}</div>}
+                    </div>
+                    <div style={{ marginLeft: "auto", width: 36, height: 36, borderRadius: "50%", background: C.goldDim, border: "1px solid " + C.gold + "40", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ color: C.gold, fontSize: 14, marginLeft: 2 }}>▶</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {(video.notes || video.pdfUrl) && (
+                  <div style={{ marginBottom: 28, padding: "18px 20px", background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 12 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 12 }}>Lesson Notes</div>
+                    {video.notes && <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: video.pdfUrl ? 14 : 0 }}>{video.notes}</p>}
+                    {video.pdfUrl && (
+                      <a href={video.pdfUrl} download={video.pdfName || "notes.pdf"}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.goldDim, color: C.gold, border: "1px solid " + C.gold + "40", padding: "9px 16px", borderRadius: 9, fontSize: 12, fontWeight: 700, textDecoration: "none", letterSpacing: ".04em" }}>
+                        ↓ {video.pdfName || "Download PDF"}
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Q&A */}
+                <VideoComments videoId={video.id} videoTitle={video.title} user={user} comments={comments} addComment={addComment} deleteComment={deleteComment} />
               </div>
-            )}
 
-            {/* Q&A Comments */}
-            <VideoComments videoId={video.id} videoTitle={video.title} user={user} comments={comments} addComment={addComment} deleteComment={deleteComment} />
-
-            {/* Lesson list */}
-            {secVids.length > 1 && (
-              <div style={{ margin: "28px 20px 0" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: C.grey, textTransform: "uppercase", marginBottom: 12 }}>Lessons — {sec?.title}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {secVids.map((v, i) => {
-                    const active = v.id === video.id;
-                    return (
-                      <div key={v.id} onClick={() => play(v)} style={{ padding: "12px 16px", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "all .15s",
-                        background: active ? C.goldDim : "transparent",
-                        border: `1px solid ${active ? C.gold + "45" : C.border}` }}>
-                        <span style={{ width: 22, textAlign: "center", fontFamily: S, fontSize: 14, color: active ? C.gold : C.faint, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-                        <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? C.gold : (completed[v.id] ? C.green : C.white), flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: completed[v.id] && !active ? "line-through" : "none", opacity: completed[v.id] && !active ? 0.65 : 1 }}>{v.title}</span>
-                        {active && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700, flexShrink: 0, letterSpacing: ".06em" }}>▶ PLAYING</span>}
-                        {!active && <div onClick={e => { e.stopPropagation(); toggleComplete(v.id); }} style={{ width: 20, height: 20, borderRadius: 5, border: "2px solid " + (completed[v.id] ? C.green : C.faint), background: completed[v.id] ? C.green : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
-                          {completed[v.id] && <span style={{ color: "#fff", fontSize: 10, fontWeight: 900 }}>✓</span>}
-                        </div>}
-                      </div>
-                    );
-                  })}
+              {/* Right — lesson list sidebar */}
+              {secVids.length > 1 && (
+                <div style={{ padding: "28px 20px", position: "sticky", top: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".25em", color: C.faint, textTransform: "uppercase", marginBottom: 16 }}>
+                    {sec?.title} · {secVids.length} Lessons
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {secVids.map((v, i) => {
+                      const active = v.id === video.id;
+                      return (
+                        <div key={v.id} onClick={() => play(v)}
+                          style={{ padding: "11px 14px", borderRadius: 10, cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: 12, transition: "all .15s",
+                            background: active ? C.goldDim : "transparent",
+                            border: "1px solid " + (active ? C.gold + "40" : "transparent") }}
+                          onMouseEnter={e => { if(!active) e.currentTarget.style.background = C.card; }}
+                          onMouseLeave={e => { if(!active) e.currentTarget.style.background = "transparent"; }}>
+                          <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                            background: active ? C.gold : completed[v.id] ? C.green + "20" : C.bg,
+                            border: "1px solid " + (active ? C.gold : completed[v.id] ? C.green : C.border),
+                            display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {completed[v.id] && !active
+                              ? <span style={{ color: C.green, fontSize: 10, fontWeight: 900 }}>✓</span>
+                              : active
+                                ? <span style={{ color: "#08090E", fontSize: 9, marginLeft: 1 }}>▶</span>
+                                : <span style={{ fontFamily: S, fontSize: 11, color: C.faint, fontWeight: 700 }}>{i+1}</span>
+                            }
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: active ? 700 : 400,
+                            color: active ? C.gold : completed[v.id] ? C.grey : C.white,
+                            flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            textDecoration: completed[v.id] && !active ? "line-through" : "none",
+                            opacity: completed[v.id] && !active ? 0.5 : 1 }}>{v.title}</span>
+                          {!active && (
+                            <div onClick={e => { e.stopPropagation(); toggleComplete(v.id); }}
+                              style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: "pointer",
+                                border: "2px solid " + (completed[v.id] ? C.green : C.faint),
+                                background: completed[v.id] ? C.green : "transparent",
+                                display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {completed[v.id] && <span style={{ color: "#fff", fontSize: 9, fontWeight: 900 }}>✓</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         );
       })()}
@@ -3559,84 +3112,13 @@ const PLAYBOOK_DATA = {
   },
   "TA MMXM MODEL": {
     color: "#C96BFF",
-    icon: "🎯",
-    tagline: "Multi-timeframe top-down precision. HTF tap → ITF stop hunt → LTF entry.",
-    description: "The MMXM is a multi-timeframe top-down model. Work from a high timeframe level down to a low timeframe entry through a strict sequence: HTF level tap → ITF stop hunt + EOM marking → LTF entry trigger. Uses ICT concepts (liquidity, FVGs, ERLs/IRLs, MSS, IFVG) but the timeframe combinations, sequence, and EOM logic are the framework.",
-    pmOnly: true,
-    rules: [
-      "Pick ONE path per setup — do not mix timeframes mid-trade",
-      "PATH A: Daily HTF → 1H ITF → 5m LTF",
-      "PATH B: 4H HTF → 15m ITF → 2m LTF (M1 acceptable as fallback if no M2)",
-      "HTF: Mark IRL (FVGs, order blocks) or ERL (swing highs/lows) — NOT PDH/PDL on Daily (PDH/PDL OK on 4H)",
-      "Wait for HTF level to be tapped or swept — reactive, never predictive",
-      "ITF stop hunt MUST happen AFTER HTF tap — bullish: ITF low swept; bearish: ITF high swept",
-      "Mark EOM (End of Model) AFTER stop hunt — bullish: nearest ITF high; bearish: nearest ITF low",
-      "LTF entry: MSS + FVG (Model 1) OR liquidity sweep + IFVG (Model 2)",
-      "Base target: 1:2 RR on every trade — no exceptions",
-      "Extended target: EOM (only when structure supports it)",
-      "Hard limits: 1% max daily risk on funded · 1-2 trades per day max",
-    ],
-    dos: [
-      "Pick your path before the setup begins (Path A or Path B)",
-      "Mark the HTF level (IRL or ERL) BEFORE waiting for the tap",
-      "Wait for the full sequence: HTF tap → ITF stop hunt → EOM mark → LTF entry trigger",
-      "Mark EOM clearly on the chart before entering",
-      "Default to 1:2 RR — earn the EOM extension, don't assume it",
-      "Use M2 for Path B LTF whenever possible — only fall back to M1 if M2 unavailable",
-      "Size trades to keep within the 1% daily risk cap",
-    ],
-    donts: [
-      "Use PDH/PDL as your HTF level on the Daily timeframe (only valid on 4H)",
-      "Mix timeframe paths in a single setup (no Daily HTF + M15 ITF combos)",
-      "Enter without a confirmed HTF tap → ITF stop hunt sequence",
-      "Enter without EOM marked — it's not optional",
-      "Loosen your SL on M1 to compensate for noise — if it doesn't fit 1% risk, skip it",
-      "Predict the HTF tap or stop hunt — react only",
-      "Take more than 2 trades in a day",
-    ],
-    extra: {
-      title: "The Full Sequence (Top-Down Checklist)",
-      sections: [
-        {
-          name: "Step 1 — HTF Analysis",
-          color: "#C96BFF",
-          steps: [
-            "Mark IRL (FVG, order block, internal level) OR ERL (swing high, swing low, external sweep)",
-            "Daily timeframe: PDH/PDL is NOT valid — use FVGs, OBs, swing points only",
-            "4H timeframe: PDH/PDL IS valid",
-          ],
-        },
-        {
-          name: "Step 2 — Wait for HTF Tap",
-          color: "#9F4FCC",
-          steps: [
-            "Price must tap or sweep the marked HTF level",
-            "Until the tap happens, there is NO setup",
-            "Reactive only — do not anticipate",
-          ],
-        },
-        {
-          name: "Step 3 — ITF Stop Hunt + EOM",
-          color: "#7A35A8",
-          steps: [
-            "Stop hunt = liquidity grab on the ITF AFTER the HTF tap",
-            "Bullish: sweep of an ITF low after HTF tap",
-            "Bearish: sweep of an ITF high after HTF tap",
-            "Mark the EOM: nearest ITF high (bullish) or ITF low (bearish) AFTER the stop hunt",
-            "EOM = your extended target, not your base target",
-          ],
-        },
-        {
-          name: "Step 4 — LTF Entry",
-          color: "#5A1E80",
-          steps: [
-            "Entry Model 1: MSS (Market Structure Shift) + FVG — enter on the FVG",
-            "Entry Model 2: Liquidity sweep + IFVG (Inverted FVG) — enter on the IFVG",
-            "Base target: 1:2 RR · Extended target: EOM",
-          ],
-        },
-      ],
-    },
+    icon: "🔜",
+    tagline: "Coming Soon",
+    description: "The MMXM Model is being prepared for release. Coach Taaha will drop this model when the time is right. For now, focus on executing your current models with precision.",
+    rules: ["This model is coming soon — stay tuned"],
+    dos: ["Keep journalling and reviewing your current models"],
+    donts: ["Wait for this model before being consistent"],
+    comingSoon: true,
   },
 };
 
@@ -3658,7 +3140,7 @@ function ModelPlaybook({ user }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
         {models.map(mod => {
           const d = PLAYBOOK_DATA[mod];
-          const isPMOnly = mod === "FOREVER MODEL" || mod === "PM SESSION MODEL" || mod === "TA MMXM MODEL";
+          const isPMOnly = mod === "FOREVER MODEL" || mod === "PM SESSION MODEL";
           const hasPM = (user.levels||[]).includes("Private Mentorship");
           const locked = isPMOnly && !hasPM;
           return (
@@ -4602,8 +4084,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} sb={sb} />}
-      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} sb={sb} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
