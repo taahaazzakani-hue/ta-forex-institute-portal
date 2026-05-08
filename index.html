@@ -40,20 +40,6 @@ const C = {
   green:   "#4CB880",
 };
 
-const Avatar = ({ name = "", size = 34 }) => {
-  const initials = name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
-  const hue = name.split("").reduce((a,c) => a + c.charCodeAt(0), 0) % 360;
-  return (
-    <div style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0,
-      background: `hsl(${hue},35%,28%)`, border: `1px solid hsl(${hue},35%,38%)`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.35, fontWeight: 700, color: `hsl(${hue},60%,75%)`, userSelect: "none" }}>
-      {initials}
-    </div>
-  );
-};
-
-
 const S = "'Cinzel',Georgia,serif";
 const D = "'Raleway',system-ui,sans-serif";
 
