@@ -1239,7 +1239,6 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
     ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
     ...(notJournaledWeek ? [{ type: "journal", msg: "You have not journalled in over a week", urgent: false }] : []),
   ];
-  const [showNotifs, setShowNotifs] = React.useState(false);
   const accessibleCourses = courses.filter(c => {
     if (!c.level) return true; // no level restriction = visible to all approved members
     return userLevels.includes(c.level); // level set = must have that exact level
