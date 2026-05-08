@@ -40,10 +40,6 @@ const C = {
   green:   "#4CB880",
 };
 
-const Rule = () => (
-  <div style={{ height: 1, background: "linear-gradient(90deg, transparent, " + C.gold + "40, transparent)", margin: "0 auto", width: "100%" }} />
-);
-
 const Avatar = ({ name = "", size = 34 }) => {
   const initials = name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase() || "?";
   const hue = name.split("").reduce((a,c) => a + c.charCodeAt(0), 0) % 360;
