@@ -3757,79 +3757,181 @@ function SecurityTab({ loginSessions, users }) {
 
 function SubscriptionsTab({ users, patchUser }) {
   const [filter, setFilter] = React.useState("all");
+  const [editPhone, setEditPhone] = React.useState(null);
+  const [phoneVal, setPhoneVal] = React.useState("");
+  const [editDate, setEditDate] = React.useState(null);
+  const [dateVal, setDateVal] = React.useState("");
+
   const approved = users.filter(u => u.status === "approved");
   const pm = approved.filter(u => (u.levels||[]).includes("Private Mentorship"));
   const nonPm = approved.filter(u => !(u.levels||[]).includes("Private Mentorship"));
-  const display = filter === "pm" ? pm : filter === "non" ? nonPm : approved;
+  const overdue = pm.filter(u => u.pmDueDate && new Date(u.pmDueDate) < new Date());
+  const display = filter === "pm" ? pm : filter === "non" ? nonPm : filter === "overdue" ? overdue : approved;
 
   const togglePM = (u) => {
     const current = u.levels || [];
-    const updated = current.includes("Private Mentorship")
-      ? current.filter(l => l !== "Private Mentorship")
-      : [...current, "Private Mentorship"];
-    patchUser(u.id, { levels: updated });
+    const isPM = current.includes("Private Mentorship");
+    const updated = isPM ? current.filter(l => l !== "Private Mentorship") : [...current, "Private Mentorship"];
+    const patch = { levels: updated };
+    if (!isPM) {
+      // Grant PM — set start date today, due date 30 days from now
+      const today = new Date();
+      const due = new Date(); due.setDate(due.getDate() + 30);
+      patch.pmStartDate = today.toISOString().split("T")[0];
+      patch.pmDueDate = due.toISOString().split("T")[0];
+    }
+    patchUser(u.id, patch);
+  };
+
+  const savePhone = (u) => {
+    patchUser(u.id, { phone: phoneVal });
+    setEditPhone(null);
+  };
+
+  const saveDueDate = (u) => {
+    patchUser(u.id, { pmDueDate: dateVal });
+    setEditDate(null);
+  };
+
+  const whatsappMsg = (u) => {
+    const phone = (u.phone || "").replace(/\D/g, "");
+    if (!phone) { alert("No phone number saved for " + u.name + ". Click the phone icon to add one first."); return; }
+    const msg = encodeURIComponent("Hi " + u.name.split(" ")[0] + ", hope you are well! Please be advised your Private Mentorship subscription has expired and is due for renewal. Please make payment to continue your access. Thank you!");
+    window.open("https://wa.me/" + phone + "?text=" + msg, "_blank");
+  };
+
+  const formatDate = (d) => {
+    if (!d) return null;
+    return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const daysUntil = (d) => {
+    if (!d) return null;
+    const diff = Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
         {[
           { label: "Total Members", value: approved.length, color: C.white },
           { label: "Private Mentorship", value: pm.length, color: C.gold },
           { label: "Basic Access", value: nonPm.length, color: C.grey },
+          { label: "Overdue", value: overdue.length, color: overdue.length > 0 ? C.red : C.green },
         ].map(s => (
-          <div key={s.label} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>{s.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+          <div key={s.label} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+            <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
 
       {/* Filter */}
-      <div style={{ display: "flex", gap: 8 }}>
-        {[["all","All Members"],["pm","Private Mentorship"],["non","Basic Access"]].map(([k,l]) => (
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {[["all","All"],["pm","PM Active"],["overdue","Overdue"],["non","Basic"]].map(([k,l]) => (
           <button key={k} onClick={() => setFilter(k)}
             style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid",
-              background: filter===k ? C.goldDim : "transparent",
-              color: filter===k ? C.gold : C.grey,
-              borderColor: filter===k ? C.gold+"50" : C.border }}>
-            {l}
+              background: filter===k ? (k==="overdue" ? "rgba(217,96,96,.15)" : C.goldDim) : "transparent",
+              color: filter===k ? (k==="overdue" ? C.red : C.gold) : C.grey,
+              borderColor: filter===k ? (k==="overdue" ? C.red+"50" : C.gold+"50") : C.border }}>
+            {l} {k==="overdue" && overdue.length > 0 ? `(${overdue.length})` : ""}
           </button>
         ))}
       </div>
 
       {/* Member list */}
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        {display.map((u, i) => {
+      <div style={{ display: "grid", gap: 8 }}>
+        {display.map((u) => {
           const isPM = (u.levels||[]).includes("Private Mentorship");
+          const days = daysUntil(u.pmDueDate);
+          const isOverdue = days !== null && days < 0;
+          const isDueSoon = days !== null && days >= 0 && days <= 5;
+
           return (
-            <div key={u.id} style={{ padding: "14px 20px", borderBottom: i < display.length-1 ? "1px solid " + C.border : "none",
-              display: "flex", alignItems: "center", gap: 14, justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.white, marginBottom: 2 }}>{u.name}</div>
-                <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                  background: isPM ? "rgba(201,168,76,.12)" : C.surf,
-                  color: isPM ? C.gold : C.grey,
-                  border: "1px solid " + (isPM ? C.gold+"40" : C.border) }}>
-                  {isPM ? "Private Mentorship" : "Basic Access"}
-                </span>
-                <button onClick={() => togglePM(u)}
-                  style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid",
-                    background: isPM ? "rgba(217,96,96,.1)" : C.goldDim,
-                    color: isPM ? C.red : C.gold,
-                    borderColor: isPM ? C.red+"40" : C.gold+"40" }}>
-                  {isPM ? "Remove PM" : "Grant PM"}
-                </button>
+            <div key={u.id} style={{ background: C.card, border: "1px solid " + (isOverdue ? C.red+"40" : isDueSoon ? C.gold+"40" : C.border), borderRadius: 12, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                {/* Name + email */}
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.white, marginBottom: 3 }}>{u.name}</div>
+                  <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
+
+                  {/* Phone */}
+                  {editPhone === u.id ? (
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                      <input value={phoneVal} onChange={e => setPhoneVal(e.target.value)} placeholder="e.g. 27821234567"
+                        style={{ background: C.bg, border: "1px solid " + C.gold, borderRadius: 6, padding: "4px 8px", color: C.white, fontSize: 12, width: 150 }} />
+                      <button onClick={() => savePhone(u)} style={{ background: C.goldDim, border: "1px solid " + C.gold+"40", color: C.gold, borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Save</button>
+                      <button onClick={() => setEditPhone(null)} style={{ background: "transparent", border: "1px solid " + C.border, color: C.grey, borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                      <span style={{ fontSize: 11, color: u.phone ? C.grey : C.faint }}>📱 {u.phone || "No phone saved"}</span>
+                      <button onClick={() => { setEditPhone(u.id); setPhoneVal(u.phone||""); }}
+                        style={{ background: "transparent", border: "none", color: C.faint, fontSize: 10, cursor: "pointer", padding: "0 4px" }}>✏</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* PM status + dates */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
+                  <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, width: "fit-content",
+                    background: isPM ? "rgba(201,168,76,.12)" : C.surf,
+                    color: isPM ? C.gold : C.grey,
+                    border: "1px solid " + (isPM ? C.gold+"40" : C.border) }}>
+                    {isPM ? "Private Mentorship" : "Basic Access"}
+                  </span>
+
+                  {isPM && u.pmStartDate && (
+                    <div style={{ fontSize: 11, color: C.grey }}>Started: {formatDate(u.pmStartDate)}</div>
+                  )}
+
+                  {isPM && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {editDate === u.id ? (
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)}
+                            style={{ background: C.bg, border: "1px solid " + C.gold, borderRadius: 6, padding: "3px 6px", color: C.white, fontSize: 11 }} />
+                          <button onClick={() => saveDueDate(u)} style={{ background: C.goldDim, border: "1px solid " + C.gold+"40", color: C.gold, borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer" }}>Save</button>
+                          <button onClick={() => setEditDate(null)} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 11, cursor: "pointer" }}>✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600,
+                            color: isOverdue ? C.red : isDueSoon ? C.gold : C.dim }}>
+                            {u.pmDueDate ? (isOverdue ? "⚠ Overdue: " + formatDate(u.pmDueDate) : isDueSoon ? "⏰ Due in " + days + "d: " + formatDate(u.pmDueDate) : "Due: " + formatDate(u.pmDueDate)) : "No due date set"}
+                          </span>
+                          <button onClick={() => { setEditDate(u.id); setDateVal(u.pmDueDate||""); }}
+                            style={{ background: "transparent", border: "none", color: C.faint, fontSize: 10, cursor: "pointer" }}>✏</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  {isPM && (
+                    <button onClick={() => whatsappMsg(u)}
+                      style={{ background: "#25D366", border: "none", color: "#fff", borderRadius: 8, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>💬</span> WhatsApp
+                    </button>
+                  )}
+                  <button onClick={() => togglePM(u)}
+                    style={{ padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid",
+                      background: isPM ? "rgba(217,96,96,.1)" : C.goldDim,
+                      color: isPM ? C.red : C.gold,
+                      borderColor: isPM ? C.red+"40" : C.gold+"40" }}>
+                    {isPM ? "Remove PM" : "Grant PM"}
+                  </button>
+                </div>
               </div>
             </div>
           );
         })}
-        {display.length === 0 && <div style={{ padding: "30px 20px", textAlign: "center", color: C.grey, fontSize: 13 }}>No members found.</div>}
-      </Card>
+        {display.length === 0 && <div style={{ padding: "30px 20px", textAlign: "center", color: C.grey, fontSize: 13, background: C.card, borderRadius: 12 }}>No members found.</div>}
+      </div>
     </div>
   );
 }
@@ -3879,7 +3981,7 @@ function App() {
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
       ]);
-      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null })));
+      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
