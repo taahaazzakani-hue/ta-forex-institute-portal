@@ -3758,6 +3758,7 @@ function SecurityTab({ loginSessions, users }) {
 
 function SubscriptionsTab({ users, patchUser }) {
   const [filter, setFilter] = React.useState("all");
+  const [search, setSearch] = React.useState("");
   const [editPhone, setEditPhone] = React.useState(null);
   const [phoneVal, setPhoneVal] = React.useState("");
   const [editDate, setEditDate] = React.useState(null);
@@ -3767,7 +3768,12 @@ function SubscriptionsTab({ users, patchUser }) {
   const pm = approved.filter(u => (u.levels||[]).includes("Private Mentorship"));
   const nonPm = approved.filter(u => !(u.levels||[]).includes("Private Mentorship"));
   const overdue = pm.filter(u => u.pmDueDate && new Date(u.pmDueDate) < new Date());
-  const display = filter === "pm" ? pm : filter === "non" ? nonPm : filter === "overdue" ? overdue : approved;
+  const filtered = filter === "pm" ? pm : filter === "non" ? nonPm : filter === "overdue" ? overdue : approved;
+  const display = search.trim() ? filtered.filter(u =>
+    u.name.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    (u.phone||"").includes(search)
+  ) : filtered;
 
   const togglePM = (u) => {
     const current = u.levels || [];
@@ -3827,6 +3833,18 @@ function SubscriptionsTab({ users, patchUser }) {
             <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
+      </div>
+
+      {/* Search */}
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.grey, fontSize: 15, pointerEvents: "none" }}>🔍</span>
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name, email or phone..."
+          style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, padding: "10px 14px 10px 38px", color: C.white, fontSize: 13, width: "100%", outline: "none", boxSizing: "border-box" }}
+          onFocus={e => e.target.style.borderColor = C.gold}
+          onBlur={e => e.target.style.borderColor = C.border} />
+        {search && <button onClick={() => setSearch("")}
+          style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.grey, cursor: "pointer", fontSize: 16, padding: 0 }}>✕</button>}
       </div>
 
       {/* Filter */}
