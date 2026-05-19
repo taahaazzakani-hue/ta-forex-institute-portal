@@ -3833,6 +3833,7 @@ function SubscriptionsTab({ users, patchUser }) {
   };
 
   const getStatus = (u) => {
+    if (u.pmPaid) return "active"; // marked as paid = always active
     const next = getNextDue(u);
     if (!next) return "none";
     const days = daysUntil(next);
@@ -3969,7 +3970,10 @@ function SubscriptionsTab({ users, patchUser }) {
           <div key={u.id} style={{ background: C.card, border: "1px solid " + (status==="overdue" ? C.red+"40" : status==="due-soon" ? C.gold+"40" : C.border), borderRadius: 10, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1.5fr 120px 70px 120px 140px 100px", gap: 8, padding: "12px 14px", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: status==="overdue" ? C.red : status==="due-soon" ? C.gold : C.white }}>{u.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: status==="overdue" && !u.pmPaid ? C.red : status==="due-soon" && !u.pmPaid ? C.gold : C.white }}>{u.name}</span>
+                  {u.pmPaid && <span style={{ fontSize: 10, fontWeight: 800, color: C.green, background: "rgba(76,184,128,.15)", border: "1px solid " + C.green+"30", borderRadius: 10, padding: "1px 6px" }}>PAID</span>}
+                </div>
                 {u.phone && <div style={{ fontSize: 11, color: C.faint, marginTop: 1 }}>📱 {u.phone}</div>}
               </div>
               <span style={{ fontSize: 11, color: C.grey }}>{getPlan(u)}</span>
@@ -3985,7 +3989,7 @@ function SubscriptionsTab({ users, patchUser }) {
                   </div>
                 ) : <span style={{ fontSize: 11, color: C.faint }}>No date</span>}
               </div>
-              <div style={{ display: "flex", gap: 5 }}>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 <button onClick={() => isEdit ? setEditId(null) : openEdit(u)}
                   style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid " + C.border, background: "transparent", color: C.grey }}>
                   ✏
@@ -3993,6 +3997,34 @@ function SubscriptionsTab({ users, patchUser }) {
                 <button onClick={() => whatsapp(u)}
                   style={{ padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "none", background: "#25D366", color: "#fff" }}>
                   💬
+                </button>
+                <button onClick={() => {
+                    const paid = !u.pmPaid;
+                    patchUser(u.id, { pmPaid: paid });
+                    if (paid) {
+                      // Advance due date by 1 month
+                      const day = getDueDay(u);
+                      if (day) {
+                        const today = new Date();
+                        const next = new Date(today.getFullYear(), today.getMonth() + 1, day);
+                        patchUser(u.id, { pmPaid: true, pmStartDate: today.toISOString().split("T")[0], pmDueDate: String(day) });
+                      }
+                    }
+                  }}
+                  style={{ padding: "5px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid",
+                    background: u.pmPaid ? "rgba(76,184,128,.15)" : "rgba(217,96,96,.12)",
+                    color: u.pmPaid ? C.green : C.red,
+                    borderColor: u.pmPaid ? C.green+"40" : C.red+"40" }}>
+                  {u.pmPaid ? "✓ Paid" : "✗ Unpaid"}
+                </button>
+                <button onClick={() => {
+                    if (window.confirm("Remove PM access for " + u.name + "? They will lose all PM features.")) {
+                      const levels = (u.levels||[]).filter(l => l !== "Private Mentorship" && l !== "1v1");
+                      patchUser(u.id, { levels, pmPaid: false });
+                    }
+                  }}
+                  style={{ padding: "5px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid " + C.red+"30", background: "transparent", color: C.red, whiteSpace: "nowrap" }}>
+                  Remove
                 </button>
               </div>
             </div>
@@ -4079,7 +4111,7 @@ function App() {
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
       ]);
-      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null })));
+      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
