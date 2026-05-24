@@ -2291,7 +2291,7 @@ function TradeForm({ onSubmit, submitLabel,
       <div>
         <label>Kill Zone</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {["London","New York","Asian","London + NY"].map(kz => (
+          {["Asia","London","NY AM","NY PM"].map(kz => (
             <button key={kz} onClick={() => setKillZone(killZone===kz?"":kz)}
               style={{ flex:1, minWidth:80, padding:"8px 6px", borderRadius:8, fontSize:11, fontWeight:700, border:"1.5px solid",
                 cursor:"pointer", transition:"all .15s",
@@ -2305,10 +2305,10 @@ function TradeForm({ onSubmit, submitLabel,
       </div>
 
       {/* Confluences */}
-      {tradeModel && ({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"]}})[tradeModel] && (
+      {tradeModel && ({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]}})[tradeModel] && (
         <div style={{ background:C.bg, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
           <label style={{ display:"block", marginBottom:10 }}>Confluences</label>
-          {Object.entries(({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"]}})[tradeModel]||{}).map(([section, items]) => (
+          {Object.entries(({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]}})[tradeModel]||{}).map(([section, items]) => (
             <div key={section} style={{ marginBottom:10 }}>
               <div style={{ fontSize:10, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase", marginBottom:6 }}>{section}</div>
               <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -2430,6 +2430,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [filterModel, setFilterModel] = React.useState("All");
   const [showAnalytics, setShowAnalytics] = React.useState(false);
   const [analyticsType, setAnalyticsType] = React.useState("All");
+  const [dateFrom, setDateFrom] = React.useState("");
+  const [dateTo, setDateTo] = React.useState("");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
   const [err, setErr] = React.useState("");
@@ -2519,7 +2521,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!C4) return;
     const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
     setTimeout(() => {
-      const allE = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+      const allE = myJournals.filter(j => { if (filterModel !== "All" && j.tradeModel !== filterModel) return false; if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false; if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false; return true; });
       const entries = analyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
       const countBy = (key, fw) => {
         const m = {};
@@ -2551,7 +2553,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         kzEl._chartInst = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:[colors.blue,colors.gold,colors.purple,colors.green].slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:10,font:{size:11}}} } } });
       }
     }, 150);
-  }, [showAnalytics, view, filterModel, tradeType, analyticsType, myJournals.length]);
+  }, [showAnalytics, view, filterModel, tradeType, analyticsType, dateFrom, dateTo, myJournals.length]);
 
   if (view === "new") return (
     <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
@@ -2653,7 +2655,12 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       )}
       {/* Analytics Panel */}
       {showAnalytics && (() => {
-        const allEntries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+        const allEntries = myJournals.filter(j => {
+          if (filterModel !== "All" && j.tradeModel !== filterModel) return false;
+          if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false;
+          if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false;
+          return true;
+        });
         const entries = analyticsType==="Live" ? allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allEntries.filter(j=>j.tradeType==="Backtest") : allEntries;
         const live = allEntries.filter(j => (j.tradeType||"Live Trade")==="Live Trade");
         const bt = allEntries.filter(j => j.tradeType==="Backtest");
@@ -2747,7 +2754,18 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               <div style={{ fontSize:12, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase" }}>
                 Analytics — {entries.length} entries
               </div>
-              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+              <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+                {/* Date range */}
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+                    style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
+                  <span style={{ color:C.faint, fontSize:11 }}>→</span>
+                  <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+                    style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
+                  {(dateFrom||dateTo) && <button onClick={()=>{setDateFrom("");setDateTo("");}}
+                    style={{ background:"transparent", border:"none", color:C.grey, cursor:"pointer", fontSize:13, padding:"0 4px" }}>✕</button>}
+                </div>
+                {/* Type toggle */}
                 {["All","Live","Backtest"].map(t => (
                   <button key={t} onClick={() => setAnalyticsType(t)}
                     style={{ padding:"4px 12px", borderRadius:20, fontSize:11, fontWeight:600, cursor:"pointer", border:"1px solid",
