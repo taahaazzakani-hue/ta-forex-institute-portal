@@ -690,7 +690,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         </div>
         <Btn v="outline" onClick={onLogout} sz="sm">Sign Out</Btn>
       </div>
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 16px" }}>
+      <div style={{ maxWidth: layout==="wide" ? "100%" : 860, margin: "0 auto", padding: layout==="wide" ? "28px 32px" : "28px 16px" }}>
         <div style={{ display: "flex", background: C.surf, border: "1px solid " + C.border, borderRadius: 12, padding: 5, gap: 4, marginBottom: 28 }}>
           {TABS.map(t => (
             <button key={t.k} onClick={() => setTab(t.k)} style={{ flex: 1, padding: "10px 4px", borderRadius: 9, fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", position: "relative", transition: "all .2s",
@@ -730,7 +730,7 @@ function SubscribePage({ user }) {
   );
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", padding: "60px 20px 100px" }}>
+    <div style={{ maxWidth: layout==="wide" ? 700 : 560, margin: "0 auto", padding: "60px 20px 100px" }}>
       <div style={{ marginBottom: 36 }}>
         <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Upgrade</p>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em", color: C.white, marginBottom: 10 }}>Private Mentorship</h1>
@@ -974,7 +974,7 @@ function RiskCalculator() {
 
   const fmt = (n, decimals = 2) => n.toLocaleString("en-ZA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return (
-    <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
+    <div style={{ maxWidth: layout==="wide" ? "100%" : 780, margin: "0 auto", padding: layout==="wide" ? "28px 48px 80px" : "28px 16px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
@@ -1148,7 +1148,7 @@ function RiskCalculator() {
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   const [hovered, setHovered] = React.useState(null);
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px 100px" }}>
+    <div style={{ maxWidth: layout==="wide" ? "100%" : 760, margin: "0 auto", padding: layout==="wide" ? "40px 48px 100px" : "40px 20px 100px" }}>
       <div style={{ marginBottom: 40 }}>
         <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Education</p>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em", color: C.white, marginBottom: 8 }}>My Courses</h1>
@@ -1194,7 +1194,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
 }
 
 
-function Portal({ user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
+function Portal({ layout, toggleLayout, user, courses, sections, videos, journals, addJournal, deleteJournal, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1262,7 +1262,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ── HEADER ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: C.surf + "F4", backdropFilter: "blur(20px)", borderBottom: "1px solid " + C.border }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
+        <div style={{ maxWidth: layout==="wide" ? "100%" : 1000, margin: "0 auto", padding: layout==="wide" ? "0 40px" : "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
 
           {/* Logo */}
           <Logo w={80} onClick={() => { setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
@@ -1323,6 +1323,12 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderH; e.currentTarget.style.color = C.white; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.grey; }}>
                 Sign out
+              </button>
+              <button onClick={toggleLayout} title={layout==="wide" ? "Switch to compact" : "Switch to wide screen"}
+                style={{ background: "transparent", border: "1px solid " + C.border, color: C.grey, fontSize: 14, padding: "4px 10px", borderRadius: 8, cursor: "pointer", transition: "all .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.color = C.gold; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.grey; }}>
+                {layout==="wide" ? "⊟" : "⊞"}
               </button>
             </div>
           </div>
@@ -1385,7 +1391,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
             <div style={{ position: "absolute", right: -80, top: -80, width: 400, height: 400, borderRadius: "50%", border: "1px solid rgba(201,168,76,.07)", pointerEvents: "none" }} />
             <div style={{ position: "absolute", right: -40, top: -40, width: 280, height: 280, borderRadius: "50%", border: "1px solid rgba(201,168,76,.05)", pointerEvents: "none" }} />
 
-            <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 56px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div style={{ maxWidth: layout==="wide" ? "100%" : 900, margin: "0 auto", padding: layout==="wide" ? "60px 64px 56px" : "60px 24px 56px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               <div className="fu" style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
                 <Logo w={180} />
               </div>
@@ -1429,7 +1435,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
           {/* ── WELCOME MESSAGE ── */}
           <div style={{ background: `linear-gradient(135deg, #0D1B3E, #0F1520)`, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
+            <div style={{ maxWidth: layout==="wide" ? "100%" : 900, margin: "0 auto", padding: layout==="wide" ? "40px 64px" : "40px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
               {[
                 { icon: "🏆", title: "You're Among the Elite", body: "Less than 5% of traders commit to structured education. By being here, you have already separated yourself from the crowd." },
                 { icon: "📈", title: "Proven Strategy", body: "The TA FX methodology is built on real market experience — price action, structure and discipline that actually works." },
@@ -1446,7 +1452,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
           {/* ── RESULTS / TESTIMONIALS ── */}
           <div style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px" }}>
+            <div style={{ maxWidth: layout==="wide" ? "100%" : 900, margin: "0 auto", padding: layout==="wide" ? "48px 64px" : "48px 24px" }}>
               <div style={{ textAlign: "center", marginBottom: 32 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Student Results</p>
                 <h2 style={{ fontFamily: S, fontSize: "clamp(24px,4vw,36px)", fontWeight: 700 }}>What Our Graduates Say</h2>
@@ -1472,7 +1478,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
           </div>
 
           {/* ── COURSES ── */}
-          <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 16px 80px" }}>
+          <div style={{ maxWidth: layout==="wide" ? "100%" : 720, margin: "0 auto", padding: layout==="wide" ? "40px 48px 80px" : "40px 16px 80px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
               <div style={{ flex: 1, height: 1, background: C.border }} />
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".18em", color: C.grey, textTransform: "uppercase" }}>Your Courses</span>
@@ -1528,7 +1534,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
           {/* Partners */}
           <PartnersSection />
 
-          <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px 40px" }}>
+          <div style={{ maxWidth: layout==="wide" ? "100%" : 720, margin: "0 auto", padding: layout==="wide" ? "0 48px 40px" : "0 16px 40px" }}>
             {/* Bottom message */}
             <div style={{ marginTop: 0, padding: "24px", background: "rgba(201,168,76,.05)", border: "1px solid rgba(201,168,76,.12)", borderRadius: 14, textAlign: "center" }}>
               <p style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 6, fontStyle: "italic" }}>"The market rewards the prepared mind."</p>
@@ -1540,7 +1546,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
 
       {/* ══ COURSE ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
-        <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 20px 100px" }}>
+        <div style={{ maxWidth: layout==="wide" ? "100%" : 760, margin: "0 auto", padding: layout==="wide" ? "40px 48px 100px" : "40px 20px 100px" }}>
           <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 32, padding: 0 }}>
             ← Back to Courses
           </button>
@@ -1605,7 +1611,7 @@ function Portal({ user, courses, sections, videos, journals, addJournal, deleteJ
         const idx     = secVids.findIndex(v => v.id === video.id);
         const next    = secVids[idx + 1] || null;
         return (
-          <div style={{ maxWidth: 960, margin: "0 auto", paddingBottom: 80 }}>
+          <div style={{ maxWidth: layout==="wide" ? "100%" : 960, margin: "0 auto", paddingBottom: 80 }}>
             {/* Breadcrumb */}
             <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid " + C.border }}>
               <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 12, cursor: "pointer", padding: 0 }}>Courses</button>
@@ -2066,7 +2072,7 @@ function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "28px 16px 80px" }}>
+    <div style={{ maxWidth: layout==="wide" ? "100%" : 720, margin: "0 auto", padding: layout==="wide" ? "28px 48px 80px" : "28px 16px 80px" }}>
       <div style={{ marginBottom: 24 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: "#FF7096", textTransform: "uppercase", marginBottom: 6 }}>Private Mentorship</p>
         <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700 }}>📚 Homework</h2>
@@ -2423,6 +2429,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [confluences, setConfluences] = React.useState([]);
   const [filterModel, setFilterModel] = React.useState("All");
   const [showAnalytics, setShowAnalytics] = React.useState(false);
+  const [analyticsType, setAnalyticsType] = React.useState("All");
   const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
   const [currency, setCurrency] = React.useState("ZAR");
   const [err, setErr] = React.useState("");
@@ -2512,7 +2519,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!C4) return;
     const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
     setTimeout(() => {
-      const entries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+      const allE = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+      const entries = analyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
       const countBy = (key, fw) => {
         const m = {};
         (fw ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; });
@@ -2543,7 +2551,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         kzEl._chartInst = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:[colors.blue,colors.gold,colors.purple,colors.green].slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:10,font:{size:11}}} } } });
       }
     }, 150);
-  }, [showAnalytics, view, filterModel, tradeType, myJournals.length]);
+  }, [showAnalytics, view, filterModel, tradeType, analyticsType, myJournals.length]);
 
   if (view === "new") return (
     <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
@@ -2645,9 +2653,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       )}
       {/* Analytics Panel */}
       {showAnalytics && (() => {
-        const entries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
-        const live = entries.filter(j => (j.tradeType||"Live Trade")==="Live Trade");
-        const bt = entries.filter(j => j.tradeType==="Backtest");
+        const allEntries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+        const entries = analyticsType==="Live" ? allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allEntries.filter(j=>j.tradeType==="Backtest") : allEntries;
+        const live = allEntries.filter(j => (j.tradeType||"Live Trade")==="Live Trade");
+        const bt = allEntries.filter(j => j.tradeType==="Backtest");
         const wins = entries.filter(j=>j.result==="Win").length;
         const losses = entries.filter(j=>j.result==="Loss").length;
         const be = entries.filter(j=>j.result==="BE").length;
@@ -2738,7 +2747,17 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               <div style={{ fontSize:12, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase" }}>
                 Analytics — {entries.length} entries
               </div>
-              <div style={{ fontSize:11, color:C.grey }}>Live: {live.length} · Backtest: {bt.length}</div>
+              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                {["All","Live","Backtest"].map(t => (
+                  <button key={t} onClick={() => setAnalyticsType(t)}
+                    style={{ padding:"4px 12px", borderRadius:20, fontSize:11, fontWeight:600, cursor:"pointer", border:"1px solid",
+                      background: analyticsType===t ? (t==="Live" ? "rgba(76,184,128,.15)" : t==="Backtest" ? "rgba(107,159,255,.15)" : C.goldDim) : "transparent",
+                      color: analyticsType===t ? (t==="Live" ? C.green : t==="Backtest" ? "#6B9FFF" : C.gold) : C.grey,
+                      borderColor: analyticsType===t ? (t==="Live" ? C.green+"50" : t==="Backtest" ? "#6B9FFF50" : C.gold+"50") : C.border }}>
+                    {t} {t==="Live" ? "("+live.length+")" : t==="Backtest" ? "("+bt.length+")" : "("+allEntries.length+")"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Stat cards */}
@@ -3316,7 +3335,7 @@ function ModelPlaybook({ user }) {
   const models = Object.keys(PLAYBOOK_DATA);
 
   return (
-    <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
+    <div style={{ maxWidth: layout==="wide" ? "100%" : 780, margin: "0 auto", padding: layout==="wide" ? "28px 48px 80px" : "28px 16px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
