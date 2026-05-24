@@ -1348,7 +1348,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
 
       {/* ══ JOURNAL ══ */}
       {showJournal && (
-        (user.levels||[]).includes("Private Mentorship") ? (
+        ((user.levels||[]).includes("Private Mentorship") || (user.levels||[]).includes("1v1")) ? (
           <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} />
         ) : (
           <div style={{ maxWidth: 600, margin: "0 auto", padding: "60px 16px", textAlign: "center" }}>
