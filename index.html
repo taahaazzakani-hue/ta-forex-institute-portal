@@ -7,6 +7,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>body{margin:0;background:#07090F;}input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer;}</style>
 </head>
 <body>
@@ -2606,83 +2607,196 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
       {/* Analytics Panel */}
       {showAnalytics && (() => {
         const entries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
-        const wins = entries.filter(j => j.result==="Win").length;
-        const losses = entries.filter(j => j.result==="Loss").length;
+        const live = entries.filter(j => (j.tradeType||"Live Trade")==="Live Trade");
+        const bt = entries.filter(j => j.tradeType==="Backtest");
+        const wins = entries.filter(j=>j.result==="Win").length;
+        const losses = entries.filter(j=>j.result==="Loss").length;
+        const be = entries.filter(j=>j.result==="BE").length;
         const wr = entries.length ? Math.round((wins/entries.length)*100) : 0;
 
         const avgRR = (() => {
-          const valid = entries.filter(j => j.risk && j.gain && parseFloat(j.risk) > 0);
-          if (!valid.length) return null;
-          const avg = valid.reduce((s,j) => s + parseFloat(j.gain)/parseFloat(j.risk), 0) / valid.length;
-          return avg.toFixed(2);
+          const v = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0);
+          if (!v.length) return "—";
+          return "1:" + (v.reduce((s,j)=>s+parseFloat(j.gain)/parseFloat(j.risk),0)/v.length).toFixed(2);
         })();
 
-        const bestOf = (key, filterFn) => {
-          const counts = {};
-          entries.filter(filterFn||(() => true)).forEach(j => {
-            const v = j[key]; if (v) counts[v] = (counts[v]||0) + 1;
+        const totalPnl = entries.reduce((s,j)=>{
+          if (!j.pnl) return s;
+          const n = parseFloat(String(j.pnl).replace(/[^0-9.\-]/g,""));
+          return isNaN(n) ? s : s + n;
+        }, 0);
+
+        const countBy = (key, filterWin) => {
+          const m = {};
+          (filterWin ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{
+            const v = j[key]; if (v) m[v]=(m[v]||0)+1;
           });
-          return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "—";
+          return Object.entries(m).sort((a,b)=>b[1]-a[1]);
         };
 
-        const bestPair = bestOf("pair", j => j.result==="Win");
-        const bestModel = bestOf("tradeModel", j => j.result==="Win");
-        const bestKZ = bestOf("killZone", j => j.result==="Win");
-
-        const entryModelCounts = {};
-        entries.filter(j => j.result==="Win").forEach(j => {
-          (j.confluences||[]).filter(c => c.includes("MSS") || c.includes("IFVG")).forEach(c => {
-            entryModelCounts[c] = (entryModelCounts[c]||0) + 1;
+        const countConf = (filterWin) => {
+          const m = {};
+          (filterWin ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{
+            (j.confluences||[]).forEach(c=>{ m[c]=(m[c]||0)+1; });
           });
-        });
-        const bestEntry = Object.entries(entryModelCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "—";
+          return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+        };
 
-        const pnlByModel = {};
-        entries.forEach(j => {
-          if (!j.tradeModel || !j.pnl) return;
-          const v = parseFloat(j.pnl.replace(/[^0-9.-]/g,""));
-          if (!isNaN(v)) pnlByModel[j.tradeModel] = (pnlByModel[j.tradeModel]||0) + v;
-        });
+        const pairData = countBy("pair", false);
+        const kzData = countBy("killZone", false);
+        const modelData = countBy("tradeModel", false);
+        const confData = countConf(true);
 
-        const statCard = (label, value, sub, color) => (
+        const pnlByDay = (() => {
+          const m = {};
+          entries.forEach(j=>{
+            if (!j.pnl||!j.tradeDate) return;
+            const n = parseFloat(String(j.pnl).replace(/[^0-9.\-]/g,""));
+            if (!isNaN(n)) m[j.tradeDate]=(m[j.tradeDate]||0)+n;
+          });
+          return Object.entries(m).sort((a,b)=>a[0]>b[0]?1:-1).slice(-30);
+        })();
+
+        const chartId = "ac_"+Math.random().toString(36).slice(2,7);
+        const pairChartId = "pc_"+Math.random().toString(36).slice(2,7);
+        const kzChartId = "kzc_"+Math.random().toString(36).slice(2,7);
+
+        const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF", grey:"#4A5066" };
+
+        React.useEffect(() => {
+          if (!showAnalytics) return;
+          // Clean up old charts
+          ["ac","pc","kzc"].forEach(p => {
+            const el = document.querySelector("[data-chart='"+p+"']");
+            if (el && el._chart) { el._chart.destroy(); }
+          });
+          setTimeout(() => {
+            const C4 = window.Chart;
+            if (!C4) return;
+
+            // PnL over time
+            const pnlEl = document.getElementById(chartId);
+            if (pnlEl && pnlByDay.length) {
+              const cum = []; let s=0;
+              pnlByDay.forEach(([d,v])=>{ s+=v; cum.push({x:d,y:Math.round(s*100)/100}); });
+              const ch = new C4(pnlEl, { type:"line", data:{ datasets:[{ label:"Cumulative P&L", data:cum, borderColor:colors.gold, backgroundColor:"rgba(201,168,76,.08)", fill:true, tension:0.3, pointRadius:3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{type:"category",ticks:{color:"#7A8099",maxRotation:45}}, y:{ticks:{color:"#7A8099",callback:v=>(v>=0?"+":"")+v}} } } });
+              pnlEl._chart = ch;
+            }
+
+            // Pair bar
+            const pairEl = document.getElementById(pairChartId);
+            if (pairEl && pairData.length) {
+              const top = pairData.slice(0,8);
+              const winsMap = {}; countBy("pair",true).forEach(([k,v])=>winsMap[k]=v);
+              const ch = new C4(pairEl, { type:"bar", data:{ labels:top.map(([k])=>k), datasets:[{ label:"Trades", data:top.map(([,v])=>v), backgroundColor:colors.blue+"99" },{ label:"Wins", data:top.map(([k])=>winsMap[k]||0), backgroundColor:colors.green+"99" }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:"#7A8099"}}, y:{ticks:{color:"#7A8099"}} } } });
+              pairEl._chart = ch;
+            }
+
+            // Kill zone doughnut
+            const kzEl = document.getElementById(kzChartId);
+            if (kzEl && kzData.length) {
+              const kzColors = [colors.blue, colors.gold, colors.purple, colors.green];
+              const ch = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:kzColors.slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:true, position:"right", labels:{color:"#7A8099",boxWidth:10,font:{size:11}} } } } });
+              kzEl._chart = ch;
+            }
+          }, 100);
+        }, [showAnalytics, entries.length, filterModel, tradeType]);
+
+        const statCard = (label, value, color) => (
           <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:color||C.white, marginBottom:2 }}>{value}</div>
-            {sub && <div style={{ fontSize:11, color:C.faint }}>{sub}</div>}
+            <div style={{ fontSize:22, fontWeight:700, color:color||C.white }}>{value}</div>
+          </div>
+        );
+
+        const rankList = (data, title, winData, colorFn) => (
+          <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:10 }}>{title}</div>
+            {data.slice(0,6).map(([k,v],i)=>{
+              const winsMap = {}; (winData||[]).forEach(([wk,wv])=>winsMap[wk]=wv);
+              const maxV = data[0]?.[1]||1;
+              const wr2 = v > 0 ? Math.round(((winsMap[k]||0)/v)*100) : 0;
+              return (
+                <div key={k} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3 }}>
+                    <span style={{ color:i===0?C.gold:C.dim, fontWeight:i===0?700:400 }}>{i===0?"🏆 ":i===data.length-1&&data.length>1?"📉 ":""}{k||"—"}</span>
+                    <span style={{ color:C.grey }}>{v} trades · {wr2}% wr</span>
+                  </div>
+                  <div style={{ height:4, background:C.bg, borderRadius:2, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:(v/maxV*100)+"%", background:i===0?C.gold:i===data.length-1&&data.length>1?colors.red:colors.blue, borderRadius:2, transition:"width .4s" }} />
+                  </div>
+                </div>
+              );
+            })}
+            {data.length===0 && <div style={{ fontSize:12, color:C.faint }}>No data yet</div>}
           </div>
         );
 
         return (
-          <div style={{ background:C.card, border:"1px solid "+C.border, borderRadius:14, padding:"20px", marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase", marginBottom:16 }}>
-              Journal Analytics — {entries.length} {filterModel==="All"?"Total":filterModel} Entries ({tradeType==="Live Trade"?"Live":"Backtest"})
+          <div style={{ background:C.card, border:"1px solid "+C.gold+"30", borderRadius:14, padding:"20px", marginBottom:20 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase" }}>
+                Analytics — {entries.length} entries
+              </div>
+              <div style={{ fontSize:11, color:C.grey }}>Live: {live.length} · Backtest: {bt.length}</div>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))", gap:10, marginBottom:16 }}>
-              {statCard("Win Rate", wr+"%", wins+"W / "+losses+"L", wr>=60?C.green:wr>=40?C.gold:C.red)}
-              {statCard("Avg RR", avgRR ? "1:"+avgRR : "—", "risk:reward", C.gold)}
-              {statCard("Best Pair", bestPair, "most wins", "#6B9FFF")}
-              {statCard("Best Model", bestModel||"—", "most wins", "#C96BFF")}
-              {statCard("Best Kill Zone", bestKZ||"—", "most wins", "#4CB880")}
-              {statCard("Best Entry", bestEntry, "most wins", "#FF7096")}
+
+            {/* Stat cards */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))", gap:8, marginBottom:16 }}>
+              {statCard("Win Rate", wr+"%", wr>=60?C.green:wr>=40?C.gold:C.red)}
+              {statCard("Wins", wins, C.green)}
+              {statCard("Losses", losses, C.red)}
+              {statCard("BE", be, C.grey)}
+              {statCard("Avg RR", avgRR, C.gold)}
+              {statCard("Total P&L", (totalPnl>=0?"+":"")+totalPnl.toFixed(0), totalPnl>=0?C.green:C.red)}
             </div>
-            {Object.keys(pnlByModel).length > 0 && (
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:10 }}>P&L by Model</div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:8 }}>
-                  {Object.entries(pnlByModel).map(([model, pnl]) => (
-                    <div key={model} style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:8, padding:"10px 12px" }}>
-                      <div style={{ fontSize:11, color:C.grey, marginBottom:4 }}>{model}</div>
-                      <div style={{ fontSize:16, fontWeight:700, color:pnl>=0?C.green:C.red }}>{pnl>=0?"+":""}{pnl.toFixed(2)}</div>
-                    </div>
-                  ))}
+
+            {/* P&L Chart */}
+            {pnlByDay.length > 1 && (
+              <div style={{ marginBottom:16 }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Cumulative P&L</div>
+                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
+                  <canvas id={chartId} role="img" aria-label="Cumulative P&L over time" />
                 </div>
               </div>
             )}
+
+            {/* Pair + Kill Zone */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Pairs (Trades vs Wins)</div>
+                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
+                  {pairData.length > 0
+                    ? <canvas id={pairChartId} role="img" aria-label="Trade count by pair" />
+                    : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:C.faint, fontSize:12 }}>No pair data yet</div>}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Kill Zone Breakdown</div>
+                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
+                  {kzData.length > 0
+                    ? <canvas id={kzChartId} role="img" aria-label="Trades by kill zone" />
+                    : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:C.faint, fontSize:12 }}>No kill zone data yet</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Rankings */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              {rankList(pairData, "Best vs Worst Pair", countBy("pair",true))}
+              {rankList(kzData, "Best vs Worst Kill Zone", countBy("killZone",true))}
+              {rankList(modelData, "Best vs Worst Model", countBy("tradeModel",true))}
+              {rankList(confData.slice(0,6), "Best Entry Confluences", confData)}
+            </div>
+
+            {/* Chart.js loader */}
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" />
           </div>
         );
       })()}
 
       <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {myJournals.filter      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
         {myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel).map(j => (
           <div key={j.id} style={{ background:C.card, border:"1.5px solid "+(j.adminComment?"rgba(201,168,76,.35)":C.border), borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
             onClick={() => { setSelected(j.id); setView("detail"); }}
