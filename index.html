@@ -974,6 +974,55 @@ function RiskCalculator() {
 
   const fmt = (n, decimals = 2) => n.toLocaleString("en-ZA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
+  // Chart rendering effect - must be at top level, not inside JSX
+  useEffect(() => {
+    if (!showAnalytics || view !== "list") return;
+    const C4 = window.Chart;
+    if (!C4) return;
+    const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
+    setTimeout(() => {
+      const entries = myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel);
+      const countBy = (key, filterWin) => {
+        const m = {};
+        (filterWin ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; });
+        return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+      };
+      const pnlByDay = (() => {
+        const m = {};
+        entries.forEach(j=>{ if(!j.pnl||!j.tradeDate) return; const n=parseFloat(String(j.pnl).replace(/[^0-9.\-]/g,"")); if(!isNaN(n)) m[j.tradeDate]=(m[j.tradeDate]||0)+n; });
+        return Object.entries(m).sort((a,b)=>a[0]>b[0]?1:-1).slice(-30);
+      })();
+      const pairData = countBy("pair",false);
+      const kzData = countBy("killZone",false);
+
+      // Destroy existing charts first
+      ["analyticsChartPnl","analyticsChartPair","analyticsChartKZ"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el._chartInst) { el._chartInst.destroy(); el._chartInst = null; }
+      });
+
+      // PnL line chart
+      const pnlEl = document.getElementById("analyticsChartPnl");
+      if (pnlEl && pnlByDay.length > 1) {
+        const cum = []; let s=0;
+        pnlByDay.forEach(([d,v])=>{ s+=v; cum.push({x:d,y:Math.round(s*100)/100}); });
+        pnlEl._chartInst = new C4(pnlEl, { type:"line", data:{ datasets:[{ label:"P&L", data:cum, borderColor:colors.gold, backgroundColor:"rgba(201,168,76,.08)", fill:true, tension:0.3, pointRadius:3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{type:"category",ticks:{color:"#7A8099",maxRotation:45,font:{size:10}}}, y:{ticks:{color:"#7A8099",font:{size:10},callback:v=>(v>=0?"+":"")+v}} } } });
+      }
+      // Pair bar chart
+      const pairEl = document.getElementById("analyticsChartPair");
+      if (pairEl && pairData.length) {
+        const top = pairData.slice(0,8);
+        const winsMap = {}; countBy("pair",true).forEach(([k,v])=>winsMap[k]=v);
+        pairEl._chartInst = new C4(pairEl, { type:"bar", data:{ labels:top.map(([k])=>k), datasets:[{ label:"Trades", data:top.map(([,v])=>v), backgroundColor:colors.blue+"99" },{ label:"Wins", data:top.map(([k])=>winsMap[k]||0), backgroundColor:colors.green+"99" }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:"#7A8099",font:{size:10}}}, y:{ticks:{color:"#7A8099",font:{size:10}}} } } });
+      }
+      // KZ doughnut
+      const kzEl = document.getElementById("analyticsChartKZ");
+      if (kzEl && kzData.length) {
+        kzEl._chartInst = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:[colors.blue,colors.gold,colors.purple,colors.green].slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:10,font:{size:11}}} } } });
+      }
+    }, 150);
+  }, [showAnalytics, view, filterModel, tradeType, myJournals.length]);
+
   return (
     <div style={{ maxWidth: 780, margin: "0 auto", padding: "28px 16px 80px" }}>
       {/* Header */}
@@ -2657,50 +2706,11 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
           return Object.entries(m).sort((a,b)=>a[0]>b[0]?1:-1).slice(-30);
         })();
 
-        const chartId = "ac_"+Math.random().toString(36).slice(2,7);
-        const pairChartId = "pc_"+Math.random().toString(36).slice(2,7);
-        const kzChartId = "kzc_"+Math.random().toString(36).slice(2,7);
+        const chartId = "analyticsChartPnl";
+        const pairChartId = "analyticsChartPair";
+        const kzChartId = "analyticsChartKZ";
 
         const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF", grey:"#4A5066" };
-
-        React.useEffect(() => {
-          if (!showAnalytics) return;
-          // Clean up old charts
-          ["ac","pc","kzc"].forEach(p => {
-            const el = document.querySelector("[data-chart='"+p+"']");
-            if (el && el._chart) { el._chart.destroy(); }
-          });
-          setTimeout(() => {
-            const C4 = window.Chart;
-            if (!C4) return;
-
-            // PnL over time
-            const pnlEl = document.getElementById(chartId);
-            if (pnlEl && pnlByDay.length) {
-              const cum = []; let s=0;
-              pnlByDay.forEach(([d,v])=>{ s+=v; cum.push({x:d,y:Math.round(s*100)/100}); });
-              const ch = new C4(pnlEl, { type:"line", data:{ datasets:[{ label:"Cumulative P&L", data:cum, borderColor:colors.gold, backgroundColor:"rgba(201,168,76,.08)", fill:true, tension:0.3, pointRadius:3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{type:"category",ticks:{color:"#7A8099",maxRotation:45}}, y:{ticks:{color:"#7A8099",callback:v=>(v>=0?"+":"")+v}} } } });
-              pnlEl._chart = ch;
-            }
-
-            // Pair bar
-            const pairEl = document.getElementById(pairChartId);
-            if (pairEl && pairData.length) {
-              const top = pairData.slice(0,8);
-              const winsMap = {}; countBy("pair",true).forEach(([k,v])=>winsMap[k]=v);
-              const ch = new C4(pairEl, { type:"bar", data:{ labels:top.map(([k])=>k), datasets:[{ label:"Trades", data:top.map(([,v])=>v), backgroundColor:colors.blue+"99" },{ label:"Wins", data:top.map(([k])=>winsMap[k]||0), backgroundColor:colors.green+"99" }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:"#7A8099"}}, y:{ticks:{color:"#7A8099"}} } } });
-              pairEl._chart = ch;
-            }
-
-            // Kill zone doughnut
-            const kzEl = document.getElementById(kzChartId);
-            if (kzEl && kzData.length) {
-              const kzColors = [colors.blue, colors.gold, colors.purple, colors.green];
-              const ch = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:kzColors.slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:true, position:"right", labels:{color:"#7A8099",boxWidth:10,font:{size:11}} } } } });
-              kzEl._chart = ch;
-            }
-          }, 100);
-        }, [showAnalytics, entries.length, filterModel, tradeType]);
 
         const statCard = (label, value, color) => (
           <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
