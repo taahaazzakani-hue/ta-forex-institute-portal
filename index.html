@@ -2786,6 +2786,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               {statCard("BE", be, C.grey)}
               {statCard("Avg RR", avgRR, C.gold)}
               {statCard("Total P&L", (totalPnl>=0?"+":"")+totalPnl.toFixed(0), totalPnl>=0?C.green:C.red)}
+              {statCard("Best Day", bestDay||"—", "#6B9FFF")}
+              {statCard("Worst Day", worstDay||"—", C.red)}
             </div>
 
             {/* P&L Chart */}
@@ -2869,6 +2871,10 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
   const [filterUser, setFilterUser] = React.useState("all");
   const [refreshing, setRefreshing] = React.useState(false);
   const [showCalendar, setShowCalendar] = React.useState(false);
+  const [showAdminAnalytics, setShowAdminAnalytics] = React.useState(false);
+  const [adminAnalyticsType, setAdminAnalyticsType] = React.useState("All");
+  const [adminDateFrom, setAdminDateFrom] = React.useState("");
+  const [adminDateTo, setAdminDateTo] = React.useState("");
   const doRefresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
 
   const approvedUsers = users.filter(u => u.status === "approved");
@@ -2955,6 +2961,10 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
             {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
           {filterUser !== "all" && (
+            <button onClick={() => { setShowAdminAnalytics(p => !p); setShowCalendar(false); }}
+              style={{ background: showAdminAnalytics ? C.goldDim : C.surf, border:"1px solid "+(showAdminAnalytics ? C.gold+"50":C.border), color: showAdminAnalytics ? C.gold : C.grey, borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+              📊 Analytics
+            </button>
             <button onClick={() => setShowCalendar(p => !p)} style={{ background: showCalendar ? C.goldDim : "transparent", color: C.gold, border: "1px solid " + C.gold + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
               📅 {showCalendar ? "Hide Calendar" : "View P&L Calendar"}
             </button>
@@ -2970,6 +2980,96 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
         </div>
       )}
       {filtered.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No journal entries yet.</p>}
+      {/* Admin Analytics Panel */}
+      {showAdminAnalytics && (() => {
+        const studentName = filterUser !== "all" ? (approvedUsers.find(u=>u.id===filterUser)?.name || "Student") : null;
+        const allE = journals.filter(j => {
+          if (filterUser !== "all" && j.userId !== filterUser) return false;
+          if (adminDateFrom && j.tradeDate && j.tradeDate < adminDateFrom) return false;
+          if (adminDateTo && j.tradeDate && j.tradeDate > adminDateTo) return false;
+          return true;
+        });
+        const entries = adminAnalyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : adminAnalyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
+        const wins = entries.filter(j=>j.result==="Win").length;
+        const losses = entries.filter(j=>j.result==="Loss").length;
+        const be = entries.filter(j=>j.result==="BE").length;
+        const wr = entries.length ? Math.round((wins/entries.length)*100) : 0;
+        const avgRR = (() => { const v=entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0); if(!v.length) return "—"; return "1:"+(v.reduce((s,j)=>s+parseFloat(j.gain)/parseFloat(j.risk),0)/v.length).toFixed(2); })();
+        const totalPnl = entries.reduce((s,j)=>{ if(!j.pnl) return s; const n=parseFloat(String(j.pnl).replace(/[^0-9.-]/g,"")); return isNaN(n)?s:s+n; },0);
+        const countBy = (key,fw) => { const m={}; (fw?entries.filter(j=>j.result==="Win"):entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+        const countConf = () => { const m={}; entries.filter(j=>j.result==="Win").forEach(j=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;})}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+        const statCard = (label,value,color) => (
+          <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"12px 14px" }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:".1em", color:C.grey, textTransform:"uppercase", marginBottom:4 }}>{label}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:color||C.white }}>{value}</div>
+          </div>
+        );
+        const rankList = (data, title) => (
+          <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:".1em", color:C.grey, textTransform:"uppercase", marginBottom:10 }}>{title}</div>
+            {data.slice(0,5).map(([k,v],i) => (
+              <div key={k} style={{ marginBottom:7 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:2 }}>
+                  <span style={{ color:i===0?C.gold:i===data.length-1&&data.length>1?C.red:C.dim, fontWeight:i===0?700:400 }}>{i===0?"🏆 ":i===data.length-1&&data.length>1?"📉 ":""}{k}</span>
+                  <span style={{ color:C.grey }}>{v}</span>
+                </div>
+                <div style={{ height:3, background:C.bg, borderRadius:2 }}>
+                  <div style={{ height:"100%", width:(v/(data[0]?.[1]||1)*100)+"%", background:i===0?C.gold:i===data.length-1&&data.length>1?C.red:"#6B9FFF", borderRadius:2 }} />
+                </div>
+              </div>
+            ))}
+            {data.length===0 && <div style={{ fontSize:12, color:C.faint }}>No data</div>}
+          </div>
+        );
+        return (
+          <div style={{ background:C.card, border:"1px solid "+C.gold+"30", borderRadius:14, padding:"18px 20px", marginBottom:16 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.gold }}>
+                📊 {studentName ? studentName + " Analytics" : "All Students Analytics"} — {entries.length} entries
+              </div>
+              <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                <input type="date" value={adminDateFrom} onChange={e=>setAdminDateFrom(e.target.value)}
+                  style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
+                <span style={{ color:C.faint, fontSize:11 }}>→</span>
+                <input type="date" value={adminDateTo} onChange={e=>setAdminDateTo(e.target.value)}
+                  style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
+                {(adminDateFrom||adminDateTo) && <button onClick={()=>{setAdminDateFrom("");setAdminDateTo("");}} style={{ background:"transparent",border:"none",color:C.grey,cursor:"pointer",fontSize:13 }}>✕</button>}
+                {["All","Live","Backtest"].map(t=>(
+                  <button key={t} onClick={()=>setAdminAnalyticsType(t)}
+                    style={{ padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:600, cursor:"pointer", border:"1px solid",
+                      background:adminAnalyticsType===t?(t==="Live"?"rgba(76,184,128,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",
+                      color:adminAnalyticsType===t?(t==="Live"?C.green:t==="Backtest"?"#6B9FFF":C.gold):C.grey,
+                      borderColor:adminAnalyticsType===t?(t==="Live"?C.green+"50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border }}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))", gap:8, marginBottom:14 }}>
+              {statCard("Win Rate", wr+"%", wr>=60?C.green:wr>=40?C.gold:C.red)}
+              {statCard("Wins", wins, C.green)}
+              {statCard("Losses", losses, C.red)}
+              {statCard("BE", be, C.grey)}
+              {statCard("Avg RR", avgRR, C.gold)}
+              {statCard("Total P&L", (totalPnl>=0?"+":"")+totalPnl.toFixed(0), totalPnl>=0?C.green:C.red)}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))", gap:10 }}>
+              {rankList(countBy("pair",false), "Best vs Worst Pair")}
+              {rankList(countBy("killZone",false), "Best vs Worst Kill Zone")}
+              {rankList(countBy("tradeModel",false), "Best vs Worst Model")}
+              {rankList(countConf().slice(0,5), "Top Entry Confluences")}
+              {(() => {
+                const DAYS2=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                const dw={}; const dt={};
+                entries.forEach(j=>{if(!j.tradeDate)return;const d=DAYS2[new Date(j.tradeDate).getDay()];dt[d]=(dt[d]||0)+1;if(j.result==="Win")dw[d]=(dw[d]||0)+1;});
+                const dr=Object.entries(dt).map(([d,t])=>[d+" ("+Math.round(((dw[d]||0)/t)*100)+"%)",t]).sort((a,b)=>b[1]-a[1]);
+                return rankList(dr,"Best vs Worst Day");
+              })()}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.map(j => {
           const uname = users.find(u => u.id === j.userId)?.name || "Unknown";
