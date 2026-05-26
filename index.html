@@ -2778,6 +2778,9 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               </div>
             </div>
 
+            {/* Day calculations */}
+            {(() => { const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; const dw_={}; const dt_={}; entries.forEach(j=>{ if(!j.tradeDate) return; const d=DAYS_[new Date(j.tradeDate).getDay()]; dt_[d]=(dt_[d]||0)+1; if(j.result==="Win") dw_[d]=(dw_[d]||0)+1; }); const dr_=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr); window.__bestDay=dr_[0]?.d||null; window.__worstDay=dr_[dr_.length-1]?.d||null; window.__dayRank=dr_; return null; })()}
+
             {/* Stat cards */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))", gap:8, marginBottom:16 }}>
               {statCard("Win Rate", wr+"%", wr>=60?C.green:wr>=40?C.gold:C.red)}
@@ -2786,8 +2789,8 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               {statCard("BE", be, C.grey)}
               {statCard("Avg RR", avgRR, C.gold)}
               {statCard("Total P&L", (totalPnl>=0?"+":"")+totalPnl.toFixed(0), totalPnl>=0?C.green:C.red)}
-              {statCard("Best Day", bestDay||"—", "#6B9FFF")}
-              {statCard("Worst Day", worstDay||"—", C.red)}
+              {statCard("Best Day", window.__bestDay||"—", "#6B9FFF")}
+              {statCard("Worst Day", window.__worstDay||"—", C.red)}
             </div>
 
             {/* P&L Chart */}
