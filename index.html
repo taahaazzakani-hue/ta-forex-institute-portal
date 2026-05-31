@@ -982,7 +982,7 @@ function RiskCalculator() {
 
   const fmt = (n, decimals = 2) => n.toLocaleString("en-ZA", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   return (
-    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 780, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "28px 48px 80px" : "28px 16px 80px" }}>
+    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 820, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "28px 60px 80px" : "28px 16px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
@@ -1156,7 +1156,7 @@ function RiskCalculator() {
 function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
   const [hovered, setHovered] = React.useState(null);
   return (
-    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 760, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 48px 100px" : "40px 20px 100px" }}>
+    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 820, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 60px 100px" : "40px 20px 100px" }}>
       <div style={{ marginBottom: 40 }}>
         <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".2em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Education</p>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-.02em", color: C.white, marginBottom: 8 }}>My Courses</h1>
@@ -1554,7 +1554,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
 
       {/* ══ COURSE ══ */}
       {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
-        <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 760, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 48px 100px" : "40px 20px 100px" }}>
+        <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 820, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 60px 100px" : "40px 20px 100px" }}>
           <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 32, padding: 0 }}>
             ← Back to Courses
           </button>
@@ -2339,7 +2339,8 @@ function TradeForm({ onSubmit, submitLabel,
         </div>
       )}
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div><label>Entry Time</label><input type="time" value={entryTime||""} onChange={e => setEntryTime(e.target.value)} style={{ width:"100%", background:"#0D1730", border:"1.5px solid "+C.border, borderRadius:10, padding:"10px 12px", color:C.white, fontFamily:D, fontSize:13, outline:"none" }} /></div>
         <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme:"dark" }} /></div>
         <div><label>Currency</label>
           <div style={{ display:"flex", background:C.bg, borderRadius:10, padding:3, gap:3, border:"1px solid "+C.border }}>
@@ -2473,7 +2474,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   };
 
   const submitNew = async () => {
-    if (!title.trim() || !pair.trim() || !analysis.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
+    if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
     const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, entryTime, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
@@ -2483,7 +2484,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
 
   const submitEdit = async () => {
     if (!editing) return;
-    if (!title.trim() || !pair.trim() || !analysis.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
+    if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, confluences, tradeDate, currency };
     try {
@@ -2660,7 +2661,6 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               </div>
             ))}
           </div>
-          {j.analysis && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Analysis</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.analysis}</p></div>}
           {j.lesson && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Lesson Learned</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.lesson}</p></div>}
           {((j.images&&j.images.length>0)||j.image) && (
             <div>
@@ -2875,7 +2875,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                 </div>
 
                 {/* KPI cards */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8}}>
+                <div style={{display:"grid",gridTemplateColumns:window.__tafxLayout==="wide"?"repeat(auto-fill,minmax(140px,1fr))":"repeat(auto-fill,minmax(110px,1fr))",gap:8}}>
                   {SC("Win Rate",wr+"%",wins.length+"W · "+losses.length+"L · "+bes.length+"BE",wr>=60?"#1abc9c":wr>=45?C.gold:C.red,wr>=60?"#1abc9c":wr>=45?C.gold:C.red)}
                   {SC("Avg RR",avgRR?"1:"+avgRR.toFixed(2):"—","W:"+avgWinRR+" / L:"+avgLossRR,C.gold,C.gold)}
                   {SC("Total P&L",(totalPnl>=0?"+":"")+totalPnl.toFixed(0),"Wins: +"+winPnl.toFixed(0),totalPnl>=0?"#1abc9c":C.red,totalPnl>=0?"#1abc9c":C.red)}
@@ -3573,7 +3573,7 @@ function ModelPlaybook({ user }) {
   const models = Object.keys(PLAYBOOK_DATA);
 
   return (
-    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 780, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "28px 48px 80px" : "28px 16px 80px" }}>
+    <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 820, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "28px 60px 80px" : "28px 16px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 6 }}>TA FX</p>
