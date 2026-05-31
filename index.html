@@ -8,7 +8,15 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>body{margin:0;background:#07090F;}input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer;}</style>
+  <style>
+    body{margin:0;background:#07090F;}
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5;cursor:pointer;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-track{background:#07090F;}
+    ::-webkit-scrollbar-thumb{background:#1A2236;border-radius:3px;}
+    *{box-sizing:border-box;}
+  </style>
 </head>
 <body>
   <div id="root"></div>
@@ -2255,7 +2263,7 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, pa
 }
 
 function TradeForm({ onSubmit, submitLabel,
-  tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, confluences, setConfluences, tradeDate, setTradeDate,
+  tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate,
   currency, setCurrency, title, setTitle,
   pair, setPair, direction, setDirection,
   risk, setRisk, gain, setGain,
@@ -2291,7 +2299,7 @@ function TradeForm({ onSubmit, submitLabel,
       <div>
         <label>Kill Zone</label>
         <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {["Asia","London","NY AM","NY PM"].map(kz => (
+          {["London","NY Killzone","Out of Killzone"].map(kz => (
             <button key={kz} onClick={() => setKillZone(killZone===kz?"":kz)}
               style={{ flex:1, minWidth:80, padding:"8px 6px", borderRadius:8, fontSize:11, fontWeight:700, border:"1.5px solid",
                 cursor:"pointer", transition:"all .15s",
@@ -2426,6 +2434,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeModel, setTradeModel] = React.useState("");
   const [killZone, setKillZone] = React.useState("");
+  const [entryTime, setEntryTime] = React.useState("");
   const [confluences, setConfluences] = React.useState([]);
   const [filterModel, setFilterModel] = React.useState("All");
   const [showAnalytics, setShowAnalytics] = React.useState(false);
@@ -2467,7 +2476,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!title.trim() || !pair.trim() || !analysis.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, entryTime, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try { await addJournal(entry); resetForm(); setErr("saved"); setTimeout(() => setView("list"), 800); }
     catch(e) { setErr("Failed to save. Please try again."); }
   };
@@ -2494,6 +2503,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setTradeType(j.tradeType||"Live Trade");
     setTradeModel(j.tradeModel||"");
     setKillZone(j.killZone||"");
+    setEntryTime(j.entryTime||"");
     setConfluences(j.confluences||[]);
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
     setCurrency(j.currency||"ZAR"); setChartImg(j.images&&j.images.length?j.images:(j.image?[j.image]:[])); setErr("");
@@ -2502,7 +2512,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     } catch(e) { console.error("openEdit error:", e); }
   };
 
-  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, confluences, setConfluences, tradeDate, setTradeDate, currency, setCurrency,
+  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate, currency, setCurrency,
     title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
     pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
     lesson, setLesson, image: chartImg||[], setImage: setChartImg, err, userId: user.id, compressImage };
@@ -2662,180 +2672,246 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
           return true;
         });
         const entries = analyticsType==="Live" ? allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allEntries.filter(j=>j.tradeType==="Backtest") : allEntries;
-        const live = allEntries.filter(j => (j.tradeType||"Live Trade")==="Live Trade");
-        const bt = allEntries.filter(j => j.tradeType==="Backtest");
-        const wins = entries.filter(j=>j.result==="Win").length;
-        const losses = entries.filter(j=>j.result==="Loss").length;
-        const be = entries.filter(j=>j.result==="BE").length;
-        const wr = entries.length ? Math.round((wins/entries.length)*100) : 0;
+        const liveCount = allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade").length;
+        const btCount = allEntries.filter(j=>j.tradeType==="Backtest").length;
 
-        const avgRR = (() => {
-          const v = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0);
-          if (!v.length) return "—";
-          return "1:" + (v.reduce((s,j)=>s+parseFloat(j.gain)/parseFloat(j.risk),0)/v.length).toFixed(2);
-        })();
+        const wins = entries.filter(j=>j.result==="Win");
+        const losses = entries.filter(j=>j.result==="Loss");
+        const bes = entries.filter(j=>j.result==="BE");
+        const wr = entries.length ? Math.round((wins.length/entries.length)*100) : 0;
 
-        const totalPnl = entries.reduce((s,j)=>{
-          if (!j.pnl) return s;
-          const n = parseFloat(String(j.pnl).replace(/[^0-9.\-]/g,""));
-          return isNaN(n) ? s : s + n;
-        }, 0);
+        const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
+        const totalPnl = entries.reduce((s,j)=>s+toNum(j),0);
+        const winPnl = wins.reduce((s,j)=>s+toNum(j),0);
+        const lossPnl = Math.abs(losses.reduce((s,j)=>s+toNum(j),0));
+        const profitFactor = lossPnl>0 ? (winPnl/lossPnl).toFixed(2) : winPnl>0 ? "∞" : "—";
 
-        const countBy = (key, filterWin) => {
-          const m = {};
-          (filterWin ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{
-            const v = j[key]; if (v) m[v]=(m[v]||0)+1;
-          });
-          return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-        };
+        const rrVals = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
+        const avgRR = rrVals.length ? (rrVals.reduce((a,b)=>a+b,0)/rrVals.length) : null;
+        const winRRs = wins.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
+        const lossRRs = losses.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
+        const avgWinRR = winRRs.length ? (winRRs.reduce((a,b)=>a+b,0)/winRRs.length).toFixed(2) : "—";
+        const avgLossRR = lossRRs.length ? (lossRRs.reduce((a,b)=>a+b,0)/lossRRs.length).toFixed(2) : "—";
 
-        const countConf = (filterWin) => {
-          const m = {};
-          (filterWin ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{
-            (j.confluences||[]).forEach(c=>{ m[c]=(m[c]||0)+1; });
-          });
-          return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-        };
+        // 1. Win streak + longest
+        const sorted = entries.slice().sort((a,b)=>a.createdAt-b.createdAt);
+        let curStreak=0, bestStreak=0, curLoss=0, worstStreak=0;
+        sorted.forEach(j=>{ if(j.result==="Win"){curStreak++;bestStreak=Math.max(bestStreak,curStreak);curLoss=0;} else if(j.result==="Loss"){curLoss++;worstStreak=Math.max(worstStreak,curLoss);curStreak=0;} else{curStreak=0;curLoss=0;} });
 
-        const pairData = countBy("pair", false);
-        const kzData = countBy("killZone", false);
-        const modelData = countBy("tradeModel", false);
-        const confData = countConf(true);
+        // 2. Max drawdown
+        let peak=0, running=0, maxDD=0;
+        sorted.forEach(j=>{ running+=toNum(j); peak=Math.max(peak,running); maxDD=Math.max(maxDD,peak-running); });
 
-        const pnlByDay = (() => {
-          const m = {};
-          entries.forEach(j=>{
-            if (!j.pnl||!j.tradeDate) return;
-            const n = parseFloat(String(j.pnl).replace(/[^0-9.\-]/g,""));
-            if (!isNaN(n)) m[j.tradeDate]=(m[j.tradeDate]||0)+n;
-          });
-          return Object.entries(m).sort((a,b)=>a[0]>b[0]?1:-1).slice(-30);
-        })();
+        // 3. Recovery factor
+        const recoveryFactor = maxDD>0 ? (totalPnl/maxDD).toFixed(2) : "—";
 
-        const chartId = "analyticsChartPnl";
-        const pairChartId = "analyticsChartPair";
-        const kzChartId = "analyticsChartKZ";
+        // 4. Consistency score
+        const tradeDays=[...new Set(entries.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+        const winDays=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+        const consistency = tradeDays.length ? Math.round((winDays.length/tradeDays.length)*100) : 0;
 
-        const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF", grey:"#4A5066" };
+        // 5. TA Score (Zella-style radar: wr, pf, avgRR, consistency, recovery, -drawdown)
+        const wrScore = Math.min(wr, 100);
+        const pfScore = Math.min(parseFloat(profitFactor)||0, 3) / 3 * 100;
+        const rrScore = Math.min(avgRR||0, 3) / 3 * 100;
+        const consScore = consistency;
+        const recScore = Math.min(parseFloat(recoveryFactor)||0, 3) / 3 * 100;
+        const ddScore = maxDD===0 ? 100 : Math.max(0, 100 - (maxDD/Math.max(Math.abs(totalPnl),1))*100);
+        const taScore = Math.round((wrScore+pfScore+rrScore+consScore+recScore+ddScore)/6);
 
-        const statCard = (label, value, color) => (
-          <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:22, fontWeight:700, color:color||C.white }}>{value}</div>
+        // 6. Weekly P&L
+        const weeklyMap={};
+        entries.forEach(j=>{ if(!j.tradeDate) return; const d=new Date(j.tradeDate); const day=d.getDay(); const mon=new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1)); const wk=mon.toISOString().slice(0,10); weeklyMap[wk]=(weeklyMap[wk]||0)+toNum(j); });
+        const weeklyPnl=Object.entries(weeklyMap).sort((a,b)=>a[0]>b[0]?1:-1).slice(-10);
+
+        // 7. P&L curve
+        let cum=0;
+        const pnlCurve=sorted.map(j=>{ cum+=toNum(j); return {x:j.tradeDate||new Date(j.createdAt).toISOString().slice(0,10), y:Math.round(cum*100)/100}; });
+
+        // RR distribution
+        const rrBuckets={"<0.5x":0,"0.5-1x":0,"1-2x":0,"2-3x":0,">3x":0};
+        rrVals.forEach(r=>{ if(r<0.5)rrBuckets["<0.5x"]++; else if(r<1)rrBuckets["0.5-1x"]++; else if(r<2)rrBuckets["1-2x"]++; else if(r<3)rrBuckets["2-3x"]++; else rrBuckets[">3x"]++; });
+
+        // Rankings
+        const cBy=(key,fw)=>{ const m={}; (fw?wins:entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+        const pairData=cBy("pair",false); const kzData=cBy("killZone",false); const modelData=cBy("tradeModel",false);
+        const confData=()=>{ const m={}; wins.forEach(j=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;})}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+
+        // Day / Hour
+        const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const dw_={},dt_={};
+        entries.forEach(j=>{ if(!j.tradeDate) return; const d=DAYS_[new Date(j.tradeDate).getDay()]; dt_[d]=(dt_[d]||0)+1; if(j.result==="Win") dw_[d]=(dw_[d]||0)+1; });
+        const dayRank=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+        const hw_={},ht_={};
+        entries.forEach(j=>{ if(!j.entryTime) return; const h=parseInt(j.entryTime.split(":")[0]); const lbl=(h%12||12)+":00"+(h<12?" AM":" PM"); ht_[lbl]=(ht_[lbl]||0)+1; if(j.result==="Win") hw_[lbl]=(hw_[lbl]||0)+1; });
+        const hourRank=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+        window.__dayRank=dayRank; window.__hourRank=hourRank;
+
+        // Chart effect (top-level hook via useEffect already registered in StudentJournal)
+        useEffect(()=>{
+          if(!showAnalytics||view!=="list") return;
+          const C4=window.Chart; if(!C4) return;
+          const col={gold:"#C9A84C",green:"#1abc9c",red:"#e74c3c",blue:"#6B9FFF",purple:"#C96BFF",teal:"#1abc9c"};
+          setTimeout(()=>{
+            ["ac_pnl","ac_weekly","ac_pair","ac_kz","ac_rr","ac_hour","ac_radar"].forEach(id=>{
+              const el=document.getElementById(id); if(el&&el._ci){el._ci.destroy();el._ci=null;}
+            });
+            const pe=document.getElementById("ac_pnl");
+            if(pe&&pnlCurve.length>1) pe._ci=new C4(pe,{type:"line",data:{datasets:[{data:pnlCurve,borderColor:totalPnl>=0?col.teal:col.red,backgroundColor:totalPnl>=0?"rgba(26,188,156,.08)":"rgba(231,76,60,.08)",fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:"category",ticks:{color:"#4A5066",maxRotation:30,font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
+            const we=document.getElementById("ac_weekly");
+            if(we&&weeklyPnl.length) we._ci=new C4(we,{type:"bar",data:{labels:weeklyPnl.map(([w])=>"W"+w.slice(5,7)+"/"+w.slice(8,10)),datasets:[{data:weeklyPnl.map(([,v])=>v),backgroundColor:weeklyPnl.map(([,v])=>v>=0?"rgba(26,188,156,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
+            const pa=document.getElementById("ac_pair");
+            if(pa&&pairData.length){const top=pairData.slice(0,7);const wm={};cBy("pair",true).forEach(([k,v])=>wm[k]=v);pa._ci=new C4(pa,{type:"bar",data:{labels:top.map(([k])=>k),datasets:[{label:"Trades",data:top.map(([,v])=>v),backgroundColor:"rgba(107,159,255,.4)",borderRadius:3},{label:"Wins",data:top.map(([k])=>wm[k]||0),backgroundColor:"rgba(26,188,156,.75)",borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});}
+            const kze=document.getElementById("ac_kz");
+            if(kze&&kzData.length) kze._ci=new C4(kze,{type:"doughnut",data:{labels:kzData.map(([k])=>k),datasets:[{data:kzData.map(([,v])=>v),backgroundColor:[col.blue,col.gold,col.teal,col.purple].slice(0,kzData.length),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:8,font:{size:10}}}}}});
+            const rre=document.getElementById("ac_rr");
+            if(rre) rre._ci=new C4(rre,{type:"bar",data:{labels:Object.keys(rrBuckets),datasets:[{data:Object.values(rrBuckets),backgroundColor:["rgba(231,76,60,.7)","rgba(201,168,76,.7)","rgba(26,188,156,.7)","rgba(107,159,255,.7)","rgba(201,96,255,.7)"],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});
+            const he=document.getElementById("ac_hour");
+            if(he&&hourRank.length){const top=hourRank.slice(0,8);he._ci=new C4(he,{type:"bar",data:{labels:top.map(x=>x.h),datasets:[{data:top.map(x=>x.wr),backgroundColor:top.map(x=>x.wr>=60?"rgba(26,188,156,.75)":x.wr>=40?"rgba(201,168,76,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{max:100,ticks:{color:"#4A5066",font:{size:9},callback:v=>v+"%"}}}}});}
+            const re=document.getElementById("ac_radar");
+            if(re) re._ci=new C4(re,{type:"radar",data:{labels:["Win %","Profit Factor","Avg RR","Consistency","Recovery","Low DD"],datasets:[{data:[wrScore,pfScore,rrScore,consScore,recScore,ddScore],borderColor:"rgba(201,168,76,.8)",backgroundColor:"rgba(201,168,76,.15)",pointBackgroundColor:"#C9A84C",pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:"rgba(255,255,255,.05)"},pointLabels:{color:"#7A8099",font:{size:9}}}},plugins:{legend:{display:false}}}});
+          },150);
+        },[showAnalytics,view,analyticsType,dateFrom,dateTo,filterModel,myJournals.length]);
+
+        const SC=(label,val,sub,col,accent)=>(
+          <div style={{background:C.card,border:"1px solid "+(accent||C.border),borderRadius:12,padding:"14px 16px",position:"relative",overflow:"hidden"}}>
+            {accent&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:accent,opacity:.6}}/>}
+            <div style={{fontSize:10,fontWeight:600,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:6}}>{label}</div>
+            <div style={{fontSize:21,fontWeight:700,color:col||C.white,lineHeight:1}}>{val}</div>
+            {sub&&<div style={{fontSize:11,color:C.faint,marginTop:4}}>{sub}</div>}
           </div>
         );
 
-        const rankList = (data, title, winData, colorFn) => (
-          <div style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:10 }}>{title}</div>
-            {data.slice(0,6).map(([k,v],i)=>{
-              const winsMap = {}; (winData||[]).forEach(([wk,wv])=>winsMap[wk]=wv);
-              const maxV = data[0]?.[1]||1;
-              const wr2 = v > 0 ? Math.round(((winsMap[k]||0)/v)*100) : 0;
-              return (
-                <div key={k} style={{ marginBottom:8 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3 }}>
-                    <span style={{ color:i===0?C.gold:C.dim, fontWeight:i===0?700:400 }}>{i===0?"🏆 ":i===data.length-1&&data.length>1?"📉 ":""}{k||"—"}</span>
-                    <span style={{ color:C.grey }}>{v} trades · {wr2}% wr</span>
+        const RL=(data,title)=>{
+          const max=data[0]?.[1]||1;
+          return (
+            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px"}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:10}}>{title}</div>
+              {data.slice(0,5).map(([k,v],i)=>(
+                <div key={k} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                    <span style={{color:i===0?C.gold:i===data.length-1&&data.length>2?C.red:C.dim,fontWeight:i===0?700:400}}>
+                      {i===0?"🏆 ":i===data.length-1&&data.length>2?"📉 ":""}{k}
+                    </span>
+                    <span style={{color:C.grey,fontSize:11}}>{v}</span>
                   </div>
-                  <div style={{ height:4, background:C.bg, borderRadius:2, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:(v/maxV*100)+"%", background:i===0?C.gold:i===data.length-1&&data.length>1?colors.red:colors.blue, borderRadius:2, transition:"width .4s" }} />
+                  <div style={{height:3,background:C.bg,borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.round(v/max*100)+"%",background:i===0?C.gold:i===data.length-1&&data.length>2?C.red:"#6B9FFF",borderRadius:2}}/>
                   </div>
                 </div>
-              );
-            })}
-            {data.length===0 && <div style={{ fontSize:12, color:C.faint }}>No data yet</div>}
+              ))}
+              {data.length===0&&<div style={{fontSize:12,color:C.faint}}>No data yet</div>}
+            </div>
+          );
+        };
+
+        const CB=(id,h=160)=>(
+          <div style={{height:h,background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"10px"}}>
+            <canvas id={id}/>
           </div>
+        );
+
+        const CL=(title,h=160)=>(
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:6}}>{title}</div>
         );
 
         return (
-          <div style={{ background:C.card, border:"1px solid "+C.gold+"30", borderRadius:14, padding:"20px", marginBottom:20 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <div style={{ fontSize:12, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase" }}>
-                Analytics — {entries.length} entries
-              </div>
-              <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-                {/* Date range */}
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
-                    style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
-                  <span style={{ color:C.faint, fontSize:11 }}>→</span>
-                  <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
-                    style={{ background:C.surf, border:"1px solid "+C.border, borderRadius:7, padding:"4px 8px", color:C.dim, fontSize:11, outline:"none" }} />
-                  {(dateFrom||dateTo) && <button onClick={()=>{setDateFrom("");setDateTo("");}}
-                    style={{ background:"transparent", border:"none", color:C.grey, cursor:"pointer", fontSize:13, padding:"0 4px" }}>✕</button>}
+          <div style={{border:"1px solid "+C.gold+"20",borderRadius:16,overflow:"hidden",marginBottom:20,background:C.card}}>
+
+            {/* Header bar */}
+            <div style={{background:"linear-gradient(90deg,#0D1B3E,#0F1520)",padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,borderBottom:"1px solid "+C.border}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:36,height:36,borderRadius:10,background:C.goldDim,border:"1px solid "+C.gold+"40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>📊</div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:C.white}}>Journal Analytics</div>
+                  <div style={{fontSize:11,color:C.grey}}>{entries.length} entries · Live: {liveCount} · Backtest: {btCount}</div>
                 </div>
-                {/* Type toggle */}
-                {["All","Live","Backtest"].map(t => (
-                  <button key={t} onClick={() => setAnalyticsType(t)}
-                    style={{ padding:"4px 12px", borderRadius:20, fontSize:11, fontWeight:600, cursor:"pointer", border:"1px solid",
-                      background: analyticsType===t ? (t==="Live" ? "rgba(76,184,128,.15)" : t==="Backtest" ? "rgba(107,159,255,.15)" : C.goldDim) : "transparent",
-                      color: analyticsType===t ? (t==="Live" ? C.green : t==="Backtest" ? "#6B9FFF" : C.gold) : C.grey,
-                      borderColor: analyticsType===t ? (t==="Live" ? C.green+"50" : t==="Backtest" ? "#6B9FFF50" : C.gold+"50") : C.border }}>
-                    {t} {t==="Live" ? "("+live.length+")" : t==="Backtest" ? "("+bt.length+")" : "("+allEntries.length+")"}
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"5px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
+                <span style={{color:C.faint,fontSize:11}}>→</span>
+                <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"5px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
+                {(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom("");setDateTo("");}} style={{background:"transparent",border:"none",color:C.grey,cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>}
+                {["All","Live","Backtest"].map(t=>(
+                  <button key={t} onClick={()=>setAnalyticsType(t)} style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:"1px solid",transition:"all .15s",background:analyticsType===t?(t==="Live"?"rgba(26,188,156,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",color:analyticsType===t?(t==="Live"?"#1abc9c":t==="Backtest"?"#6B9FFF":C.gold):C.grey,borderColor:analyticsType===t?(t==="Live"?"#1abc9c50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border}}>
+                    {t}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Day calculations */}
-            {(() => { const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; const dw_={}; const dt_={}; entries.forEach(j=>{ if(!j.tradeDate) return; const d=DAYS_[new Date(j.tradeDate).getDay()]; dt_[d]=(dt_[d]||0)+1; if(j.result==="Win") dw_[d]=(dw_[d]||0)+1; }); const dr_=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr); window.__bestDay=dr_[0]?.d||null; window.__worstDay=dr_[dr_.length-1]?.d||null; window.__dayRank=dr_; return null; })()}
+            <div style={{padding:"20px"}}>
 
-            {/* Stat cards */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))", gap:8, marginBottom:16 }}>
-              {statCard("Win Rate", wr+"%", wr>=60?C.green:wr>=40?C.gold:C.red)}
-              {statCard("Wins", wins, C.green)}
-              {statCard("Losses", losses, C.red)}
-              {statCard("BE", be, C.grey)}
-              {statCard("Avg RR", avgRR, C.gold)}
-              {statCard("Total P&L", (totalPnl>=0?"+":"")+totalPnl.toFixed(0), totalPnl>=0?C.green:C.red)}
-              {statCard("Best Day", window.__bestDay||"—", "#6B9FFF")}
-              {statCard("Worst Day", window.__worstDay||"—", C.red)}
-            </div>
+              {/* TA Score + top KPIs */}
+              <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:12,marginBottom:16}}>
+                {/* TA Score radar */}
+                <div style={{background:C.surf,border:"1px solid "+C.border,borderRadius:12,padding:"14px",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:4}}>TA Score</div>
+                  <div style={{height:130,width:"100%"}}><canvas id="ac_radar"/></div>
+                  <div style={{fontSize:28,fontWeight:700,color:taScore>=70?C.green:taScore>=50?C.gold:C.red,marginTop:4}}>{taScore}</div>
+                  <div style={{height:6,width:"100%",background:C.bg,borderRadius:3,overflow:"hidden",marginTop:6}}>
+                    <div style={{height:"100%",width:taScore+"%",background:"linear-gradient(90deg,"+C.red+","+C.gold+","+C.green+")",borderRadius:3}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",width:"100%",fontSize:9,color:C.faint,marginTop:3}}>
+                    <span>0</span><span>50</span><span>100</span>
+                  </div>
+                </div>
 
-            {/* P&L Chart */}
-            {pnlByDay.length > 1 && (
-              <div style={{ marginBottom:16 }}>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Cumulative P&L</div>
-                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
-                  <canvas id={chartId} role="img" aria-label="Cumulative P&L over time" />
+                {/* KPI cards */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8}}>
+                  {SC("Win Rate",wr+"%",wins.length+"W · "+losses.length+"L · "+bes.length+"BE",wr>=60?"#1abc9c":wr>=45?C.gold:C.red,wr>=60?"#1abc9c":wr>=45?C.gold:C.red)}
+                  {SC("Avg RR",avgRR?"1:"+avgRR.toFixed(2):"—","W:"+avgWinRR+" / L:"+avgLossRR,C.gold,C.gold)}
+                  {SC("Total P&L",(totalPnl>=0?"+":"")+totalPnl.toFixed(0),"Wins: +"+winPnl.toFixed(0),totalPnl>=0?"#1abc9c":C.red,totalPnl>=0?"#1abc9c":C.red)}
+                  {SC("Profit Factor",profitFactor,"Win$ ÷ Loss$",parseFloat(profitFactor)>=1.5?"#1abc9c":parseFloat(profitFactor)>=1?C.gold:C.red)}
+                  {SC("Win Streak",bestStreak,"Current: "+curStreak,"#6B9FFF","#6B9FFF")}
+                  {SC("Max Drawdown","-"+maxDD.toFixed(0),"Recovery: "+recoveryFactor+"x",maxDD>100?C.red:C.gold)}
+                  {SC("Consistency",consistency+"%",winDays.length+"/"+tradeDays.length+" days",consistency>=60?"#1abc9c":consistency>=40?C.gold:C.red)}
+                  {SC("Entries",entries.length,tradeDays.length+" trade days",C.white)}
                 </div>
               </div>
-            )}
 
-            {/* Pair + Kill Zone */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Pairs (Trades vs Wins)</div>
-                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
-                  {pairData.length > 0
-                    ? <canvas id={pairChartId} role="img" aria-label="Trade count by pair" />
-                    : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:C.faint, fontSize:12 }}>No pair data yet</div>}
+              {/* P&L Curve + Weekly */}
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:12}}>
+                <div>
+                  {CL("Cumulative P&L")}
+                  {CB("ac_pnl",180)}
+                </div>
+                <div>
+                  {CL("Weekly P&L")}
+                  {CB("ac_weekly",180)}
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:".12em", color:C.grey, textTransform:"uppercase", marginBottom:8 }}>Kill Zone Breakdown</div>
-                <div style={{ height:160, background:C.surf, border:"1px solid "+C.border, borderRadius:10, padding:"10px" }}>
-                  {kzData.length > 0
-                    ? <canvas id={kzChartId} role="img" aria-label="Trades by kill zone" />
-                    : <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:C.faint, fontSize:12 }}>No kill zone data yet</div>}
-                </div>
+
+              {/* Pair + KZ + RR */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
+                <div>{CL("Pairs — Trades vs Wins")}{CB("ac_pair",150)}</div>
+                <div>{CL("Kill Zone Breakdown")}{CB("ac_kz",150)}</div>
+                <div>{CL("RR Distribution")}{CB("ac_rr",150)}</div>
               </div>
-            </div>
 
-            {/* Rankings */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-              {rankList(pairData, "Best vs Worst Pair", countBy("pair",true))}
-              {rankList(kzData, "Best vs Worst Kill Zone", countBy("killZone",true))}
-              {rankList(modelData, "Best vs Worst Model", countBy("tradeModel",true))}
-              {rankList(confData.slice(0,6), "Best Entry Confluences", confData)}
-            </div>
+              {/* Entry Hour */}
+              {hourRank.length>0&&(
+                <div style={{marginBottom:12}}>
+                  {CL("Best Entry Hour (Win Rate %)")}
+                  {CB("ac_hour",130)}
+                </div>
+              )}
 
-            {/* Chart.js loader */}
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" />
+              {/* Rankings */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
+                {RL(pairData,"Best vs Worst Pair")}
+                {RL(kzData,"Best vs Worst Kill Zone")}
+                {RL(modelData,"Best vs Worst Model")}
+                {RL(confData().slice(0,5),"Top Confluences")}
+                {RL(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
+                {hourRank.length>0&&RL(hourRank.map(({h,t,wr})=>[h+" ("+wr+"%)",t]),"Best vs Worst Hour")}
+              </div>
+
+            </div>
           </div>
         );
       })()}
+
 
       <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
         {myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel).map(j => (
@@ -4501,7 +4577,7 @@ function App() {
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
@@ -4521,7 +4597,7 @@ function App() {
         setJournals(prev => {
           const map = {};
           prev.forEach(p => map[p.id] = p);
-          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
+          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
           return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
         });
       }
@@ -4679,10 +4755,10 @@ function App() {
 
   const loadJournalsDB = async () => {
     const j = await sb("journals?order=created_at.desc&limit=2000").catch(()=>null);
-    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
   };
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, kill_zone:j.killZone||null, confluences:j.confluences||[], trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, kill_zone:j.killZone||null, entry_time:j.entryTime||null, confluences:j.confluences||[], trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
@@ -4703,7 +4779,7 @@ function App() {
       const j = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500");
       if (j && j.length > 0) setJournals(prev => {
         const map = {}; prev.forEach(p => { map[p.id] = p; });
-        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
+        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
         return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
       });
     } catch(e) { console.log("loadUserJournals:", e); }
@@ -4718,7 +4794,7 @@ function App() {
     // Load only this user's journals to reduce egress
     if (u.status === "approved") {
       sb("journals?user_id=eq." + u.id + "&order=created_at.desc&limit=500").then(uj => {
-        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       }).catch(()=>{});
     }
   };
