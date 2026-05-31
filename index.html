@@ -2529,41 +2529,83 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!showAnalytics || view !== "list") return;
     const C4 = window.Chart;
     if (!C4) return;
-    const colors = { gold:"#C9A84C", green:"#2ecc71", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
+    const col = { gold:"#C9A84C", green:"#1abc9c", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
     setTimeout(() => {
-      const allE = myJournals.filter(j => { if (filterModel !== "All" && j.tradeModel !== filterModel) return false; if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false; if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false; return true; });
-      const entries = analyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
-      const countBy = (key, fw) => {
-        const m = {};
-        (fw ? entries.filter(j=>j.result==="Win") : entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; });
-        return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-      };
-      const pnlByDay = (() => {
-        const m = {};
-        entries.forEach(j=>{ if(!j.pnl||!j.tradeDate) return; const n=parseFloat(String(j.pnl).replace(/[^0-9.-]/g,"")); if(!isNaN(n)) m[j.tradeDate]=(m[j.tradeDate]||0)+n; });
-        return Object.entries(m).sort((a,b)=>a[0]>b[0]?1:-1).slice(-30);
-      })();
-      ["analyticsChartPnl","analyticsChartPair","analyticsChartKZ"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el._chartInst) { el._chartInst.destroy(); el._chartInst = null; }
+      const allE = myJournals.filter(j => {
+        if (filterModel !== "All" && j.tradeModel !== filterModel) return false;
+        if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false;
+        if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false;
+        return true;
       });
-      const pnlEl = document.getElementById("analyticsChartPnl");
-      if (pnlEl && pnlByDay.length > 1) {
-        const cum=[]; let s=0; pnlByDay.forEach(([d,v])=>{ s+=v; cum.push({x:d,y:Math.round(s*100)/100}); });
-        pnlEl._chartInst = new C4(pnlEl, { type:"line", data:{ datasets:[{ label:"P&L", data:cum, borderColor:colors.gold, backgroundColor:"rgba(201,168,76,.08)", fill:true, tension:0.3, pointRadius:3 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{type:"category",ticks:{color:"#7A8099",maxRotation:45,font:{size:10}}}, y:{ticks:{color:"#7A8099",font:{size:10},callback:v=>(v>=0?"+":"")+v}} } } });
-      }
-      const pairEl = document.getElementById("analyticsChartPair");
-      if (pairEl && countBy("pair",false).length) {
-        const top=countBy("pair",false).slice(0,8); const winsMap={}; countBy("pair",true).forEach(([k,v])=>winsMap[k]=v);
-        pairEl._chartInst = new C4(pairEl, { type:"bar", data:{ labels:top.map(([k])=>k), datasets:[{ label:"Trades", data:top.map(([,v])=>v), backgroundColor:colors.blue+"99" },{ label:"Wins", data:top.map(([k])=>winsMap[k]||0), backgroundColor:colors.green+"99" }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:"#7A8099",font:{size:10}}}, y:{ticks:{color:"#7A8099",font:{size:10}}} } } });
-      }
-      const kzEl = document.getElementById("analyticsChartKZ");
-      const kzData=countBy("killZone",false);
-      if (kzEl && kzData.length) {
-        kzEl._chartInst = new C4(kzEl, { type:"doughnut", data:{ labels:kzData.map(([k])=>k), datasets:[{ data:kzData.map(([,v])=>v), backgroundColor:[colors.blue,colors.gold,colors.purple,colors.green].slice(0,kzData.length), borderWidth:0 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:10,font:{size:11}}} } } });
-      }
+      const entries = analyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
+      const wins = entries.filter(j=>j.result==="Win");
+      const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
+      const sorted = entries.slice().sort((a,b)=>a.createdAt-b.createdAt);
+
+      // P&L curve
+      let cum=0;
+      const pnlCurve = sorted.map(j=>{ cum+=toNum(j); return {x:j.tradeDate||new Date(j.createdAt).toISOString().slice(0,10), y:Math.round(cum*100)/100}; });
+      const totalPnl = cum;
+
+      // Weekly
+      const wm={};
+      entries.forEach(j=>{ if(!j.tradeDate) return; const d=new Date(j.tradeDate); const day=d.getDay(); const mon=new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1)); const wk=mon.toISOString().slice(0,10); wm[wk]=(wm[wk]||0)+toNum(j); });
+      const weeklyPnl=Object.entries(wm).sort((a,b)=>a[0]>b[0]?1:-1).slice(-10);
+
+      // Pair/KZ
+      const cBy=(key,fw)=>{ const m={}; (fw?wins:entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+      const pairData=cBy("pair",false); const kzData=cBy("killZone",false);
+
+      // RR buckets
+      const rrVals = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
+      const rrB={"<0.5x":0,"0.5-1x":0,"1-2x":0,"2-3x":0,">3x":0};
+      rrVals.forEach(r=>{ if(r<0.5)rrB["<0.5x"]++; else if(r<1)rrB["0.5-1x"]++; else if(r<2)rrB["1-2x"]++; else if(r<3)rrB["2-3x"]++; else rrB[">3x"]++; });
+
+      // Hour rank
+      const hw_={},ht_={};
+      entries.forEach(j=>{ if(!j.entryTime) return; const h=parseInt(j.entryTime.split(":")[0]); const lbl=(h%12||12)+":00"+(h<12?" AM":" PM"); ht_[lbl]=(ht_[lbl]||0)+1; if(j.result==="Win") hw_[lbl]=(hw_[lbl]||0)+1; });
+      const hourRank=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+
+      // TA Score for radar
+      const wr2 = entries.length ? Math.round((wins.length/entries.length)*100) : 0;
+      const winPnl=wins.reduce((s,j)=>s+toNum(j),0); const lossPnl=Math.abs(entries.filter(j=>j.result==="Loss").reduce((s,j)=>s+toNum(j),0));
+      const pfScore = Math.min(lossPnl>0?winPnl/lossPnl:winPnl>0?3:0, 3)/3*100;
+      const rrScore = Math.min(rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length):0, 3)/3*100;
+      const tradeDays2=[...new Set(entries.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+      const winDays2=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+      const consScore=tradeDays2.length?Math.round((winDays2.length/tradeDays2.length)*100):0;
+      let peak2=0,run2=0,maxDD2=0; sorted.forEach(j=>{run2+=toNum(j);peak2=Math.max(peak2,run2);maxDD2=Math.max(maxDD2,peak2-run2);});
+      const recScore=Math.min(maxDD2>0?totalPnl/maxDD2:totalPnl>0?3:0,3)/3*100;
+      const ddScore=maxDD2===0?100:Math.max(0,100-(maxDD2/Math.max(Math.abs(totalPnl),1))*100);
+
+      ["ac_pnl","ac_weekly","ac_pair","ac_kz","ac_rr","ac_hour","ac_radar"].forEach(id=>{
+        const el=document.getElementById(id); if(el&&el._ci){el._ci.destroy();el._ci=null;}
+      });
+
+      const pe=document.getElementById("ac_pnl");
+      if(pe&&pnlCurve.length>1) pe._ci=new C4(pe,{type:"line",data:{datasets:[{data:pnlCurve,borderColor:totalPnl>=0?col.green:col.red,backgroundColor:totalPnl>=0?"rgba(26,188,156,.08)":"rgba(231,76,60,.08)",fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:"category",ticks:{color:"#4A5066",maxRotation:30,font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
+
+      const we=document.getElementById("ac_weekly");
+      if(we&&weeklyPnl.length) we._ci=new C4(we,{type:"bar",data:{labels:weeklyPnl.map(([w])=>"W"+w.slice(5,7)+"/"+w.slice(8,10)),datasets:[{data:weeklyPnl.map(([,v])=>v),backgroundColor:weeklyPnl.map(([,v])=>v>=0?"rgba(26,188,156,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
+
+      const pa=document.getElementById("ac_pair");
+      if(pa&&pairData.length){const top=pairData.slice(0,7);const wm2={};cBy("pair",true).forEach(([k,v])=>wm2[k]=v);pa._ci=new C4(pa,{type:"bar",data:{labels:top.map(([k])=>k),datasets:[{label:"Trades",data:top.map(([,v])=>v),backgroundColor:"rgba(107,159,255,.4)",borderRadius:3},{label:"Wins",data:top.map(([k])=>wm2[k]||0),backgroundColor:"rgba(26,188,156,.75)",borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});}
+
+      const kze=document.getElementById("ac_kz");
+      if(kze&&kzData.length) kze._ci=new C4(kze,{type:"doughnut",data:{labels:kzData.map(([k])=>k),datasets:[{data:kzData.map(([,v])=>v),backgroundColor:[col.blue,col.gold,col.green].slice(0,kzData.length),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:8,font:{size:10}}}}}});
+
+      const rre=document.getElementById("ac_rr");
+      if(rre) rre._ci=new C4(rre,{type:"bar",data:{labels:Object.keys(rrB),datasets:[{data:Object.values(rrB),backgroundColor:["rgba(231,76,60,.7)","rgba(201,168,76,.7)","rgba(26,188,156,.7)","rgba(107,159,255,.7)","rgba(201,96,255,.7)"],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});
+
+      const he=document.getElementById("ac_hour");
+      if(he&&hourRank.length){const top=hourRank.slice(0,8);he._ci=new C4(he,{type:"bar",data:{labels:top.map(x=>x.h),datasets:[{data:top.map(x=>x.wr),backgroundColor:top.map(x=>x.wr>=60?"rgba(26,188,156,.75)":x.wr>=40?"rgba(201,168,76,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{max:100,ticks:{color:"#4A5066",font:{size:9},callback:v=>v+"%"}}}}});}
+
+      const re=document.getElementById("ac_radar");
+      if(re) re._ci=new C4(re,{type:"radar",data:{labels:["Win %","Prof. Factor","Avg RR","Consistency","Recovery","Low DD"],datasets:[{data:[wr2,pfScore,rrScore,consScore,recScore,ddScore],borderColor:"rgba(201,168,76,.8)",backgroundColor:"rgba(201,168,76,.12)",pointBackgroundColor:"#C9A84C",pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:"rgba(255,255,255,.05)"},pointLabels:{color:"#6A7090",font:{size:9}}}},plugins:{legend:{display:false}}}});
+
     }, 150);
-  }, [showAnalytics, view, filterModel, tradeType, analyticsType, dateFrom, dateTo, myJournals.length]);
+  }, [showAnalytics, view, filterModel, analyticsType, dateFrom, dateTo, myJournals.length]);
+
 
   if (view === "new") return (
     <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
@@ -2747,31 +2789,6 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         const hourRank=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
         window.__dayRank=dayRank; window.__hourRank=hourRank;
 
-        // Chart effect (top-level hook via useEffect already registered in StudentJournal)
-        useEffect(()=>{
-          if(!showAnalytics||view!=="list") return;
-          const C4=window.Chart; if(!C4) return;
-          const col={gold:"#C9A84C",green:"#1abc9c",red:"#e74c3c",blue:"#6B9FFF",purple:"#C96BFF",teal:"#1abc9c"};
-          setTimeout(()=>{
-            ["ac_pnl","ac_weekly","ac_pair","ac_kz","ac_rr","ac_hour","ac_radar"].forEach(id=>{
-              const el=document.getElementById(id); if(el&&el._ci){el._ci.destroy();el._ci=null;}
-            });
-            const pe=document.getElementById("ac_pnl");
-            if(pe&&pnlCurve.length>1) pe._ci=new C4(pe,{type:"line",data:{datasets:[{data:pnlCurve,borderColor:totalPnl>=0?col.teal:col.red,backgroundColor:totalPnl>=0?"rgba(26,188,156,.08)":"rgba(231,76,60,.08)",fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:"category",ticks:{color:"#4A5066",maxRotation:30,font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
-            const we=document.getElementById("ac_weekly");
-            if(we&&weeklyPnl.length) we._ci=new C4(we,{type:"bar",data:{labels:weeklyPnl.map(([w])=>"W"+w.slice(5,7)+"/"+w.slice(8,10)),datasets:[{data:weeklyPnl.map(([,v])=>v),backgroundColor:weeklyPnl.map(([,v])=>v>=0?"rgba(26,188,156,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
-            const pa=document.getElementById("ac_pair");
-            if(pa&&pairData.length){const top=pairData.slice(0,7);const wm={};cBy("pair",true).forEach(([k,v])=>wm[k]=v);pa._ci=new C4(pa,{type:"bar",data:{labels:top.map(([k])=>k),datasets:[{label:"Trades",data:top.map(([,v])=>v),backgroundColor:"rgba(107,159,255,.4)",borderRadius:3},{label:"Wins",data:top.map(([k])=>wm[k]||0),backgroundColor:"rgba(26,188,156,.75)",borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});}
-            const kze=document.getElementById("ac_kz");
-            if(kze&&kzData.length) kze._ci=new C4(kze,{type:"doughnut",data:{labels:kzData.map(([k])=>k),datasets:[{data:kzData.map(([,v])=>v),backgroundColor:[col.blue,col.gold,col.teal,col.purple].slice(0,kzData.length),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:8,font:{size:10}}}}}});
-            const rre=document.getElementById("ac_rr");
-            if(rre) rre._ci=new C4(rre,{type:"bar",data:{labels:Object.keys(rrBuckets),datasets:[{data:Object.values(rrBuckets),backgroundColor:["rgba(231,76,60,.7)","rgba(201,168,76,.7)","rgba(26,188,156,.7)","rgba(107,159,255,.7)","rgba(201,96,255,.7)"],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});
-            const he=document.getElementById("ac_hour");
-            if(he&&hourRank.length){const top=hourRank.slice(0,8);he._ci=new C4(he,{type:"bar",data:{labels:top.map(x=>x.h),datasets:[{data:top.map(x=>x.wr),backgroundColor:top.map(x=>x.wr>=60?"rgba(26,188,156,.75)":x.wr>=40?"rgba(201,168,76,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{max:100,ticks:{color:"#4A5066",font:{size:9},callback:v=>v+"%"}}}}});}
-            const re=document.getElementById("ac_radar");
-            if(re) re._ci=new C4(re,{type:"radar",data:{labels:["Win %","Profit Factor","Avg RR","Consistency","Recovery","Low DD"],datasets:[{data:[wrScore,pfScore,rrScore,consScore,recScore,ddScore],borderColor:"rgba(201,168,76,.8)",backgroundColor:"rgba(201,168,76,.15)",pointBackgroundColor:"#C9A84C",pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:"rgba(255,255,255,.05)"},pointLabels:{color:"#7A8099",font:{size:9}}}},plugins:{legend:{display:false}}}});
-          },150);
-        },[showAnalytics,view,analyticsType,dateFrom,dateTo,filterModel,myJournals.length]);
 
         const SC=(label,val,sub,col,accent)=>(
           <div style={{background:C.card,border:"1px solid "+(accent||C.border),borderRadius:12,padding:"14px 16px",position:"relative",overflow:"hidden"}}>
