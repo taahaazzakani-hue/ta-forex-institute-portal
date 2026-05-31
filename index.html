@@ -475,7 +475,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   const [dragOverSec, setDragOverSec] = React.useState(null);
 
   const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
-  const doAddSec = () => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim() }); setST(""); };
+  const doAddSec = (isFolder=false) => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim(), isFolder }); setST(""); };
   const saveCourseEdit = () => { if (editCourse && editCourseTitle.trim()) { patchCourse(editCourse, { title: editCourseTitle.trim() }); setEditCourse(null); } };
   const saveSectionEdit = () => { if (editSection && editSectionTitle.trim()) { patchSection(editSection, { title: editSectionTitle.trim() }); setEditSection(null); } };
 
@@ -513,7 +513,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
         <div style={{ display: "grid", gap: 14 }}>
           <div><label>Course</label><select value={sC} onChange={e => setSC(e.target.value)}><option value="">Select course…</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
           <div><label>Section Title</label><input value={sT} onChange={e => setST(e.target.value)} placeholder="e.g. Phase One – Core Concepts" /></div>
-          <Btn onClick={doAddSec} disabled={!sC || !sT.trim()} style={{ justifySelf: "start" }}>Add Section</Btn>
+          <div style={{display:"flex",gap:8}}><Btn onClick={()=>doAddSec(false)} disabled={!sC || !sT.trim()}>+ Section</Btn><Btn onClick={()=>doAddSec(true)} disabled={!sC || !sT.trim()} v="outline">📁 Add Folder</Btn></div>
         </div>
       </Card>
       {courses.map(c => {
@@ -1573,42 +1573,118 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
           {cSecs.length === 0 && <p style={{ color: C.grey, fontSize: 14 }}>No content yet.</p>}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {cSecs.map((s, si) => {
-              const sv = videos.filter(v => v.sectionId === s.id);
-              const open = openS[s.id] !== false;
-              return (
-                <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden", transition: "border-color .2s" }}>
-                  <div onClick={() => toggleS(s.id)}
-                    style={{ padding: "16px 20px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>Section {si + 1}</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: C.white }}>{s.title}</div>
-                      <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
-                    </div>
-                    <span style={{ color: C.grey, fontSize: 13, transition: "transform .2s", display: "block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
-                  </div>
+            {(() => {
+              // Group sections: folders act as collapsible headers containing subsequent sections
+              const grouped = [];
+              let currentFolder = null;
+              cSecs.forEach(s => {
+                if (s.isFolder) {
+                  currentFolder = { folder: s, children: [] };
+                  grouped.push(currentFolder);
+                } else if (currentFolder) {
+                  currentFolder.children.push(s);
+                } else {
+                  grouped.push({ folder: null, section: s });
+                }
+              });
 
-                  {open && (
-                    <div>
-                      {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
-                      {sv.map((v, vi) => (
-                        <div key={v.id} onClick={() => play(v)}
-                          style={{ padding: "14px 20px 14px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
-                          onMouseEnter={e => e.currentTarget.style.background = C.card}
-                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                          <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                            {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
+              return grouped.map((g, gi) => {
+                if (g.folder) {
+                  // Folder/header section
+                  const folderOpen = openS["folder_"+g.folder.id] !== false;
+                  const totalLessons = g.children.reduce((sum, s) => sum + videos.filter(v=>v.sectionId===s.id).length, 0);
+                  return (
+                    <div key={g.folder.id} style={{ marginBottom: 4 }}>
+                      {/* Folder header */}
+                      <div onClick={() => toggleS("folder_"+g.folder.id)}
+                        style={{ padding: "10px 16px", background: C.goldDim, border: "1px solid " + C.gold + "30", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: folderOpen ? 6 : 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 16 }}>{folderOpen ? "📂" : "📁"}</span>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{g.folder.title}</div>
+                            <div style={{ fontSize: 11, color: C.grey }}>{g.children.length} section{g.children.length !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}</div>
                           </div>
-                          <span style={{ color: C.faint, fontSize: 12 }}>→</span>
                         </div>
-                      ))}
+                        <span style={{ color: C.gold, fontSize: 12, transform: folderOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s", display: "block" }}>▶</span>
+                      </div>
+                      {/* Folder contents */}
+                      {folderOpen && (
+                        <div style={{ paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                          {g.children.map(s => {
+                            const sv = videos.filter(v => v.sectionId === s.id);
+                            const open = openS[s.id] !== false;
+                            return (
+                              <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden" }}>
+                                <div onClick={() => toggleS(s.id)} style={{ padding: "14px 18px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <div>
+                                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 3 }}>Section</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{s.title}</div>
+                                    <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
+                                  </div>
+                                  <span style={{ color: C.grey, fontSize: 13, transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>
+                                </div>
+                                {open && (
+                                  <div>
+                                    {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
+                                    {sv.map(v => (
+                                      <div key={v.id} onClick={() => play(v)} style={{ padding: "13px 20px 13px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+                                        onMouseEnter={e => e.currentTarget.style.background = C.card}
+                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                        <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                                          {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
+                                        </div>
+                                        <span style={{ color: C.faint, fontSize: 12 }}>→</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {g.children.length === 0 && <div style={{ padding: "10px 14px", color: C.faint, fontSize: 12 }}>No sections in this folder yet.</div>}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                } else {
+                  // Standalone section (not in a folder)
+                  const s = g.section;
+                  const sv = videos.filter(v => v.sectionId === s.id);
+                  const open = openS[s.id] !== false;
+                  return (
+                    <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden" }}>
+                      <div onClick={() => toggleS(s.id)} style={{ padding: "16px 20px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 3 }}>Section</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: C.white }}>{s.title}</div>
+                          <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
+                        </div>
+                        <span style={{ color: C.grey, fontSize: 13, transition: "transform .2s", display: "block", transform: open ? "rotate(90deg)" : "none" }}>▶</span>
+                      </div>
+                      {open && (
+                        <div>
+                          {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
+                          {sv.map(v => (
+                            <div key={v.id} onClick={() => play(v)} style={{ padding: "14px 20px 14px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+                              onMouseEnter={e => e.currentTarget.style.background = C.card}
+                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                              <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                                {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
+                              </div>
+                              <span style={{ color: C.faint, fontSize: 12 }}>→</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              });
+            })()}
           </div>
         </div>
       )}
@@ -4625,7 +4701,7 @@ function App() {
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
-      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0 })).sort((a,b)=>a.sortOrder-b.sortOrder));
+      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
@@ -4705,7 +4781,7 @@ function App() {
     setVideos(prev => prev.filter(v => v.courseId !== id));
   };
   const addSectionDB = async (s) => {
-    await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title } });
+    await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title, is_folder:s.isFolder||false } });
     setSections(prev => [...prev, s]);
   };
   const patchSectionDB = async (id, patch) => {
