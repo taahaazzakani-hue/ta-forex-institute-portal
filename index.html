@@ -2313,10 +2313,10 @@ function TradeForm({ onSubmit, submitLabel,
       </div>
 
       {/* Confluences */}
-      {tradeModel && ({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]}})[tradeModel] && (
+      {tradeModel && ({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]}})[tradeModel] && (
         <div style={{ background:C.bg, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
           <label style={{ display:"block", marginBottom:10 }}>Confluences</label>
-          {Object.entries(({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep"]}})[tradeModel]||{}).map(([section, items]) => (
+          {Object.entries(({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]}})[tradeModel]||{}).map(([section, items]) => (
             <div key={section} style={{ marginBottom:10 }}>
               <div style={{ fontSize:10, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase", marginBottom:6 }}>{section}</div>
               <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -2907,12 +2907,11 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
               </div>
 
               {/* Entry Hour */}
-              {hourRank.length>0&&(
-                <div style={{marginBottom:12}}>
-                  {CL("Best Entry Hour (Win Rate %)")}
-                  {CB("ac_hour",130)}
-                </div>
-              )}
+              <div style={{marginBottom:12}}>
+                {CL("Best Entry Hour (Win Rate %)")}
+                {CB("ac_hour",130)}
+                {hourRank.length===0&&<div style={{textAlign:"center",fontSize:12,color:C.faint,marginTop:8}}>Log entry times in your journal to see this chart</div>}
+              </div>
 
               {/* Rankings */}
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
@@ -2921,7 +2920,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                 {RL(modelData,"Best vs Worst Model")}
                 {RL(confData().slice(0,5),"Top Confluences")}
                 {RL(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
-                {hourRank.length>0&&RL(hourRank.map(({h,t,wr})=>[h+" ("+wr+"%)",t]),"Best vs Worst Hour")}
+                {RL(hourRank.length>0?hourRank.map(({h,t,wr})=>[h+" ("+wr+"%)",t]):[],"Best Entry Hour")}
               </div>
 
             </div>
@@ -3016,11 +3015,25 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
         </div>
         {((j.images && j.images.length > 0) || j.image) && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Charts ({(j.images && j.images.length) || 1})</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 8 }}>
-              {(j.images && j.images.length > 0 ? j.images : [j.image]).map((img, idx) => (
-                <img key={idx} src={img} alt={"chart "+(idx+1)} style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8, border: "1px solid " + C.border, cursor: "zoom-in" }}
-                  onClick={() => window.open(img, "_blank")} />
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Charts ({(j.images && j.images.length) || 1}) — click to zoom</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 10 }}>
+              {(j.images && j.images.length > 0 ? j.images : [j.image]).map((img, imgIdx) => (
+                <div key={imgIdx} style={{ position: "relative", cursor: "zoom-in", borderRadius: 10, overflow: "hidden", border: "1px solid " + C.border }}
+                  onClick={() => {
+                    const ov = document.createElement("div");
+                    ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.93);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;";
+                    const im = document.createElement("img");
+                    im.src = img;
+                    im.style.cssText = "max-width:94vw;max-height:94vh;object-fit:contain;border-radius:8px;box-shadow:0 0 80px rgba(0,0,0,.8);";
+                    ov.appendChild(im);
+                    ov.onclick = () => document.body.removeChild(ov);
+                    document.body.appendChild(ov);
+                  }}>
+                  <img src={img} alt={"chart "+(imgIdx+1)} style={{ width: "100%", height: 200, objectFit: "cover", display: "block", transition: "transform .2s" }}
+                    onMouseEnter={e => e.target.style.transform="scale(1.04)"}
+                    onMouseLeave={e => e.target.style.transform="scale(1)"} />
+                  <div style={{ position: "absolute", bottom: 6, right: 8, background: "rgba(0,0,0,.65)", color: "#fff", fontSize: 10, padding: "2px 7px", borderRadius: 4 }}>🔍</div>
+                </div>
               ))}
             </div>
           </div>
@@ -3081,6 +3094,7 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
       {/* Admin Analytics Panel */}
       {showAdminAnalytics && (() => {
         const sName = filterUser !== "all" ? (approvedUsers.find(u=>u.id===filterUser)?.name||"Student") : null;
+        const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
         const allE = journals.filter(j => {
           if (filterUser !== "all" && j.userId !== filterUser) return false;
           if (adminDateFrom && j.tradeDate && j.tradeDate < adminDateFrom) return false;
@@ -3088,69 +3102,88 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
           return true;
         });
         const ents = adminAnalyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : adminAnalyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
-        const w=ents.filter(j=>j.result==="Win").length;
-        const l=ents.filter(j=>j.result==="Loss").length;
-        const b=ents.filter(j=>j.result==="BE").length;
-        const wr2=ents.length?Math.round((w/ents.length)*100):0;
-        const aRR=(() => { const v=ents.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0); if(!v.length) return "—"; return "1:"+(v.reduce((s,j)=>s+parseFloat(j.gain)/parseFloat(j.risk),0)/v.length).toFixed(2); })();
-        const tPnl=ents.reduce((s,j)=>{ if(!j.pnl) return s; const n=parseFloat(String(j.pnl).replace(/[^0-9.-]/g,"")); return isNaN(n)?s:s+n; },0);
-        const cBy=(key,fw)=>{ const m={}; (fw?ents.filter(j=>j.result==="Win"):ents).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
-        const cConf=()=>{ const m={}; ents.filter(j=>j.result==="Win").forEach(j=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;})}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
-        const DAYS2=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-        const dw={}; const dt={};
-        ents.forEach(j=>{ if(!j.tradeDate) return; const d=DAYS2[new Date(j.tradeDate).getDay()]; dt[d]=(dt[d]||0)+1; if(j.result==="Win") dw[d]=(dw[d]||0)+1; });
-        const dayRank=Object.entries(dt).map(([d,t])=>[d+" ("+Math.round(((dw[d]||0)/t)*100)+"%)",t]).sort((a,b)=>b[1]-a[1]);
-        const SC=(label,val,col)=>(
-          <div style={{background:C.surf,border:"1px solid "+C.border,borderRadius:10,padding:"10px 12px"}}>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:3}}>{label}</div>
+        const wins=ents.filter(j=>j.result==="Win");
+        const losses=ents.filter(j=>j.result==="Loss");
+        const bes=ents.filter(j=>j.result==="BE");
+        const wr2=ents.length?Math.round((wins.length/ents.length)*100):0;
+        const totalPnl=ents.reduce((s,j)=>s+toNum(j),0);
+        const winPnl=wins.reduce((s,j)=>s+toNum(j),0);
+        const lossPnl=Math.abs(losses.reduce((s,j)=>s+toNum(j),0));
+        const pf=lossPnl>0?(winPnl/lossPnl).toFixed(2):winPnl>0?"∞":"—";
+        const rrVals=ents.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
+        const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2):null;
+        const sorted=ents.slice().sort((a,b)=>a.createdAt-b.createdAt);
+        let curS=0,bestS=0,curL=0,worstS=0; sorted.forEach(j=>{if(j.result==="Win"){curS++;bestS=Math.max(bestS,curS);curL=0;}else if(j.result==="Loss"){curL++;worstS=Math.max(worstS,curL);curS=0;}else{curS=0;curL=0;}});
+        let peak=0,run=0,maxDD=0; sorted.forEach(j=>{run+=toNum(j);peak=Math.max(peak,run);maxDD=Math.max(maxDD,peak-run);});
+        const recov=maxDD>0?(totalPnl/maxDD).toFixed(2):"—";
+        const tradeDays=[...new Set(ents.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+        const winDays=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
+        const cons=tradeDays.length?Math.round((winDays.length/tradeDays.length)*100):0;
+        const cBy=(key,fw)=>{const m={};(fw?wins:ents).forEach(j=>{const v=j[key];if(v)m[v]=(m[v]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+        const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const dw_={},dt_={}; ents.forEach(j=>{if(!j.tradeDate)return;const d=DAYS_[new Date(j.tradeDate).getDay()];dt_[d]=(dt_[d]||0)+1;if(j.result==="Win")dw_[d]=(dw_[d]||0)+1;});
+        const dayRank=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+        const hw_={},ht_={}; ents.forEach(j=>{if(!j.entryTime)return;const h=parseInt(j.entryTime.split(":")[0]);const lbl=(h%12||12)+":00"+(h<12?" AM":" PM");ht_[lbl]=(ht_[lbl]||0)+1;if(j.result==="Win")hw_[lbl]=(hw_[lbl]||0)+1;});
+        const hourRankA=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+        const SC=(label,val,sub,col)=>(
+          <div style={{background:C.bg,border:"1px solid "+C.border,borderRadius:10,padding:"11px 13px"}}>
+            <div style={{fontSize:10,fontWeight:600,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:4}}>{label}</div>
             <div style={{fontSize:18,fontWeight:700,color:col||C.white}}>{val}</div>
+            {sub&&<div style={{fontSize:10,color:C.faint,marginTop:2}}>{sub}</div>}
           </div>
         );
-        const RL=(data,title)=>(
-          <div style={{background:C.surf,border:"1px solid "+C.border,borderRadius:10,padding:"12px 14px"}}>
+        const RL2=(data,title)=>{
+          const max=data[0]?.[1]||1;
+          return (<div style={{background:C.bg,border:"1px solid "+C.border,borderRadius:10,padding:"12px 14px"}}>
             <div style={{fontSize:10,fontWeight:700,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:8}}>{title}</div>
             {data.slice(0,5).map(([k,v],i)=>(
               <div key={k} style={{marginBottom:6}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
-                  <span style={{color:i===0?C.gold:i===data.length-1&&data.length>1?C.red:C.dim,fontWeight:i===0?700:400}}>{i===0?"🏆 ":i===data.length-1&&data.length>1?"📉 ":""}{k}</span>
-                  <span style={{color:C.grey}}>{v}</span>
+                  <span style={{color:i===0?C.gold:i===data.length-1&&data.length>2?C.red:C.dim,fontWeight:i===0?700:400}}>{i===0?"🏆 ":i===data.length-1&&data.length>2?"📉 ":""}{k}</span>
+                  <span style={{color:C.grey,fontSize:11}}>{v}</span>
                 </div>
-                <div style={{height:3,background:C.bg,borderRadius:2}}>
-                  <div style={{height:"100%",width:(v/(data[0]?.[1]||1)*100)+"%",background:i===0?C.gold:i===data.length-1&&data.length>1?C.red:"#6B9FFF",borderRadius:2}} />
+                <div style={{height:3,background:C.surf,borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:(v/max*100)+"%",background:i===0?C.gold:i===data.length-1&&data.length>2?C.red:"#6B9FFF",borderRadius:2}}/>
                 </div>
               </div>
             ))}
-            {data.length===0&&<div style={{fontSize:12,color:C.faint}}>No data</div>}
-          </div>
-        );
+            {data.length===0&&<div style={{fontSize:11,color:C.faint}}>No data</div>}
+          </div>);
+        };
         return (
           <div style={{background:C.card,border:"1px solid "+C.gold+"30",borderRadius:14,padding:"18px 20px",marginBottom:16}}>
+            {/* Header */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
-              <div style={{fontSize:13,fontWeight:700,color:C.gold}}>
-                📊 {sName ? sName+" Analytics" : "All Students Analytics"} — {ents.length} entries
-              </div>
+              <div style={{fontSize:13,fontWeight:700,color:C.gold}}>📊 {sName?sName+" — Analytics":"All Students Analytics"}</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="date" value={adminDateFrom} onChange={e=>setAdminDateFrom(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}} />
+                <input type="date" value={adminDateFrom} onChange={e=>setAdminDateFrom(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
                 <span style={{color:C.faint,fontSize:11}}>→</span>
-                <input type="date" value={adminDateTo} onChange={e=>setAdminDateTo(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}} />
+                <input type="date" value={adminDateTo} onChange={e=>setAdminDateTo(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
                 {(adminDateFrom||adminDateTo)&&<button onClick={()=>{setAdminDateFrom("");setAdminDateTo("");}} style={{background:"transparent",border:"none",color:C.grey,cursor:"pointer",fontSize:13}}>✕</button>}
                 {["All","Live","Backtest"].map(t=>(
-                  <button key={t} onClick={()=>setAdminAnalyticsType(t)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:"1px solid",background:adminAnalyticsType===t?(t==="Live"?"rgba(76,184,128,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",color:adminAnalyticsType===t?(t==="Live"?C.green:t==="Backtest"?"#6B9FFF":C.gold):C.grey,borderColor:adminAnalyticsType===t?(t==="Live"?C.green+"50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border}}>{t}</button>
+                  <button key={t} onClick={()=>setAdminAnalyticsType(t)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:"1px solid",background:adminAnalyticsType===t?(t==="Live"?"rgba(26,188,156,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",color:adminAnalyticsType===t?(t==="Live"?"#1abc9c":t==="Backtest"?"#6B9FFF":C.gold):C.grey,borderColor:adminAnalyticsType===t?(t==="Live"?"#1abc9c50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border}}>{t}</button>
                 ))}
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:8,marginBottom:12}}>
-              {SC("Win Rate",wr2+"%",wr2>=60?C.green:wr2>=40?C.gold:C.red)}
-              {SC("Wins",w,C.green)}{SC("Losses",l,C.red)}{SC("BE",b,C.grey)}
-              {SC("Avg RR",aRR,C.gold)}
-              {SC("Total P&L",(tPnl>=0?"+":"")+tPnl.toFixed(0),tPnl>=0?C.green:C.red)}
+            {/* KPIs */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:8,marginBottom:14}}>
+              {SC("Win Rate",wr2+"%",wins.length+"W "+losses.length+"L "+bes.length+"BE",wr2>=60?"#1abc9c":wr2>=45?C.gold:C.red)}
+              {SC("Avg RR",avgRR?"1:"+avgRR:"—","risk:reward",C.gold)}
+              {SC("Total P&L",(totalPnl>=0?"+":"")+totalPnl.toFixed(0),"net",totalPnl>=0?"#1abc9c":C.red)}
+              {SC("Profit Factor",pf,"W÷L",parseFloat(pf)>=1.5?"#1abc9c":parseFloat(pf)>=1?C.gold:C.red)}
+              {SC("Win Streak",bestS,"best",C.dim)}
+              {SC("Max DD","-"+maxDD.toFixed(0),"Recov: "+recov+"x",maxDD>100?C.red:C.gold)}
+              {SC("Consistency",cons+"%",winDays.length+"/"+tradeDays.length+" days",cons>=60?"#1abc9c":cons>=40?C.gold:C.red)}
+              {SC("Entries",ents.length,tradeDays.length+" days",C.white)}
             </div>
+            {/* Rankings */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
-              {RL(cBy("pair",false),"Best vs Worst Pair")}
-              {RL(cBy("killZone",false),"Best vs Worst Kill Zone")}
-              {RL(cBy("tradeModel",false),"Best vs Worst Model")}
-              {RL(cConf().slice(0,5),"Top Entry Confluences")}
-              {RL(dayRank,"Best vs Worst Day")}
+              {RL2(cBy("pair",false),"Best vs Worst Pair")}
+              {RL2(cBy("killZone",false),"Best vs Worst Kill Zone")}
+              {RL2(cBy("tradeModel",false),"Best vs Worst Model")}
+              {RL2(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})?Object.entries(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5):[],"Top Confluences")}
+              {RL2(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
+              {RL2(hourRankA.map(({h,t,wr})=>[h+" ("+wr+"%)",t]),"Best Entry Hour")}
             </div>
           </div>
         );
