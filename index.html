@@ -60,7 +60,7 @@ const GS = `
 html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%;letter-spacing:.01em}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:${C.gold};border-radius:4px}
 a{color:inherit;text-decoration:none}
-input,select,textarea{font-family:${D};letter-spacing:.02em;font-size:14px;color:${C.white};background:${C.navy};border:1.5px solid ${C.border};border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+input,select,textarea{font-family:${D};letter-spacing:.02em;font-size:14px;color:${C.white};background:${C.surf};border:1.5px solid ${C.border};border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{border-color:${C.gold};box-shadow:0 0 0 3px ${C.goldDim}}
 input::placeholder,textarea::placeholder{color:${C.faint}}
 select option{background:${C.navy};color:${C.white}}
@@ -328,7 +328,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 
         {/* Logo — inverted to show white on navy */}
         <img src={LOGO_SRC} alt="TA Forex Institute"
-          style={{ height: 130, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 28 }} />
+          style={{ height: 180, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 32 }} />
 
         <div style={{ width: 36, height: 1.5, background: C.gold, marginBottom: 24 }} />
         <p style={{ fontSize: 11, letterSpacing: ".28em", color: "rgba(201,168,76,.8)", textTransform: "uppercase", textAlign: "center", fontFamily: S, margin: 0 }}>Member Portal</p>
@@ -338,7 +338,8 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
       </div>
 
       {/* ── Right panel — cream form ── */}
-      <div style={{ width: 440, flexShrink: 0, background: "#F5F1EB", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px" }}>
+      <style>{`.login-input{background:#FFFFFF!important;color:#0D1730!important;border-color:#E2D9CC!important}.login-input:focus{border-color:#C9A84C!important;box-shadow:0 0 0 3px rgba(201,168,76,.1)!important}.login-input::placeholder{color:#9A8F7A!important}`}</style>
+      <div style={{ width: 520, flexShrink: 0, background: "#F5F1EB", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px" }}>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 0, marginBottom: 36, borderBottom: "1.5px solid #E2D9CC" }}>
@@ -359,7 +360,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
             <div>
               <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Full Name</label>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name"
-                style={{ width:"100%", padding:"12px 14px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
+                className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:"#0D1730", fontSize:15, outline:"none", fontFamily:D }}
                 onFocus={e => e.target.style.borderColor = C.gold}
                 onBlur={e => e.target.style.borderColor = "#E2D9CC"} />
             </div>
@@ -368,7 +369,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
           <div>
             <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Email Address</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
-              style={{ width:"100%", padding:"12px 14px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
+              className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:"#0D1730", fontSize:15, outline:"none", fontFamily:D }}
               onFocus={e => e.target.style.borderColor = C.gold}
               onBlur={e => e.target.style.borderColor = "#E2D9CC"}
               onKeyDown={e => e.key === "Enter" && submit()} />
@@ -406,7 +407,7 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
         )}
 
         <button onClick={submit} disabled={loading}
-          style={{ marginTop:24, width:"100%", padding:"14px", borderRadius:8, border:"none", background:loading?"#C2BAB0":C.navy, color:"#F5F1EB", fontSize:14, fontWeight:700, letterSpacing:".06em", fontFamily:S, cursor:loading?"not-allowed":"pointer", transition:"background .2s" }}
+          style={{ marginTop:28, width:"100%", padding:"16px", borderRadius:8, border:"none", background:loading?"#C2BAB0":C.navy, color:"#F5F1EB", fontSize:15, fontWeight:700, letterSpacing:".06em", fontFamily:S, cursor:loading?"not-allowed":"pointer", transition:"background .2s" }}
           onMouseEnter={e => { if(!loading) e.target.style.background="#1a2d52"; }}
           onMouseLeave={e => { if(!loading) e.target.style.background=C.navy; }}>
           {loading ? "Please wait…" : tab === "login" ? "Sign In →" : "Create Account →"}
