@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TA Forex Institute — Member Portal</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
-    body { margin:0; background:#F5F1EB; color:#0D1730; }
+    body{margin:0;background:#F5F1EB;color:#0D1730;}
     input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator { filter:none; opacity:.6; cursor:pointer; }
-    ::-webkit-scrollbar { width:5px; height:5px; }
-    ::-webkit-scrollbar-track { background:#F5F1EB; }
-    ::-webkit-scrollbar-thumb { background:#D4CEC4; border-radius:3px; }
-    * { box-sizing:border-box; }
-    select option { background: #FFFFFF; color: #0D1730; }
+    input[type="time"]::-webkit-calendar-picker-indicator{filter:none;opacity:.6;cursor:pointer;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-track{background:#F5F1EB;}
+    ::-webkit-scrollbar-thumb{background:#D4CEC4;border-radius:3px;}
+    *{box-sizing:border-box;}
+    select option{background:#FFFFFF;color:#0D1730;}
   </style>
 </head>
 <body>
@@ -309,27 +309,45 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
     setLoading(false);
   };
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#F5F1EB", display: "flex", alignItems: "stretch" }}>
+  const inputStyle = {
+    width: "100%", padding: "12px 14px", borderRadius: 8,
+    border: "1.5px solid rgba(201,168,76,.3)",
+    background: "rgba(255,255,255,.08)",
+    color: "#F5F1EB", fontSize: 14, outline: "none",
+    fontFamily: D, transition: "border .15s, background .15s",
+  };
 
-      {/* Left panel — branding */}
-      <div style={{ flex: 1, background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 48px", minWidth: 0 }}>
-        <Logo h={110} />
-        <div style={{ width: 40, height: 1, background: C.gold, margin: "28px 0" }} />
-        <p style={{ fontSize: 13, letterSpacing: ".25em", color: "rgba(245,241,235,.5)", textTransform: "uppercase", textAlign: "center", fontFamily: S }}>Member Portal</p>
-        <p style={{ fontSize: 14, color: "rgba(245,241,235,.35)", textAlign: "center", lineHeight: 1.7, marginTop: 24, maxWidth: 260, fontFamily: D }}>
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "stretch" }}>
+
+      {/* ── Left panel — navy branding ── */}
+      <div style={{ flex: 1, background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 48px", position: "relative", overflow: "hidden" }}>
+        {/* Subtle gold circle decoration */}
+        <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", border:"1px solid rgba(201,168,76,.06)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", width:260, height:260, borderRadius:"50%", border:"1px solid rgba(201,168,76,.08)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
+
+        {/* Logo — inverted to show white on navy */}
+        <img src={LOGO_SRC} alt="TA Forex Institute"
+          style={{ height: 130, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 28 }} />
+
+        <div style={{ width: 36, height: 1.5, background: C.gold, marginBottom: 24 }} />
+        <p style={{ fontSize: 11, letterSpacing: ".28em", color: "rgba(201,168,76,.8)", textTransform: "uppercase", textAlign: "center", fontFamily: S, margin: 0 }}>Member Portal</p>
+        <p style={{ fontSize: 13, color: "rgba(245,241,235,.35)", textAlign: "center", lineHeight: 1.8, marginTop: 16, maxWidth: 240, fontFamily: D }}>
           Elite forex education for serious traders.
         </p>
       </div>
 
-      {/* Right panel — form */}
+      {/* ── Right panel — cream form ── */}
       <div style={{ width: 440, flexShrink: 0, background: "#F5F1EB", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px" }}>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 0, marginBottom: 36, borderBottom: "1.5px solid #E2D9CC" }}>
           {["login", "register"].map(t => (
             <button key={t} onClick={() => { setTab(t); setErr(""); }}
-              style={{ flex: 1, background: "transparent", border: "none", cursor: "pointer", padding: "10px 0", fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: S, color: tab === t ? C.navy : "#9A8F7A", borderBottom: tab === t ? "2px solid " + C.gold : "2px solid transparent", marginBottom: -1.5, transition: "all .15s" }}>
+              style={{ flex: 1, background: "transparent", border: "none", cursor: "pointer", padding: "10px 0", fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: S,
+                color: tab === t ? C.navy : "#9A8F7A",
+                borderBottom: tab === t ? "2px solid " + C.gold : "2px solid transparent",
+                marginBottom: -1.5, transition: "all .15s" }}>
               {t === "login" ? "Sign In" : "Register"}
             </button>
           ))}
@@ -339,80 +357,71 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {tab === "register" && (
             <div>
-              <label>Full Name</label>
+              <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Full Name</label>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name"
-                style={{ width: "100%", padding: "12px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", fontFamily: D, transition: "border .15s" }}
+                style={{ width:"100%", padding:"12px 14px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
                 onFocus={e => e.target.style.borderColor = C.gold}
                 onBlur={e => e.target.style.borderColor = "#E2D9CC"} />
             </div>
           )}
 
           <div>
-            <label>Email Address</label>
+            <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Email Address</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
-              style={{ width: "100%", padding: "12px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", fontFamily: D, transition: "border .15s" }}
+              style={{ width:"100%", padding:"12px 14px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
               onFocus={e => e.target.style.borderColor = C.gold}
               onBlur={e => e.target.style.borderColor = "#E2D9CC"}
               onKeyDown={e => e.key === "Enter" && submit()} />
           </div>
 
           <div>
-            <label>Password</label>
+            <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Password</label>
             <div style={{ position: "relative" }}>
               <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••"
-                style={{ width: "100%", padding: "12px 14px", paddingRight: 44, borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", fontFamily: D, transition: "border .15s" }}
+                style={{ width:"100%", padding:"12px 14px", paddingRight:44, borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
                 onFocus={e => e.target.style.borderColor = C.gold}
                 onBlur={e => e.target.style.borderColor = "#E2D9CC"}
                 onKeyDown={e => e.key === "Enter" && submit()} />
               <button onClick={() => setShowPass(p => !p)} type="button"
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#9A8F7A", fontSize: 16, padding: 0, lineHeight: 1 }}>
+                style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", cursor:"pointer", color:"#9A8F7A", fontSize:16, padding:0, lineHeight:1 }}>
                 {showPass ? "🙈" : "👁"}
               </button>
             </div>
           </div>
 
           {tab === "login" && (
-            <div onClick={() => setRemember(!remember)}
-              style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
-              <div style={{ width: 18, height: 18, borderRadius: 5, border: "2px solid " + (remember ? C.gold : "#C2BAB0"), background: remember ? C.gold : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}>
-                {remember && <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>✓</span>}
+            <div onClick={() => setRemember(!remember)} style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer", userSelect:"none" }}>
+              <div style={{ width:18, height:18, borderRadius:5, border:"2px solid "+(remember?C.gold:"#C2BAB0"), background:remember?C.gold:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"all .15s", flexShrink:0 }}>
+                {remember && <span style={{ color:"#fff", fontSize:11, fontWeight:900 }}>✓</span>}
               </div>
-              <span style={{ fontSize: 13, color: "#7A8099" }}>Remember me</span>
+              <span style={{ fontSize:13, color:"#7A8099" }}>Remember me</span>
             </div>
           )}
         </div>
 
-        {/* Error */}
         {err && (
-          <div style={{ margin: "16px 0 0", padding: "10px 14px", background: "rgba(192,57,43,.08)", border: "1px solid rgba(192,57,43,.2)", borderRadius: 8, fontSize: 13, color: C.red }}>
+          <div style={{ margin:"16px 0 0", padding:"10px 14px", background:"rgba(192,57,43,.08)", border:"1px solid rgba(192,57,43,.2)", borderRadius:8, fontSize:13, color:C.red }}>
             {err}
           </div>
         )}
 
-        {/* Submit */}
         <button onClick={submit} disabled={loading}
-          style={{ marginTop: 24, width: "100%", padding: "14px", borderRadius: 8, border: "none", background: loading ? "#C2BAB0" : C.navy, color: "#F5F1EB", fontSize: 14, fontWeight: 700, letterSpacing: ".06em", fontFamily: S, cursor: loading ? "not-allowed" : "pointer", transition: "background .15s" }}
-          onMouseEnter={e => { if (!loading) e.target.style.background = "#1a2d52"; }}
-          onMouseLeave={e => { if (!loading) e.target.style.background = C.navy; }}>
+          style={{ marginTop:24, width:"100%", padding:"14px", borderRadius:8, border:"none", background:loading?"#C2BAB0":C.navy, color:"#F5F1EB", fontSize:14, fontWeight:700, letterSpacing:".06em", fontFamily:S, cursor:loading?"not-allowed":"pointer", transition:"background .2s" }}
+          onMouseEnter={e => { if(!loading) e.target.style.background="#1a2d52"; }}
+          onMouseLeave={e => { if(!loading) e.target.style.background=C.navy; }}>
           {loading ? "Please wait…" : tab === "login" ? "Sign In →" : "Create Account →"}
         </button>
 
-        {/* Security notice */}
-        <div style={{ marginTop: 24, padding: "12px 14px", background: "rgba(201,168,76,.08)", border: "1px solid rgba(201,168,76,.2)", borderRadius: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 4 }}>🔒 Security Notice</div>
-          <p style={{ fontSize: 12, color: "#7A8099", lineHeight: 1.5, margin: 0 }}>Sharing login credentials is strictly prohibited. All activity is monitored.</p>
+        <div style={{ marginTop:20, padding:"12px 14px", background:"rgba(201,168,76,.07)", border:"1px solid rgba(201,168,76,.2)", borderRadius:8 }}>
+          <div style={{ fontSize:11, fontWeight:700, letterSpacing:".1em", color:C.gold, textTransform:"uppercase", marginBottom:4 }}>🔒 Security Notice</div>
+          <p style={{ fontSize:12, color:"#7A8099", lineHeight:1.5, margin:0 }}>Sharing login credentials is strictly prohibited. All activity is monitored.</p>
         </div>
 
-        {/* Admin link */}
-        <button onClick={onAdmin}
-          style={{ marginTop: 20, background: "transparent", border: "none", cursor: "pointer", fontSize: 11, color: "#C2BAB0", letterSpacing: ".08em" }}>
+        <button onClick={onAdmin} style={{ marginTop:20, background:"transparent", border:"none", cursor:"pointer", fontSize:11, color:"#C2BAB0", letterSpacing:".08em" }}>
           ⚙ Admin Login
         </button>
 
       </div>
-
-      {/* Mobile fallback — hide left panel on small screens */}
-      <style>{`@media(max-width:640px){.login-left{display:none!important}.login-right{width:100%!important;padding:40px 24px!important}}`}</style>
     </div>
   );
 }
