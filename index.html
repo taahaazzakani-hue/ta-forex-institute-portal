@@ -526,7 +526,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   const [dragOverSec, setDragOverSec] = React.useState(null);
 
   const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
-  const doAddSec = (isFolder=false) => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim(), isFolder }); setST(""); };
+  const doAddSec = (isFolder=false, parentId=null) => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim(), isFolder, parentId }); setST(""); };
   const saveCourseEdit = () => { if (editCourse && editCourseTitle.trim()) { patchCourse(editCourse, { title: editCourseTitle.trim() }); setEditCourse(null); } };
   const saveSectionEdit = () => { if (editSection && editSectionTitle.trim()) { patchSection(editSection, { title: editSectionTitle.trim() }); setEditSection(null); } };
 
@@ -590,35 +590,74 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
             </div>
             {cs.length === 0 && <p style={{ color: C.faint, fontSize: 12, marginTop: 8 }}>No sections yet.</p>}
             {cs.length > 0 && <div style={{ fontSize: 11, color: C.faint, marginBottom: 8, letterSpacing: ".05em" }}>DRAG TO REORDER SECTIONS</div>}
-            {cs.map(s => (
-              <div key={s.id}
-                draggable
-                onDragStart={() => setDragSec(s.id)}
-                onDragOver={e => { e.preventDefault(); setDragOverSec(s.id); }}
-                onDragLeave={() => setDragOverSec(null)}
-                onDrop={() => handleSecDrop(c.id, s.id)}
-                onDragEnd={() => { setDragSec(null); setDragOverSec(null); }}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 9,
-                  background: dragOverSec === s.id ? C.goldDim : C.bg, marginBottom: 6,
-                  border: "1px solid " + (dragOverSec === s.id ? C.gold : dragSec === s.id ? C.border + "80" : C.border),
-                  opacity: dragSec === s.id ? 0.5 : 1, cursor: "grab", transition: "background .15s, border-color .15s", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
-                  <span style={{ color: C.faint, fontSize: 16, cursor: "grab", flexShrink: 0 }}>⠿</span>
-                  {editSection === s.id
-                    ? <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
-                        <input value={editSectionTitle} onChange={e => setEditSectionTitle(e.target.value)} style={{ flex: 1, padding: "6px 10px", borderRadius: 7, fontSize: 13 }} onKeyDown={e => e.key === "Enter" && saveSectionEdit()} autoFocus />
-                        <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
-                        <Btn v="outline" onClick={() => setEditSection(null)} sz="sm">Cancel</Btn>
+            {(() => {
+              // Top-level sections (no parent) and folders (is_folder, no parent)
+              const topLevel = cs.filter(s => !s.parentId);
+              return topLevel.map(s => {
+                const subfolders = cs.filter(sub => sub.parentId === s.id);
+                const isTopFolder = s.isFolder;
+                return (
+                  <div key={s.id} style={{ marginBottom: 8 }}>
+                    {/* Section / Top-level folder row */}
+                    <div
+                      draggable
+                      onDragStart={() => setDragSec(s.id)}
+                      onDragOver={e => { e.preventDefault(); setDragOverSec(s.id); }}
+                      onDragLeave={() => setDragOverSec(null)}
+                      onDrop={() => handleSecDrop(c.id, s.id)}
+                      onDragEnd={() => { setDragSec(null); setDragOverSec(null); }}
+                      style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderRadius:9,
+                        background: isTopFolder ? C.goldDim : (dragOverSec===s.id ? C.goldDim : C.bg),
+                        border:"1px solid "+(isTopFolder ? C.gold+"50" : dragOverSec===s.id ? C.gold : C.border),
+                        opacity: dragSec===s.id ? 0.5 : 1, cursor:"grab", gap:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0 }}>
+                        <span style={{ color:C.faint, fontSize:16, cursor:"grab", flexShrink:0 }}>⠿</span>
+                        <span style={{ fontSize:14 }}>{isTopFolder ? "📁" : "📂"}</span>
+                        {editSection === s.id
+                          ? <div style={{ display:"flex", gap:8, alignItems:"center", flex:1 }}>
+                              <input value={editSectionTitle} onChange={e=>setEditSectionTitle(e.target.value)} style={{ flex:1, padding:"6px 10px", borderRadius:7, fontSize:13 }} onKeyDown={e=>e.key==="Enter"&&saveSectionEdit()} autoFocus />
+                              <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
+                              <Btn v="outline" onClick={()=>setEditSection(null)} sz="sm">Cancel</Btn>
+                            </div>
+                          : <div style={{ fontWeight: isTopFolder ? 600 : 500, fontSize:14, color: isTopFolder ? C.gold : C.white, flex:1 }}>{s.title}</div>
+                        }
                       </div>
-                    : <div style={{ fontSize: 13 }}>{s.title}<span style={{ color: C.faint, fontSize: 11, marginLeft: 8 }}>({videos.filter(v => v.sectionId === s.id).length} videos)</span></div>
-                  }
-                </div>
-                {editSection !== s.id && <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                  <Btn v="outline" onClick={() => { setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">Edit</Btn>
-                  <Btn v="danger" onClick={() => deleteSection(s.id)} sz="sm">Delete</Btn>
-                </div>}
-              </div>
-            ))}
+                      {editSection !== s.id && <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                        {!isTopFolder && <Btn v="outline" sz="sm" onClick={()=>doAddSec(true, s.id)} title="Add subfolder inside this section">📁+ Sub</Btn>}
+                        <Btn v="outline" onClick={()=>{ setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">Edit</Btn>
+                        <Btn v="danger" onClick={()=>deleteSection(s.id)} sz="sm">Delete</Btn>
+                      </div>}
+                    </div>
+
+                    {/* Subfolders inside this section */}
+                    {subfolders.length > 0 && (
+                      <div style={{ marginLeft:24, marginTop:4, display:"flex", flexDirection:"column", gap:4 }}>
+                        {subfolders.map(sub => (
+                          <div key={sub.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", borderRadius:8,
+                            background:C.card, border:"1px solid "+C.border, gap:8 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0 }}>
+                              <span style={{ fontSize:13 }}>📁</span>
+                              {editSection === sub.id
+                                ? <div style={{ display:"flex", gap:8, alignItems:"center", flex:1 }}>
+                                    <input value={editSectionTitle} onChange={e=>setEditSectionTitle(e.target.value)} style={{ flex:1, padding:"5px 9px", borderRadius:7, fontSize:13 }} onKeyDown={e=>e.key==="Enter"&&saveSectionEdit()} autoFocus />
+                                    <Btn onClick={saveSectionEdit} sz="sm">Save</Btn>
+                                    <Btn v="outline" onClick={()=>setEditSection(null)} sz="sm">Cancel</Btn>
+                                  </div>
+                                : <div style={{ fontSize:13, color:C.dim }}>{sub.title}</div>
+                              }
+                            </div>
+                            {editSection !== sub.id && <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                              <Btn v="outline" onClick={()=>{ setEditSection(sub.id); setEditSectionTitle(sub.title); }} sz="sm">Edit</Btn>
+                              <Btn v="danger" onClick={()=>deleteSection(sub.id)} sz="sm">Delete</Btn>
+                            </div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </Card>
         );
       })}
@@ -1543,119 +1582,99 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
           {cSecs.length === 0 && <p style={{ color: C.grey, fontSize: 14 }}>No content yet.</p>}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {(() => {
-              // Group sections: folders act as collapsible headers containing subsequent sections
-              const grouped = [];
-              let currentFolder = null;
-              cSecs.forEach(s => {
-                if (s.isFolder) {
-                  currentFolder = { folder: s, children: [] };
-                  grouped.push(currentFolder);
-                } else if (currentFolder) {
-                  currentFolder.children.push(s);
-                } else {
-                  grouped.push({ folder: null, section: s });
-                }
-              });
+                        {(() => {
+              // 2-level hierarchy:
+              // Top level: regular sections (parentId=null, isFolder=false) and top folders (parentId=null, isFolder=true)
+              // Subfolders: isFolder=true, parentId=<sectionId>
+              // Videos belong to either a section or a subfolder via sectionId
 
-              return grouped.map((g, gi) => {
-                if (g.folder) {
-                  // Folder/header section
-                  const folderOpen = openS["folder_"+g.folder.id] !== false;
-                  const totalLessons = g.children.reduce((sum, s) => sum + videos.filter(v=>v.sectionId===s.id).length, 0);
-                  return (
-                    <div key={g.folder.id} style={{ marginBottom: 4 }}>
-                      {/* Folder header */}
-                      <div onClick={() => toggleS("folder_"+g.folder.id)}
-                        style={{ padding: "10px 16px", background: C.goldDim, border: "1px solid " + C.gold + "30", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: folderOpen ? 6 : 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 16 }}>{folderOpen ? "📂" : "📁"}</span>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{g.folder.title}</div>
-                            <div style={{ fontSize: 11, color: C.grey }}>{g.children.length} section{g.children.length !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}</div>
-                          </div>
+              const topLevel = cSecs.filter(s => !s.parentId).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+
+              return topLevel.map(s => {
+                const subfolders = cSecs.filter(sub => sub.parentId === s.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
+                const directVids = videos.filter(v => v.sectionId === s.id && v.courseId === course.id);
+                const open = openS[s.id] !== false;
+
+                return (
+                  <div key={s.id} style={{ marginBottom: 8 }}>
+                    {/* Section header */}
+                    <div onClick={() => toggleS(s.id)}
+                      style={{ padding:"14px 18px", background: open ? C.surf : C.card, border:"1px solid "+(open?C.gold+"40":C.border), borderRadius: subfolders.length > 0 || open ? "10px 10px 0 0" : 10, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", transition:"all .15s" }}>
+                      <div>
+                        <div style={{ fontSize:10, fontWeight:700, letterSpacing:".18em", color:C.gold, textTransform:"uppercase", marginBottom:3 }}>Section</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:C.white }}>{s.title}</div>
+                        <div style={{ fontSize:12, color:C.grey, marginTop:2 }}>
+                          {subfolders.length > 0 ? subfolders.length+" folder"+(subfolders.length!==1?"s":"") : directVids.length+" lesson"+(directVids.length!==1?"s":"")}
                         </div>
-                        <span style={{ color: C.gold, fontSize: 12, transform: folderOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s", display: "block" }}>▶</span>
                       </div>
-                      {/* Folder contents */}
-                      {folderOpen && (
-                        <div style={{ paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                          {g.children.map(s => {
-                            const sv = videos.filter(v => v.sectionId === s.id);
-                            const open = openS[s.id] !== false;
-                            return (
-                              <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden" }}>
-                                <div onClick={() => toggleS(s.id)} style={{ padding: "14px 18px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                  <div>
-                                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 3 }}>Section</div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: C.white }}>{s.title}</div>
-                                    <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
-                                  </div>
-                                  <span style={{ color: C.grey, fontSize: 13, transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }}>▶</span>
-                                </div>
-                                {open && (
-                                  <div>
-                                    {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
-                                    {sv.map(v => (
-                                      <div key={v.id} onClick={() => play(v)} style={{ padding: "13px 20px 13px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
-                                        onMouseEnter={e => e.currentTarget.style.background = C.card}
-                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                                        <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                          <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                                          {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
-                                        </div>
-                                        <span style={{ color: C.faint, fontSize: 12 }}>→</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {g.children.length === 0 && <div style={{ padding: "10px 14px", color: C.faint, fontSize: 12 }}>No sections in this folder yet.</div>}
-                        </div>
-                      )}
+                      <span style={{ color:C.grey, fontSize:13, transform:open?"rotate(90deg)":"none", transition:"transform .2s", display:"block" }}>▶</span>
                     </div>
-                  );
-                } else {
-                  // Standalone section (not in a folder)
-                  const s = g.section;
-                  const sv = videos.filter(v => v.sectionId === s.id);
-                  const open = openS[s.id] !== false;
-                  return (
-                    <div key={s.id} style={{ border: "1px solid " + (open ? C.borderH : C.border), borderRadius: 10, overflow: "hidden" }}>
-                      <div onClick={() => toggleS(s.id)} style={{ padding: "16px 20px", background: C.surf, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 3 }}>Section</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: C.white }}>{s.title}</div>
-                          <div style={{ fontSize: 12, color: C.grey, marginTop: 3 }}>{sv.length} lesson{sv.length !== 1 ? "s" : ""}</div>
-                        </div>
-                        <span style={{ color: C.grey, fontSize: 13, transition: "transform .2s", display: "block", transform: open ? "rotate(90deg)" : "none" }}>▶</span>
-                      </div>
-                      {open && (
-                        <div>
-                          {sv.length === 0 && <div style={{ padding: "14px 20px", color: C.faint, fontSize: 13 }}>No lessons yet.</div>}
-                          {sv.map(v => (
-                            <div key={v.id} onClick={() => play(v)} style={{ padding: "14px 20px 14px 36px", borderTop: "1px solid " + C.border, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
-                              onMouseEnter={e => e.currentTarget.style.background = C.card}
-                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                              <span style={{ color: C.gold, fontSize: 10 }}>▶</span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 14, fontWeight: 500, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
-                                {v.desc && <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{v.desc}</div>}
-                              </div>
-                              <span style={{ color: C.faint, fontSize: 12 }}>→</span>
+
+                    {open && (
+                      <div style={{ border:"1px solid "+C.border, borderTop:"none", borderRadius:"0 0 10px 10px", overflow:"hidden" }}>
+
+                        {/* Direct videos in this section (no subfolder) */}
+                        {directVids.length > 0 && directVids.map(v => (
+                          <div key={v.id} onClick={() => play(v)}
+                            style={{ padding:"13px 20px 13px 24px", borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", gap:12, cursor:"pointer", background:C.surf, transition:"background .12s" }}
+                            onMouseEnter={e => e.currentTarget.style.background=C.cardHov}
+                            onMouseLeave={e => e.currentTarget.style.background=C.surf}>
+                            <span style={{ color:C.gold, fontSize:10, flexShrink:0 }}>▶</span>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:14, fontWeight:500, color:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
+                              {v.desc&&<div style={{ fontSize:12, color:C.grey, marginTop:2 }}>{v.desc}</div>}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
+                          </div>
+                        ))}
+
+                        {/* Subfolders (e.g. May 2026, June 2026) */}
+                        {subfolders.map(sub => {
+                          const subVids = videos.filter(v => v.sectionId === sub.id && v.courseId === course.id);
+                          const subOpen = openS[sub.id] !== false;
+                          return (
+                            <div key={sub.id}>
+                              {/* Subfolder header */}
+                              <div onClick={e => { e.stopPropagation(); toggleS(sub.id); }}
+                                style={{ padding:"11px 18px", background:C.goldDim, borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+                                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                                  <span style={{ fontSize:15 }}>{subOpen ? "📂" : "📁"}</span>
+                                  <div>
+                                    <div style={{ fontSize:13, fontWeight:700, color:C.gold }}>{sub.title}</div>
+                                    <div style={{ fontSize:11, color:C.grey }}>{subVids.length} lesson{subVids.length!==1?"s":""}</div>
+                                  </div>
+                                </div>
+                                <span style={{ color:C.gold, fontSize:11, transform:subOpen?"rotate(90deg)":"none", transition:"transform .2s", display:"block" }}>▶</span>
+                              </div>
+
+                              {/* Subfolder videos */}
+                              {subOpen && subVids.map(v => (
+                                <div key={v.id} onClick={() => play(v)}
+                                  style={{ padding:"12px 20px 12px 48px", borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", gap:12, cursor:"pointer", background:C.surf, transition:"background .12s" }}
+                                  onMouseEnter={e => e.currentTarget.style.background=C.cardHov}
+                                  onMouseLeave={e => e.currentTarget.style.background=C.surf}>
+                                  <span style={{ color:C.gold, fontSize:10, flexShrink:0 }}>▶</span>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontSize:14, fontWeight:500, color:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
+                                    {v.desc&&<div style={{ fontSize:12, color:C.grey, marginTop:2 }}>{v.desc}</div>}
+                                  </div>
+                                </div>
+                              ))}
+                              {subOpen && subVids.length === 0 && (
+                                <div style={{ padding:"12px 20px 12px 48px", color:C.faint, fontSize:13, borderBottom:"1px solid "+C.border }}>No lessons yet.</div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {directVids.length === 0 && subfolders.length === 0 && (
+                          <div style={{ padding:"16px 20px", color:C.faint, fontSize:13 }}>No lessons yet.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
               });
-            })()}
-          </div>
+            })()}          </div>
         </div>
       )}
       {/* ══ PLAYER ══ */}
@@ -4671,7 +4690,7 @@ function App() {
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
-      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false })).sort((a,b)=>a.sortOrder-b.sortOrder));
+      if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false, parentId:x.parent_id||null })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
       if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
@@ -4751,12 +4770,14 @@ function App() {
     setVideos(prev => prev.filter(v => v.courseId !== id));
   };
   const addSectionDB = async (s) => {
-    await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title, is_folder:s.isFolder||false } });
+    await sb("sections", { method: "POST", prefer: "return=minimal", body: { id:s.id, course_id:s.courseId, title:s.title, is_folder:s.isFolder||false, parent_id:s.parentId||null } });
     setSections(prev => [...prev, s]);
   };
   const patchSectionDB = async (id, patch) => {
     const dbPatch = {};
     if (patch.title) dbPatch.title = patch.title;
+    if (patch.isFolder !== undefined) dbPatch.is_folder = patch.isFolder;
+    if (patch.parentId !== undefined) dbPatch.parent_id = patch.parentId;
     await sb("sections?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
     setSections(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   };
