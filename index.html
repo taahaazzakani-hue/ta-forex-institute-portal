@@ -520,13 +520,21 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
 function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, addSection, deleteSection, patchSection, videos }) {
   const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState("");
   const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
+  const [addingSubTo, setAddingSubTo] = React.useState(null); const [subTitle, setSubTitle] = React.useState("");
   const [editCourse, setEditCourse] = React.useState(null); const [editCourseTitle, setEditCourseTitle] = React.useState("");
   const [editSection, setEditSection] = React.useState(null); const [editSectionTitle, setEditSectionTitle] = React.useState("");
   const [dragSec, setDragSec] = React.useState(null);
   const [dragOverSec, setDragOverSec] = React.useState(null);
 
   const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
-  const doAddSec = (isFolder=false, parentId=null) => { if (!sT.trim() || !sC) return; addSection({ id: uid(), courseId: sC, title: sT.trim(), isFolder, parentId }); setST(""); };
+  const doAddSec = (isFolder=false, parentId=null, title=null, courseId=null) => {
+    const t = title || sT.trim();
+    const cid = courseId || sC;
+    if (!t || !cid) return;
+    addSection({ id: uid(), courseId: cid, title: t, isFolder, parentId });
+    if (!title) setST("");
+    setAddingSubTo(null); setSubTitle("");
+  };
   const saveCourseEdit = () => { if (editCourse && editCourseTitle.trim()) { patchCourse(editCourse, { title: editCourseTitle.trim() }); setEditCourse(null); } };
   const saveSectionEdit = () => { if (editSection && editSectionTitle.trim()) { patchSection(editSection, { title: editSectionTitle.trim() }); setEditSection(null); } };
 
@@ -623,7 +631,20 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
                         }
                       </div>
                       {editSection !== s.id && <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-                        {!isTopFolder && <Btn v="outline" sz="sm" onClick={()=>doAddSec(true, s.id)} title="Add subfolder inside this section">📁+ Sub</Btn>}
+                        {!isTopFolder && (addingSubTo === s.id
+                          ? <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                              <input
+                                autoFocus
+                                value={subTitle}
+                                onChange={e => setSubTitle(e.target.value)}
+                                placeholder="e.g. May 2026"
+                                onKeyDown={e => { if(e.key==="Enter") doAddSec(true, s.id, subTitle, s.courseId); if(e.key==="Escape") { setAddingSubTo(null); setSubTitle(""); } }}
+                                style={{ padding:"5px 10px", borderRadius:7, fontSize:13, width:130 }} />
+                              <Btn sz="sm" onClick={() => doAddSec(true, s.id, subTitle, s.courseId)} disabled={!subTitle.trim()}>Add</Btn>
+                              <Btn v="outline" sz="sm" onClick={() => { setAddingSubTo(null); setSubTitle(""); }}>✕</Btn>
+                            </div>
+                          : <Btn v="outline" sz="sm" onClick={() => { setAddingSubTo(s.id); setSubTitle(""); }}>📁+ Sub</Btn>
+                        )}
                         <Btn v="outline" onClick={()=>{ setEditSection(s.id); setEditSectionTitle(s.title); }} sz="sm">Edit</Btn>
                         <Btn v="danger" onClick={()=>deleteSection(s.id)} sz="sm">Delete</Btn>
                       </div>}
