@@ -2349,7 +2349,7 @@ function AdminHomeworkTab({ homework, addHomework, deleteHomework, hwSubmits, pa
 }
 
 function TradeForm({ onSubmit, submitLabel,
-  tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate,
+  tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, mood, setMood, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate,
   currency, setCurrency, title, setTitle,
   pair, setPair, direction, setDirection,
   risk, setRisk, gain, setGain,
@@ -2393,6 +2393,34 @@ function TradeForm({ onSubmit, submitLabel,
                 color: killZone===kz ? "#6B9FFF" : C.grey,
                 borderColor: killZone===kz ? "rgba(107,159,255,.5)" : C.border }}>
               {kz}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mood */}
+      <div>
+        <label>Mood / Emotional State</label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          {[
+            { m:"Calm", c:"#4CB880" },
+            { m:"Confident", c:"#2ecc71" },
+            { m:"Focused", c:"#6B9FFF" },
+            { m:"Okay", c:"#C9A84C" },
+            { m:"Anxious", c:"#E0A458" },
+            { m:"Stressed", c:"#E07A5F" },
+            { m:"FOMO", c:"#FF7096" },
+            { m:"Greedy", c:"#C96BFF" },
+            { m:"Frustrated", c:"#D96060" },
+            { m:"Revenge", c:"#C0392B" },
+          ].map(({m,c}) => (
+            <button key={m} onClick={() => setMood(mood===m?"":m)}
+              style={{ flex:"1 1 80px", minWidth:80, padding:"8px 6px", borderRadius:8, fontSize:11, fontWeight:700, border:"1.5px solid",
+                cursor:"pointer", transition:"all .15s",
+                background: mood===m ? c+"22" : "transparent",
+                color: mood===m ? c : C.grey,
+                borderColor: mood===m ? c+"80" : C.border }}>
+              {mood===m ? "✓ " : ""}{m}
             </button>
           ))}
         </div>
@@ -2521,6 +2549,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
   const [tradeType, setTradeType] = React.useState("Live Trade");
   const [tradeModel, setTradeModel] = React.useState("");
   const [killZone, setKillZone] = React.useState("");
+  const [mood, setMood] = React.useState("");
   const [entryTime, setEntryTime] = React.useState("");
   const [confluences, setConfluences] = React.useState([]);
   const [filterModel, setFilterModel] = React.useState("All");
@@ -2556,14 +2585,14 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain("");
     setResult("Win"); setPnl(""); setPnlCurrency("ZAR"); setAnalysis(""); setLesson("");
     setChartImg([]); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
-    setCurrency("ZAR"); setErr("");
+    setCurrency("ZAR"); setMood(""); setErr("");
   };
 
   const submitNew = async () => {
     if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
     const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, entryTime, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
+    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, mood, entryTime, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
     try { await addJournal(entry); resetForm(); setErr("saved"); setTimeout(() => setView("list"), 800); }
     catch(e) { setErr("Failed to save. Please try again."); }
   };
@@ -2572,7 +2601,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     if (!editing) return;
     if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
     setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, confluences, tradeDate, currency };
+    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, mood, entryTime, confluences, tradeDate, currency };
     try {
       await deleteJournal(editing.id);
       await addJournal(updated);
@@ -2590,6 +2619,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     setTradeType(j.tradeType||"Live Trade");
     setTradeModel(j.tradeModel||"");
     setKillZone(j.killZone||"");
+    setMood(j.mood||"");
     setEntryTime(j.entryTime||"");
     setConfluences(j.confluences||[]);
     setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
@@ -2599,7 +2629,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
     } catch(e) { console.error("openEdit error:", e); }
   };
 
-  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate, currency, setCurrency,
+  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, mood, setMood, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate, currency, setCurrency,
     title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
     pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
     lesson, setLesson, image: chartImg||[], setImage: setChartImg, err, userId: user.id, compressImage };
@@ -2863,6 +2893,10 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
         // Rankings
         const cBy=(key,fw)=>{ const m={}; (fw?wins:entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
         const pairData=cBy("pair",false); const kzData=cBy("killZone",false); const modelData=cBy("tradeModel",false);
+        // Mood win-rate ranking
+        const mw_={},mt_={};
+        entries.forEach(j=>{ if(!j.mood) return; mt_[j.mood]=(mt_[j.mood]||0)+1; if(j.result==="Win") mw_[j.mood]=(mw_[j.mood]||0)+1; });
+        const moodRank=Object.entries(mt_).map(([m,t])=>({m,t,wr:Math.round(((mw_[m]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
         const confData=()=>{ const m={}; wins.forEach(j=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;})}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
 
         // Day / Hour
@@ -3007,6 +3041,7 @@ function StudentJournal({ user, journals, addJournal, deleteJournal }) {
                 {RL(confData().slice(0,5),"Top Confluences")}
                 {RL(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
                 {RL(hourRank.length>0?hourRank.map(({h,t,wr})=>[h+" ("+wr+"%)",t]):[],"Best Entry Hour")}
+                {RL(moodRank.map(({m,t,wr})=>[m+" ("+wr+"%)",t]),"Best vs Worst Mood")}
               </div>
 
             </div>
@@ -3211,6 +3246,8 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
         const dayRank=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
         const hw_={},ht_={}; ents.forEach(j=>{if(!j.entryTime)return;const h=parseInt(j.entryTime.split(":")[0]);const lbl=(h%12||12)+":00"+(h<12?" AM":" PM");ht_[lbl]=(ht_[lbl]||0)+1;if(j.result==="Win")hw_[lbl]=(hw_[lbl]||0)+1;});
         const hourRankA=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
+        const mw_={},mt_={}; ents.forEach(j=>{if(!j.mood)return;mt_[j.mood]=(mt_[j.mood]||0)+1;if(j.result==="Win")mw_[j.mood]=(mw_[j.mood]||0)+1;});
+        const moodRankA=Object.entries(mt_).map(([m,t])=>({m,t,wr:Math.round(((mw_[m]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
         const SC=(label,val,sub,col)=>(
           <div style={{background:C.bg,border:"1px solid "+C.border,borderRadius:10,padding:"11px 13px"}}>
             <div style={{fontSize:10,fontWeight:600,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:4}}>{label}</div>
@@ -3270,6 +3307,7 @@ function AdminJournalTab({ users, journals, patchJournal, loadAll }) {
               {RL2(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})?Object.entries(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5):[],"Top Confluences")}
               {RL2(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
               {RL2(hourRankA.map(({h,t,wr})=>[h+" ("+wr+"%)",t]),"Best Entry Hour")}
+              {RL2(moodRankA.map(({m,t,wr})=>[m+" ("+wr+"%)",t]),"Best vs Worst Mood")}
             </div>
           </div>
         );
@@ -4713,7 +4751,7 @@ function App() {
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false, parentId:x.parent_id||null })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, createdAt:x.created_at, feedback:x.feedback||null })));
@@ -4733,7 +4771,7 @@ function App() {
         setJournals(prev => {
           const map = {};
           prev.forEach(p => map[p.id] = p);
-          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
+          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
           return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
         });
       }
@@ -4893,10 +4931,10 @@ function App() {
 
   const loadJournalsDB = async () => {
     const j = await sb("journals?order=created_at.desc&limit=2000").catch(()=>null);
-    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
   };
   const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, kill_zone:j.killZone||null, entry_time:j.entryTime||null, confluences:j.confluences||[], trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
+    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, images:j.images||[], trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, kill_zone:j.killZone||null, mood:j.mood||null, entry_time:j.entryTime||null, confluences:j.confluences||[], trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
     setJournals(prev => [j, ...prev]);
   };
   const deleteJournalDB = async (id) => {
@@ -4917,7 +4955,7 @@ function App() {
       const j = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500");
       if (j && j.length > 0) setJournals(prev => {
         const map = {}; prev.forEach(p => { map[p.id] = p; });
-        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
+        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
         return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
       });
     } catch(e) { console.log("loadUserJournals:", e); }
@@ -4932,7 +4970,7 @@ function App() {
     // Load only this user's journals to reduce egress
     if (u.status === "approved") {
       sb("journals?user_id=eq." + u.id + "&order=created_at.desc&limit=500").then(uj => {
-        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
+        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       }).catch(()=>{});
     }
   };
