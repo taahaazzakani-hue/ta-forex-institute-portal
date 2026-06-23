@@ -845,10 +845,10 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, journals, patchJournal, homework, addHomework, patchHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, loadJournalsDB, onLogout, loadAll, fetchJournalImages }) {
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, homework, addHomework, patchHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "journal", l: "Journals", badge: journals.filter(j=>!j.adminSeen).length }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }, { k: "subscriptions", l: "💳 Subscriptions" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }, { k: "subscriptions", l: "💳 Subscriptions" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -874,8 +874,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "users"   && <UsersTab   users={users} patchUser={patchUser} deleteUser={deleteUser} loadAll={loadAll} />}
         {tab === "content" && <CoursesTab courses={courses} addCourse={addCourse} patchCourse={patchCourse} deleteCourse={deleteCourse} sections={sections} addSection={addSection} patchSection={patchSection} deleteSection={deleteSection} videos={videos} />}
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
-        {tab === "journal"  && <AdminJournalTab users={users} journals={journals} patchJournal={patchJournal} loadAll={loadAll} loadJournals={loadJournalsDB} fetchJournalImages={fetchJournalImages} />}
-        {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} journals={journals} />}
+        {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} />}
         {tab === "subscriptions" && <SubscriptionsTab users={users} patchUser={patchUser} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} patchHomework={patchHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
         {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
@@ -913,7 +912,6 @@ function SubscribePage({ user }) {
         {[
           "Full access to Forever Model and PM Session Model",
           "Full access to TA MMXM Model",
-          "Trade Journal with P&L calendar and model tracking",
           "Daily in-depth classes with Taaha",
           "Private Mentorship Discord access",
           "Weekly review and coach feedback",
@@ -1283,7 +1281,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
 }
 
 
-function Portal({ layout, toggleLayout, user, courses, sections, videos, journals, addJournal, deleteJournal, fetchJournalImages, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
+function Portal({ layout, toggleLayout, user, courses, sections, videos, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1299,7 +1297,6 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
   const backToCourse = () => { setVideo(null); setView("course"); };
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
-  const [showJournal, setShowJournal] = React.useState(false);
   const [showSubscribe, setShowSubscribe] = React.useState(false);
   const [showCourses, setShowCourses] = React.useState(false);
   const [showCalc, setShowCalc] = React.useState(false);
@@ -1314,10 +1311,6 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
   const hasPM = userLevels.includes("Private Mentorship");
   
   // Notifications
-  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const myJournals = journals.filter(j => j.userId === user.id);
-  const lastEntry = myJournals.length > 0 ? Math.max(...myJournals.map(j => j.createdAt)) : 0;
-  const notJournaledWeek = myJournals.length === 0 || lastEntry < oneWeekAgo;
   const pendingHW = homework.filter(h => {
     const due = h.dueDate ? new Date(h.dueDate + "T" + (h.dueTime||"23:59") + ":00").getTime() : null;
     const submitted = hwSubmits.some(s => s.homeworkId === h.id && s.userId === user.id);
@@ -1331,7 +1324,6 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
   const notifications = [
     ...pendingHW.map(h => ({ type: "hw", msg: "Homework due: " + h.title, urgent: false })),
     ...overdueHW.map(h => ({ type: "hw_late", msg: "OVERDUE: " + h.title, urgent: true })),
-    ...(notJournaledWeek ? [{ type: "journal", msg: "You have not journalled in over a week", urgent: false }] : []),
   ];
   const accessibleCourses = courses.filter(c => {
     if (!c.level) return true; // no level restriction = visible to all approved members
@@ -1354,17 +1346,16 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
         <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 1000, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "0 40px" : "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
 
           {/* Logo */}
-          <Logo h={44} onClick={() => { setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
+          <Logo h={44} onClick={() => { setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); }} />
 
           {/* Nav links */}
           <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {[
-              { label: "Courses", state: showCourses, toggle: () => { setShowCourses(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
-              { label: "Journal", state: showJournal, toggle: () => { setShowJournal(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
-              { label: "Playbook", state: showPlaybook, toggle: () => { setShowPlaybook(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowChecklist(false); setShowReview(false); goHome(); } },
-              { label: "Checklist", state: showChecklist, toggle: () => { setShowChecklist(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowReview(false); goHome(); } },
-              { label: "Risk Calc", state: showCalc, toggle: () => { setShowCalc(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
-              ...(hasPM ? [{ label: "Homework", state: showHomework, toggle: () => { setShowHomework(p => !p); setShowJournal(false); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } }] : []),
+              { label: "Courses", state: showCourses, toggle: () => { setShowCourses(p => !p); setShowSubscribe(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              { label: "Playbook", state: showPlaybook, toggle: () => { setShowPlaybook(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              { label: "Checklist", state: showChecklist, toggle: () => { setShowChecklist(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowHomework(false); setShowPlaybook(false); setShowReview(false); goHome(); } },
+              { label: "Risk Calc", state: showCalc, toggle: () => { setShowCalc(p => !p); setShowSubscribe(false); setShowCourses(false); setShowHomework(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } },
+              ...(hasPM ? [{ label: "Homework", state: showHomework, toggle: () => { setShowHomework(p => !p); setShowSubscribe(false); setShowCourses(false); setShowCalc(false); setShowPlaybook(false); setShowChecklist(false); setShowReview(false); goHome(); } }] : []),
             ].map(item => (
               <button key={item.label} onClick={item.toggle}
                 style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px 12px", borderRadius: 8, fontSize: 13, fontWeight: item.state ? 700 : 400,
@@ -1400,7 +1391,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
             </div>
 
             {/* Upgrade */}
-            {!hasPM && <button onClick={() => { setShowSubscribe(p => !p); setShowJournal(false); setShowCourses(false); setShowCalc(false); goHome(); }}
+            {!hasPM && <button onClick={() => { setShowSubscribe(p => !p); setShowCourses(false); setShowCalc(false); goHome(); }}
               style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", color: C.gold, fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer", letterSpacing: ".02em" }}>
               Upgrade
             </button>}
@@ -1435,29 +1426,6 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
         </div>
       )}
 
-      {/* ══ JOURNAL ══ */}
-      {showJournal && (
-        ((user.levels||[]).includes("Private Mentorship") || (user.levels||[]).includes("1v1")) ? (
-          <StudentJournal user={user} journals={journals} addJournal={addJournal} deleteJournal={deleteJournal} fetchJournalImages={fetchJournalImages} />
-        ) : (
-          <div style={{ maxWidth: 600, margin: "0 auto", padding: "60px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 64, marginBottom: 20 }}>🔒</div>
-            <h2 style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: C.white, marginBottom: 12 }}>Journal is for Private Mentorship</h2>
-            <p style={{ fontSize: 15, color: C.grey, lineHeight: 1.8, marginBottom: 8 }}>The Trade Journal is exclusively available to Private Mentorship members.</p>
-            <p style={{ fontSize: 14, color: C.grey, lineHeight: 1.8, marginBottom: 32 }}>Track your trades, review your performance, and build the habits of a professional trader.</p>
-            <div style={{ background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 14, padding: "20px 24px", marginBottom: 32 }}>
-              <div style={{ fontSize: 13, color: C.gold, fontWeight: 700, marginBottom: 8 }}>What you get with Private Mentorship:</div>
-              {["Full trade journal with P&L calendar", "Model filter to track each strategy separately", "Multiple image uploads per trade", "Coach review and feedback on your trades", "Weekly performance analysis"].map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, textAlign: "left" }}>
-                  <span style={{ color: C.gold, fontSize: 12 }}>✦</span>
-                  <span style={{ fontSize: 13, color: C.dim }}>{item}</span>
-                </div>
-              ))}
-            </div>
-            <Btn onClick={() => { setShowJournal(false); setShowSubscribe(true); }} sz="lg">Upgrade to Private Mentorship</Btn>
-          </div>
-        )
-      )}
       {showSubscribe && <SubscribePage user={user} />}
       {showCalc && <RiskCalculator />}
       {showHomework && <StudentHomework user={user} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmit} />}
@@ -1467,7 +1435,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
       {showCourses && <CoursesPanel user={user} courses={accessibleCourses} sections={sections} videos={videos} onSelectCourse={c => { openCourse(c); setShowCourses(false); }} />}
 
       {/* ══ HOME ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
+      {!showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
           {/* ── HERO ── */}
           <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #EAE4D8 0%, #F5F1EB 60%)" }}>
@@ -1634,7 +1602,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
       )}
 
       {/* ══ COURSE ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
+      {!showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "course" && course && (
         <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 820, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 60px 100px" : "40px 20px 100px" }}>
           <button onClick={goHome} style={{ background: "transparent", border: "none", color: C.grey, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, marginBottom: 32, padding: 0 }}>
             ← Back to Courses
@@ -1750,7 +1718,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, journal
         </div>
       )}
       {/* ══ PLAYER ══ */}
-      {!showJournal && !showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "player" && video && (() => {
+      {!showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "player" && video && (() => {
         const sec     = sections.find(s => s.id === video.sectionId);
         const secVids = sec ? videos.filter(v => v.sectionId === sec.id) : [];
         const idx     = secVids.findIndex(v => v.id === video.id);
@@ -2023,163 +1991,6 @@ function VideoComments({ videoId, videoTitle, user, comments, addComment, delete
   );
 }
 
-/* ── STUDENT JOURNAL ─────────────────────────────────────────────────────── */
-
-/* ── PNL CALENDAR ───────────────────────────────────────────────────────── */
-function PnlCalendar({ journals, userId }) {
-  const now = new Date();
-  const [month, setMonth] = React.useState(now.getMonth());
-  const [year, setYear] = React.useState(now.getFullYear());
-  const [mode, setMode] = React.useState("Live Trade"); // Live Trade | Backtest
-  const [calModel, setCalModel] = React.useState("All");
-
-  const allJournals = journals.filter(j => j.userId === userId && j.pnl);
-  const myJournals = (allJournals || []).filter(j => (j.tradeType || "Live Trade") === mode && (calModel === "All" || j.tradeModel === calModel));
-
-  const parsePnl = (str) => {
-    if (!str) return null;
-    const clean = str.replace(/[^0-9.-]/g, "");
-    const num = parseFloat(clean);
-    if (isNaN(num)) return null;
-    return str.trim().startsWith("-") ? -Math.abs(num) : Math.abs(num);
-  };
-
-  const getDayData = (day) => {
-    const trades = myJournals.filter(j => {
-      // Use tradeDate if set, otherwise fall back to createdAt
-      const dateStr = j.tradeDate;
-      const jd = dateStr ? new Date(dateStr + "T12:00:00") : new Date(j.createdAt);
-      return jd.getFullYear() === year && jd.getMonth() === month && jd.getDate() === day;
-    });
-    const pnl = trades.length > 0 ? trades.reduce((sum, j) => sum + (parsePnl(j.pnl) || 0), 0) : 0;
-    return { trades, pnl };
-  };
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
-  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-  const allDayPnls = Array.from({length: daysInMonth}, (_, i) => getDayData(i+1));
-  const totalMonth = allDayPnls.reduce((sum, d) => sum + d.pnl, 0);
-  const winDays = allDayPnls.filter(d => d.trades.length > 0 && d.pnl > 0).length;
-  const lossDays = allDayPnls.filter(d => d.trades.length > 0 && d.pnl < 0).length;
-  const tradeDays = allDayPnls.filter(d => d.trades.length > 0).length;
-  const winRate = tradeDays > 0 ? Math.round((winDays / tradeDays) * 100) : 0;
-
-  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); };
-  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); };
-
-  return (
-    <div style={{ marginTop: 40, borderTop: "1px solid " + C.border, paddingTop: 32 }}>
-
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
-        <div>
-          <h3 style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white, marginBottom: 4 }}>📅 P&L Calendar</h3>
-          <p style={{ fontSize: 13, color: C.grey }}>Track your daily trading performance</p>
-        </div>
-
-        {/* Mode toggle */}
-        <div style={{ display: "flex", background: C.bg, borderRadius: 10, padding: 3, gap: 3, border: "1px solid " + C.border }}>
-          {["Live Trade", "Backtest"].map(t => (
-            <button key={t} onClick={() => setMode(t)} style={{
-              padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", transition: "all .2s",
-              background: mode === t ? (t === "Live Trade" ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")") : "transparent",
-              color: mode === t ? (t === "Live Trade" ? "#fff" : "#08090E") : C.grey
-            }}>
-              {t === "Live Trade" ? "📈 Live" : "🔬 Backtest"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Model filter */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:20 }}>
-        {["All","TA MODEL","FOREVER MODEL","PM SESSION MODEL","TA 2.0 MODEL","TA MMXM MODEL"].map(m => {
-          const colors = {"TA MODEL":"#6B9FFF","FOREVER MODEL":"#4CB880","PM SESSION MODEL":"#C9A84C","TA 2.0 MODEL":"#FF7096","TA MMXM MODEL":"#C96BFF"};
-          const col = m === "All" ? C.gold : colors[m];
-          return (
-            <button key={m} onClick={() => setCalModel(m)} style={{
-              padding:"6px 14px", borderRadius:20, fontSize:11, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s",
-              background: calModel===m ? col+"20" : "transparent",
-              color: calModel===m ? col : C.grey,
-              borderColor: calModel===m ? col+"60" : C.border
-            }}>{m==="All" ? "All Models" : m}</button>
-          );
-        })}
-      </div>
-
-      {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10, marginBottom: 24 }}>
-        {[
-          { label: "Month P&L", value: (totalMonth >= 0 ? "+" : "") + "$" + Math.abs(totalMonth).toFixed(0), color: totalMonth >= 0 ? C.green : C.red, bg: totalMonth >= 0 ? "rgba(76,184,128,.1)" : "rgba(217,96,96,.1)", border: totalMonth >= 0 ? C.green : C.red },
-          { label: "Win Days", value: winDays, color: C.green, bg: "rgba(76,184,128,.08)", border: C.green },
-          { label: "Loss Days", value: lossDays, color: C.red, bg: "rgba(217,96,96,.08)", border: C.red },
-          { label: "Day Win Rate", value: winRate + "%", color: winRate >= 50 ? C.green : C.red, bg: winRate >= 50 ? "rgba(76,184,128,.08)" : "rgba(217,96,96,.08)", border: winRate >= 50 ? C.green : C.red },
-        ].map(s => (
-          <div key={s.label} style={{ background: s.bg, border: "1px solid " + s.border + "40", borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Month navigation */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 16 }}>
-        <button onClick={prevMonth} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, color: C.white, width: 40, height: 40, cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
-        <span style={{ fontFamily: S, fontSize: 20, fontWeight: 700, color: C.white, minWidth: 200, textAlign: "center" }}>{monthNames[month]} {year}</span>
-        <button onClick={nextMonth} style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 10, color: C.white, width: 40, height: 40, cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
-      </div>
-
-      {/* Day headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6, marginBottom: 6 }}>
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-          <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: C.grey, letterSpacing: ".1em", padding: "8px 0", background: C.card, borderRadius: 8 }}>{d}</div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 6 }}>
-        {Array.from({length: firstDay}, (_, i) => <div key={"e"+i} />)}
-        {Array.from({length: daysInMonth}, (_, i) => {
-          const day = i + 1;
-          const { trades, pnl } = getDayData(day);
-          const hasTrades = trades.length > 0;
-          const isToday = now.getDate() === day && now.getMonth() === month && now.getFullYear() === year;
-          const isWeekend = new Date(year, month, day).getDay() % 6 === 0;
-          return (
-            <div key={day} style={{
-              borderRadius: 10, padding: "12px 8px", textAlign: "center", minHeight: 80,
-              background: !hasTrades ? (isWeekend ? C.bg : C.card) : pnl > 0 ? "rgba(76,184,128,.18)" : pnl < 0 ? "rgba(217,96,96,.18)" : "rgba(201,168,76,.12)",
-              border: "1px solid " + (isToday ? C.gold : !hasTrades ? C.border : pnl > 0 ? C.green + "50" : pnl < 0 ? C.red + "50" : C.gold + "40"),
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <div style={{ fontSize: 12, fontWeight: isToday ? 800 : 500, color: isToday ? C.gold : isWeekend ? C.faint : C.grey }}>{day}</div>
-              {hasTrades && (
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: pnl > 0 ? C.green : pnl < 0 ? C.red : C.gold, lineHeight: 1 }}>
-                    {pnl > 0 ? "+" : ""}{pnl !== 0 ? "$" + Math.abs(pnl).toFixed(0) : "BE"}
-                  </div>
-                  <div style={{ fontSize: 10, color: C.faint, marginTop: 3 }}>{trades.length} trade{trades.length !== 1 ? "s" : ""}</div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: "flex", gap: 20, marginTop: 16, fontSize: 12, color: C.grey, flexWrap: "wrap", justifyContent: "center" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "rgba(76,184,128,.3)", display: "inline-block" }} />Profitable</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "rgba(217,96,96,.3)", display: "inline-block" }} />Loss</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "rgba(201,168,76,.2)", display: "inline-block" }} />Break Even</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: C.card, border: "1px solid " + C.border, display: "inline-block" }} />No Trades</span>
-      </div>
-    </div>
-  );
-}
-
-
 /* ── STUDENT HOMEWORK ───────────────────────────────────────────────────── */
 function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
   const [selected, setSelected] = React.useState(null);
@@ -2427,1007 +2238,6 @@ function AdminHomeworkTab({ homework, addHomework, patchHomework, deleteHomework
   );
 }
 
-function TradeForm({ onSubmit, submitLabel,
-  tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, mood, setMood, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate,
-  currency, setCurrency, title, setTitle,
-  pair, setPair, direction, setDirection,
-  risk, setRisk, gain, setGain,
-  pnl, setPnl, pnlCurrency, setPnlCurrency,
-  result, setResult, analysis, setAnalysis,
-  lesson, setLesson, image, setImage, images, setImages, err, userId,
-  compressImage }) {
-  const [uploading, setUploading] = React.useState(0);
-  return (
-    <div style={{ display:"grid", gap:16 }}>
-      <div>
-        <label>Trade Type</label>
-        <div style={{ display:"flex", background:C.bg, borderRadius:10, padding:3, gap:3 }}>
-          {["Live Trade","Backtest"].map(t => (
-            <button key={t} onClick={() => setTradeType(t)} style={{ flex:1, padding:"9px 0", borderRadius:8, fontSize:12, fontWeight:700, border:"none", cursor:"pointer", transition:"all .2s",
-              background: tradeType===t ? (t==="Live Trade" ? "linear-gradient(135deg,#2ecc71,#1a9e50)" : "linear-gradient(135deg,"+C.goldLt+","+C.gold+")") : "transparent",
-              color: tradeType===t ? (t==="Live Trade" ? "#fff" : "#08090E") : C.grey }}>
-              {t==="Live Trade" ? "📈 Live Trade" : "🔬 Backtest"}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label>Trading Model <span style={{ color:C.red }}>*</span></label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"10px", borderRadius:10, border:"1.5px solid "+(tradeModel?C.border+"00":"transparent"), transition:"border-color .2s" }}>
-          <button key="TA MODEL" onClick={() => setTradeModel(tradeModel==="TA MODEL"?"":"TA MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA MODEL"?"#6B9FFF20":"transparent", color:tradeModel==="TA MODEL"?"#6B9FFF":C.grey, borderColor:tradeModel==="TA MODEL"?"#6B9FFF50":C.border }}>TA MODEL</button>
-            <button key="FOREVER MODEL" onClick={() => setTradeModel(tradeModel==="FOREVER MODEL"?"":"FOREVER MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="FOREVER MODEL"?"#4CB88020":"transparent", color:tradeModel==="FOREVER MODEL"?"#4CB880":C.grey, borderColor:tradeModel==="FOREVER MODEL"?"#4CB88050":C.border }}>FOREVER MODEL</button>
-            <button key="PM SESSION MODEL" onClick={() => setTradeModel(tradeModel==="PM SESSION MODEL"?"":"PM SESSION MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="PM SESSION MODEL"?"#C9A84C20":"transparent", color:tradeModel==="PM SESSION MODEL"?"#C9A84C":C.grey, borderColor:tradeModel==="PM SESSION MODEL"?"#C9A84C50":C.border }}>PM SESSION MODEL</button>
-            <button key="TA 2.0 MODEL" onClick={() => setTradeModel(tradeModel==="TA 2.0 MODEL"?"":"TA 2.0 MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA 2.0 MODEL"?"#FF709620":"transparent", color:tradeModel==="TA 2.0 MODEL"?"#FF7096":C.grey, borderColor:tradeModel==="TA 2.0 MODEL"?"#FF709650":C.border }}>TA 2.0 MODEL</button>
-            <button key="TA MMXM MODEL" onClick={() => setTradeModel(tradeModel==="TA MMXM MODEL"?"":"TA MMXM MODEL")} style={{ flex:1, minWidth:80, padding:"8px 4px", borderRadius:8, fontSize:10, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s", background:tradeModel==="TA MMXM MODEL"?"#C96BFF20":"transparent", color:tradeModel==="TA MMXM MODEL"?"#C96BFF":C.grey, borderColor:tradeModel==="TA MMXM MODEL"?"#C96BFF50":C.border }}>TA MMXM MODEL</button>
-        </div>
-      </div>
-      {/* Kill Zone */}
-      <div>
-        <label>Kill Zone</label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {["London","NY Killzone","Out of Killzone"].map(kz => (
-            <button key={kz} onClick={() => setKillZone(killZone===kz?"":kz)}
-              style={{ flex:1, minWidth:80, padding:"8px 6px", borderRadius:8, fontSize:11, fontWeight:700, border:"1.5px solid",
-                cursor:"pointer", transition:"all .15s",
-                background: killZone===kz ? "rgba(107,159,255,.15)" : "transparent",
-                color: killZone===kz ? "#6B9FFF" : C.grey,
-                borderColor: killZone===kz ? "rgba(107,159,255,.5)" : C.border }}>
-              {kz}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Mood */}
-      <div>
-        <label>Mood / Emotional State</label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {[
-            { m:"Calm", c:"#4CB880" },
-            { m:"Confident", c:"#2ecc71" },
-            { m:"Focused", c:"#6B9FFF" },
-            { m:"Okay", c:"#C9A84C" },
-            { m:"Anxious", c:"#E0A458" },
-            { m:"Stressed", c:"#E07A5F" },
-            { m:"FOMO", c:"#FF7096" },
-            { m:"Greedy", c:"#C96BFF" },
-            { m:"Frustrated", c:"#D96060" },
-            { m:"Revenge", c:"#C0392B" },
-          ].map(({m,c}) => (
-            <button key={m} onClick={() => setMood(mood===m?"":m)}
-              style={{ flex:"1 1 80px", minWidth:80, padding:"8px 6px", borderRadius:8, fontSize:11, fontWeight:700, border:"1.5px solid",
-                cursor:"pointer", transition:"all .15s",
-                background: mood===m ? c+"22" : "transparent",
-                color: mood===m ? c : C.grey,
-                borderColor: mood===m ? c+"80" : C.border }}>
-              {mood===m ? "✓ " : ""}{m}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Confluences */}
-      {tradeModel && ({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]}})[tradeModel] && (
-        <div style={{ background:C.bg, border:"1px solid "+C.border, borderRadius:10, padding:"14px 16px" }}>
-          <label style={{ display:"block", marginBottom:10 }}>Confluences</label>
-          {Object.entries(({"TA MODEL":{"HTF":["H1 BOS + FVG","H1 SMT + BOS + FVG","H1 MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"FOREVER MODEL":{"HTF":["4H BOS + FVG","4H SMT + BOS + FVG","4H MSS + FVG"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M5 B IFVG","M3 MSS + FVG","M3 A+ IFVG","M3 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"PM SESSION MODEL":{"HTF":["Lunch High Swept","Lunch Low Swept","M15 Window High","M15 Window Low"],"ENTRY":["M1 MSS + FVG","M1 A+ IFVG","M1 B IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]},"TA MMXM MODEL":{"HTF":["Daily IRL Tap","Daily ERL Sweep","4H IRL Tap","4H ERL Sweep","ITF Stop Hunt","EOM Marked"],"ENTRY":["M5 MSS + FVG","M5 A+ IFVG","M2 MSS + FVG","M2 A+ IFVG","M1 MSS + FVG","M1 A+ IFVG"],"ADDITIONAL":["LTF AMD","Opening Price 4PM","Midnight Open","LTF SMT","LTF Liquidity Sweep","Purge"]}})[tradeModel]||{}).map(([section, items]) => (
-            <div key={section} style={{ marginBottom:10 }}>
-              <div style={{ fontSize:10, fontWeight:700, letterSpacing:".15em", color:C.gold, textTransform:"uppercase", marginBottom:6 }}>{section}</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                {items.map(item => {
-                  const checked = (confluences||[]).includes(item);
-                  return (
-                    <button key={item} onClick={() => setConfluences(prev => checked ? (prev||[]).filter(c=>c!==item) : [...(prev||[]), item])}
-                      style={{ padding:"5px 10px", borderRadius:6, fontSize:11, fontWeight:checked?700:400, border:"1.5px solid",
-                        cursor:"pointer", transition:"all .15s",
-                        background: checked ? "rgba(201,168,76,.15)" : "transparent",
-                        color: checked ? C.gold : C.grey,
-                        borderColor: checked ? C.gold+"50" : C.border }}>
-                      {checked ? "✓ " : ""}{item}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
-        <div><label>Entry Time</label><input type="time" value={entryTime||""} onChange={e => setEntryTime(e.target.value)} style={{ width:"100%", background:C.surf, border:"1.5px solid "+C.border, borderRadius:10, padding:"10px 12px", color:C.white, fontFamily:D, fontSize:13, outline:"none" }} /></div>
-        <div><label>Trade Date</label><input type="date" value={tradeDate} onChange={e => setTradeDate(e.target.value)} style={{ colorScheme:"light" }} /></div>
-        <div><label>Currency</label>
-          <div style={{ display:"flex", background:C.bg, borderRadius:10, padding:3, gap:3, border:"1px solid "+C.border }}>
-            {["ZAR","USD"].map(c => (
-              <button key={c} onClick={() => setCurrency(c)} style={{ flex:1, padding:"10px 0", borderRadius:8, fontSize:13, fontWeight:700, border:"none", cursor:"pointer",
-                background: currency===c ? C.goldDim : "transparent", color: currency===c ? C.gold : C.grey }}>
-                {c==="ZAR" ? "🇿🇦 ZAR" : "🇺🇸 USD"}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div><label>Trade Title</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. XAUUSD Long — NYC Open" /></div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-        <div><label>Pair</label><input value={pair} onChange={e => setPair(e.target.value)} placeholder="XAUUSD, EURUSD…" /></div>
-        <div><label>Direction</label><select value={direction} onChange={e => setDirection(e.target.value)}><option>Long</option><option>Short</option></select></div>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
-        <div><label>Risk (Pips)</label><input value={risk} onChange={e => setRisk(e.target.value)} placeholder="e.g. 20" /></div>
-        <div><label>Gain (Pips)</label><input value={gain} onChange={e => setGain(e.target.value)} placeholder="e.g. 60" /></div>
-        <div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-            <label style={{ margin:0 }}>P&L</label>
-            <div style={{ display:"flex", background:C.bg, borderRadius:7, padding:2, gap:2 }}>
-              {["ZAR","USD"].map(c => <button key={c} onClick={() => setPnlCurrency(c)} style={{ padding:"3px 10px", borderRadius:5, fontSize:10, fontWeight:700, border:"none", cursor:"pointer", background:pnlCurrency===c?C.gold:"transparent", color:pnlCurrency===c?"#08090E":C.grey }}>{c}</button>)}
-            </div>
-          </div>
-          <input value={pnl} onChange={e => setPnl(e.target.value)} placeholder={pnlCurrency==="ZAR" ? "+R500" : "+$28"} />
-        </div>
-      </div>
-      <div><label>Result</label><select value={result} onChange={e => setResult(e.target.value)}><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
-      <div><label>Analysis</label>
-        <textarea value={analysis} onChange={e => setAnalysis(e.target.value)} placeholder="Describe your setup, confluences, entry reasoning…"
-          style={{ height:130, resize:"vertical", background:C.surf, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
-      </div>
-      <div><label>Lesson Learned</label>
-        <textarea value={lesson} onChange={e => setLesson(e.target.value)} placeholder="What did this trade teach you?"
-          style={{ height:80, resize:"vertical", background:C.surf, border:"1.5px solid "+C.border, borderRadius:10, padding:"12px 14px", color:C.white, width:"100%", outline:"none", fontFamily:D, fontSize:13, lineHeight:1.6 }} />
-      </div>
-      <div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-          <label style={{ margin:0 }}>Chart Screenshots</label>
-          <span style={{ fontSize:11, color:C.grey }}>{(image||[]).length} image{(image||[]).length!==1?"s":""} added</span>
-        </div>
-        <div style={{ border:"2px dashed "+(image&&image.length?C.gold:C.border), borderRadius:12, padding:"20px", textAlign:"center", background:C.surf, cursor:"pointer", transition:"border-color .2s" }}
-          onClick={() => document.getElementById("chart-upload-"+userId).click()}>
-          <input id={"chart-upload-"+userId} type="file" accept="image/*" multiple style={{ display:"none" }}
-            onChange={e => {
-              const files = Array.from(e.target.files);
-              setUploading(n => n + files.length);
-              files.forEach(f => compressImage(f, img => { setImage(prev => [...(prev||[]), img]); setUploading(n => Math.max(0, n - 1)); }));
-              e.target.value = "";
-            }} />
-          <div style={{ fontSize:28, marginBottom:6 }}>📸</div>
-          <div style={{ color:C.white, fontSize:13, fontWeight:600, marginBottom:4 }}>{uploading>0 ? "Uploading "+uploading+" image"+(uploading!==1?"s":"")+"…" : "Click to add screenshots"}</div>
-          <div style={{ color:C.grey, fontSize:11 }}>You can select multiple images at once — click again to add more</div>
-        </div>
-        {image && image.length > 0 && (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10, marginTop:12 }}>
-            {image.map((img, i) => (
-              <div key={i} style={{ position:"relative", borderRadius:10, overflow:"hidden", border:"1.5px solid "+C.border, background:C.bg }}>
-                <img src={img} alt={"chart "+(i+1)} style={{ width:"100%", height:130, objectFit:"cover", display:"block" }} />
-                <button onClick={ev => { ev.stopPropagation(); setImage(prev => prev.filter((_,j)=>j!==i)); }}
-                  style={{ position:"absolute", top:6, right:6, background:"rgba(0,0,0,.75)", color:"#fff", border:"none", borderRadius:"50%", width:24, height:24, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>✕</button>
-                <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"rgba(0,0,0,.5)", fontSize:10, color:C.grey, textAlign:"center", padding:"3px 0" }}>Photo {i+1}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      {err && <div style={{ color:err==="Saving..."?C.gold:err==="saved"?C.green:C.red, fontSize:13, textAlign:"center", fontWeight:700 }}>{err==="saved" ? "✓ Entry saved!" : err}</div>}
-      <div style={{ display:"flex", gap:10 }}><Btn onClick={() => { if (uploading>0) return; onSubmit(); }} full sz="lg">{uploading>0 ? "Waiting for uploads…" : submitLabel}</Btn></div>
-    </div>
-  );
-}
-
-function StudentJournal({ user, journals, addJournal, deleteJournal, fetchJournalImages }) {
-  const [view, setView] = React.useState("list");
-  const [selected, setSelected] = React.useState(null);
-  const [editing, setEditing] = React.useState(null);
-  const [zoomImg, setZoomImg] = React.useState(null);
-  const [title, setTitle] = React.useState("");
-  const [pair, setPair] = React.useState("");
-  const [direction, setDirection] = React.useState("Long");
-  const [risk, setRisk] = React.useState("");
-  const [gain, setGain] = React.useState("");
-  const [result, setResult] = React.useState("Win");
-  const [pnl, setPnl] = React.useState("");
-  const [pnlCurrency, setPnlCurrency] = React.useState("ZAR");
-  const [analysis, setAnalysis] = React.useState("");
-  const [lesson, setLesson] = React.useState("");
-  const [chartImg, setChartImg] = React.useState([]);
-  const [tradeType, setTradeType] = React.useState("Live Trade");
-  const [tradeModel, setTradeModel] = React.useState("");
-  const [killZone, setKillZone] = React.useState("");
-  const [mood, setMood] = React.useState("");
-  const [entryTime, setEntryTime] = React.useState("");
-  const [confluences, setConfluences] = React.useState([]);
-  const [filterModel, setFilterModel] = React.useState("All");
-  const [showAnalytics, setShowAnalytics] = React.useState(false);
-  const [analyticsType, setAnalyticsType] = React.useState("All");
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
-  const [tradeDate, setTradeDate] = React.useState(() => new Date().toISOString().split("T")[0]);
-  const [currency, setCurrency] = React.useState("ZAR");
-  const [err, setErr] = React.useState("");
-
-  const myJournals = (journals||[]).filter(j => j.userId === user.id).sort((a,b) => b.createdAt - a.createdAt);
-
-  // When editing, if this journal's images arrive via lazy-load, sync them into the form.
-  React.useEffect(() => {
-    if (view !== "edit" || !editing) return;
-    const fresh = (journals||[]).find(x => x.id === editing.id);
-    if (fresh && fresh._imgLoaded && fresh.images && fresh.images.length) {
-      setChartImg(prev => (prev && prev.length) ? prev : fresh.images);
-    }
-  }, [journals, view, editing]);
-  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
-
-  const compressImage = (file, cb) => compressAndUpload(file, cb);
-
-  const resetForm = () => {
-    setTitle(""); setPair(""); setDirection("Long"); setRisk(""); setGain("");
-    setResult("Win"); setPnl(""); setPnlCurrency("ZAR"); setAnalysis(""); setLesson("");
-    setChartImg([]); setTradeType("Live Trade"); setTradeDate(new Date().toISOString().split("T")[0]);
-    setCurrency("ZAR"); setMood(""); setErr("");
-  };
-
-  const submitNew = async () => {
-    if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
-    setErr("Saving...");
-    const tradeDateTs = tradeDate ? new Date(tradeDate + "T12:00:00").getTime() : Date.now();
-    const entry = { id: uid(), userId: user.id, userName: user.name, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, mood, entryTime, confluences, tradeDate, currency, createdAt: tradeDateTs, adminComment: null, adminCommentAt: null, adminSeen: false };
-    try { await addJournal(entry); resetForm(); setErr("saved"); setTimeout(() => setView("list"), 800); }
-    catch(e) { setErr("Failed to save. Please try again."); }
-  };
-
-  const submitEdit = async () => {
-    if (!editing) return;
-    if (!title.trim() || !pair.trim() || !tradeModel) { setErr(!tradeModel ? "Please select a Trading Model." : "Title, pair and analysis are required."); return; }
-    setErr("Saving...");
-    const updated = { ...editing, title: title.trim(), pair: pair.trim(), direction, risk: risk.trim(), gain: gain.trim(), result, pnl: pnl.trim(), analysis: analysis.trim(), lesson: lesson.trim(), image: (chartImg&&chartImg.length)?chartImg[0]:null, images: chartImg||[], tradeType, tradeModel, killZone, mood, entryTime, confluences, tradeDate, currency };
-    try {
-      await deleteJournal(editing.id);
-      await addJournal(updated);
-      resetForm(); setEditing(null); setSelected(updated.id); setView("detail");
-    } catch(e) { setErr("Failed to save. Please try again."); }
-  };
-
-  const openEdit = (j) => {
-    try {
-    if (!j) { console.error("openEdit: j is null/undefined"); return; }
-    console.log("openEdit called", j.id, j.title);
-    setTitle(j.title||""); setPair(j.pair||""); setDirection(j.direction||"Long");
-    setRisk(j.risk||""); setGain(j.gain||""); setResult(j.result||"Win");
-    setPnl(j.pnl||""); setAnalysis(j.analysis||""); setLesson(j.lesson||"");
-    setTradeType(j.tradeType||"Live Trade");
-    setTradeModel(j.tradeModel||"");
-    setKillZone(j.killZone||"");
-    setMood(j.mood||"");
-    setEntryTime(j.entryTime||"");
-    setConfluences(j.confluences||[]);
-    setTradeDate(j.tradeDate || new Date(j.createdAt).toISOString().split("T")[0]);
-    setCurrency(j.currency||"ZAR"); setChartImg(j.images&&j.images.length?j.images:(j.image?[j.image]:[])); setErr("");
-    if (!j._imgLoaded && fetchJournalImages) { fetchJournalImages(j.id); }
-    setEditing(j); setView("edit");
-    console.log("openEdit: view set to edit, editing:", j.id);
-    } catch(e) { console.error("openEdit error:", e); }
-  };
-
-  const formProps = { tradeType, setTradeType, tradeModel, setTradeModel, killZone, setKillZone, mood, setMood, entryTime, setEntryTime, confluences, setConfluences, tradeDate, setTradeDate, currency, setCurrency,
-    title, setTitle, pair, setPair, direction, setDirection, risk, setRisk, gain, setGain,
-    pnl, setPnl, pnlCurrency, setPnlCurrency, result, setResult, analysis, setAnalysis,
-    lesson, setLesson, image: chartImg||[], setImage: setChartImg, err, userId: user.id, compressImage };
-
-  if (zoomImg) return (
-    <div onClick={() => setZoomImg(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", padding:20 }}>
-      <img src={zoomImg} alt="zoom" style={{ maxWidth:"100%", maxHeight:"90vh", borderRadius:12, objectFit:"contain" }} />
-      <button onClick={() => setZoomImg(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,.15)", border:"none", color:"#fff", width:40, height:40, borderRadius:"50%", fontSize:20, cursor:"pointer" }}>✕</button>
-    </div>
-  );
-
-  // Chart effect — must be BEFORE early returns (Rules of Hooks)
-  useEffect(() => {
-    if (!showAnalytics || view !== "list") return;
-    const C4 = window.Chart;
-    if (!C4) return;
-    const col = { gold:"#C9A84C", green:"#1abc9c", red:"#e74c3c", blue:"#6B9FFF", purple:"#C96BFF" };
-    setTimeout(() => {
-      const allE = myJournals.filter(j => {
-        if (filterModel !== "All" && j.tradeModel !== filterModel) return false;
-        if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false;
-        if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false;
-        return true;
-      });
-      const entries = analyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
-      const wins = entries.filter(j=>j.result==="Win");
-      const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
-      const sorted = entries.slice().sort((a,b)=>a.createdAt-b.createdAt);
-
-      // P&L curve
-      let cum=0;
-      const pnlCurve = sorted.map(j=>{ cum+=toNum(j); return {x:j.tradeDate||new Date(j.createdAt).toISOString().slice(0,10), y:Math.round(cum*100)/100}; });
-      const totalPnl = cum;
-
-      // Weekly
-      const wm={};
-      entries.forEach(j=>{ if(!j.tradeDate) return; const d=new Date(j.tradeDate); const day=d.getDay(); const mon=new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1)); const wk=mon.toISOString().slice(0,10); wm[wk]=(wm[wk]||0)+toNum(j); });
-      const weeklyPnl=Object.entries(wm).sort((a,b)=>a[0]>b[0]?1:-1).slice(-10);
-
-      // Pair/KZ
-      const cBy=(key,fw)=>{ const m={}; (fw?wins:entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
-      const pairData=cBy("pair",false); const kzData=cBy("killZone",false);
-
-      // RR buckets
-      const rrVals = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
-      const rrB={"<0.5x":0,"0.5-1x":0,"1-2x":0,"2-3x":0,">3x":0};
-      rrVals.forEach(r=>{ if(r<0.5)rrB["<0.5x"]++; else if(r<1)rrB["0.5-1x"]++; else if(r<2)rrB["1-2x"]++; else if(r<3)rrB["2-3x"]++; else rrB[">3x"]++; });
-
-      // Hour rank
-      const hw_={},ht_={};
-      entries.forEach(j=>{ if(!j.entryTime) return; const h=parseInt(j.entryTime.split(":")[0]); const lbl=(h%12||12)+":00"+(h<12?" AM":" PM"); ht_[lbl]=(ht_[lbl]||0)+1; if(j.result==="Win") hw_[lbl]=(hw_[lbl]||0)+1; });
-      const hourRank=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-
-      // TA Score for radar
-      const wr2 = entries.length ? Math.round((wins.length/entries.length)*100) : 0;
-      const winPnl=wins.reduce((s,j)=>s+toNum(j),0); const lossPnl=Math.abs(entries.filter(j=>j.result==="Loss").reduce((s,j)=>s+toNum(j),0));
-      const pfScore = Math.min(lossPnl>0?winPnl/lossPnl:winPnl>0?3:0, 3)/3*100;
-      const rrScore = Math.min(rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length):0, 3)/3*100;
-      const tradeDays2=[...new Set(entries.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-      const winDays2=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-      const consScore=tradeDays2.length?Math.round((winDays2.length/tradeDays2.length)*100):0;
-      let peak2=0,run2=0,maxDD2=0; sorted.forEach(j=>{run2+=toNum(j);peak2=Math.max(peak2,run2);maxDD2=Math.max(maxDD2,peak2-run2);});
-      const recScore=Math.min(maxDD2>0?totalPnl/maxDD2:totalPnl>0?3:0,3)/3*100;
-      const ddScore=maxDD2===0?100:Math.max(0,100-(maxDD2/Math.max(Math.abs(totalPnl),1))*100);
-
-      ["ac_pnl","ac_weekly","ac_pair","ac_kz","ac_rr","ac_hour","ac_radar"].forEach(id=>{
-        const el=document.getElementById(id); if(el&&el._ci){el._ci.destroy();el._ci=null;}
-      });
-
-      const pe=document.getElementById("ac_pnl");
-      if(pe&&pnlCurve.length>1) pe._ci=new C4(pe,{type:"line",data:{datasets:[{data:pnlCurve,borderColor:totalPnl>=0?col.green:col.red,backgroundColor:totalPnl>=0?"rgba(26,188,156,.08)":"rgba(231,76,60,.08)",fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:"category",ticks:{color:"#4A5066",maxRotation:30,font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
-
-      const we=document.getElementById("ac_weekly");
-      if(we&&weeklyPnl.length) we._ci=new C4(we,{type:"bar",data:{labels:weeklyPnl.map(([w])=>"W"+w.slice(5,7)+"/"+w.slice(8,10)),datasets:[{data:weeklyPnl.map(([,v])=>v),backgroundColor:weeklyPnl.map(([,v])=>v>=0?"rgba(26,188,156,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9},callback:v=>(v>=0?"+":"")+v}}}}});
-
-      const pa=document.getElementById("ac_pair");
-      if(pa&&pairData.length){const top=pairData.slice(0,7);const wm2={};cBy("pair",true).forEach(([k,v])=>wm2[k]=v);pa._ci=new C4(pa,{type:"bar",data:{labels:top.map(([k])=>k),datasets:[{label:"Trades",data:top.map(([,v])=>v),backgroundColor:"rgba(107,159,255,.4)",borderRadius:3},{label:"Wins",data:top.map(([k])=>wm2[k]||0),backgroundColor:"rgba(26,188,156,.75)",borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});}
-
-      const kze=document.getElementById("ac_kz");
-      if(kze&&kzData.length) kze._ci=new C4(kze,{type:"doughnut",data:{labels:kzData.map(([k])=>k),datasets:[{data:kzData.map(([,v])=>v),backgroundColor:[col.blue,col.gold,col.green].slice(0,kzData.length),borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:"60%",plugins:{legend:{display:true,position:"right",labels:{color:"#7A8099",boxWidth:8,font:{size:10}}}}}});
-
-      const rre=document.getElementById("ac_rr");
-      if(rre) rre._ci=new C4(rre,{type:"bar",data:{labels:Object.keys(rrB),datasets:[{data:Object.values(rrB),backgroundColor:["rgba(231,76,60,.7)","rgba(201,168,76,.7)","rgba(26,188,156,.7)","rgba(107,159,255,.7)","rgba(201,96,255,.7)"],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{ticks:{color:"#4A5066",font:{size:9}}}}}});
-
-      const he=document.getElementById("ac_hour");
-      if(he&&hourRank.length){const top=hourRank.slice(0,8);he._ci=new C4(he,{type:"bar",data:{labels:top.map(x=>x.h),datasets:[{data:top.map(x=>x.wr),backgroundColor:top.map(x=>x.wr>=60?"rgba(26,188,156,.75)":x.wr>=40?"rgba(201,168,76,.75)":"rgba(231,76,60,.75)"),borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#4A5066",font:{size:9}}},y:{max:100,ticks:{color:"#4A5066",font:{size:9},callback:v=>v+"%"}}}}});}
-
-      const re=document.getElementById("ac_radar");
-      if(re) re._ci=new C4(re,{type:"radar",data:{labels:["Win %","Prof. Factor","Avg RR","Consistency","Recovery","Low DD"],datasets:[{data:[wr2,pfScore,rrScore,consScore,recScore,ddScore],borderColor:"rgba(201,168,76,.8)",backgroundColor:"rgba(201,168,76,.12)",pointBackgroundColor:"#C9A84C",pointRadius:3,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:"rgba(255,255,255,.05)"},pointLabels:{color:"#6A7090",font:{size:9}}}},plugins:{legend:{display:false}}}});
-
-    }, 150);
-  }, [showAnalytics, view, filterModel, analyticsType, dateFrom, dateTo, myJournals.length]);
-
-
-  if (view === "new") return (
-    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
-        <button onClick={() => { resetForm(); setView("list"); }} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Back</button>
-        <h2 style={{ fontFamily:S, fontSize:24, fontWeight:700 }}>New Trade Journal</h2>
-      </div>
-      <TradeForm {...formProps} onSubmit={submitNew} submitLabel="Save Journal Entry" />
-    </div>
-  );
-
-  if (view === "edit") return (
-    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28 }}>
-        <button onClick={() => { resetForm(); setEditing(null); setView("detail"); }} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Cancel</button>
-        <h2 style={{ fontFamily:S, fontSize:24, fontWeight:700 }}>Edit Journal Entry</h2>
-      </div>
-      <TradeForm {...formProps} onSubmit={submitEdit} submitLabel="Save Changes" />
-    </div>
-  );
-
-  if (view === "detail" && selected) {
-    const j = (journals||[]).find(x => x.id === selected);
-    if (!j) return null;
-    return (
-      <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-          <button onClick={() => setView("list")} style={{ background:"transparent", color:C.gold, fontSize:13, fontWeight:700, cursor:"pointer", border:"none" }}>← Back to Journal</button>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={() => openEdit(j)} style={{ background:C.goldDim, color:C.gold, border:"1px solid "+C.gold+"40", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>✏ Edit</button>
-            <button onClick={() => { deleteJournal(j.id); setView("list"); }} style={{ background:C.red+"15", color:C.red, border:"1px solid "+C.red+"40", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>🗑 Delete</button>
-          </div>
-        </div>
-        <div style={{ background:C.card, border:"1.5px solid "+C.border, borderRadius:16, padding:"28px 24px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:20 }}>
-            <div>
-              <h2 style={{ fontFamily:S, fontSize:22, fontWeight:700, marginBottom:6 }}>{j.title}</h2>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:6 }}>
-                {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.tradeType}</span>}
-                {j.tradeModel && <span style={{ background:"rgba(107,159,255,.12)", color:"#6B9FFF", border:"1px solid rgba(107,159,255,.3)", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.tradeModel}</span>}
-                {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"2px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.currency}</span>}
-              </div>
-              <div style={{ fontSize:12, color:C.grey }}>{j.tradeDate ? new Date(j.tradeDate+"T12:00:00").toLocaleDateString("en-ZA",{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : new Date(j.createdAt).toLocaleDateString("en-ZA",{year:"numeric",month:"long",day:"numeric"})}</div>
-            </div>
-            <span style={{ background:resultColor(j.result)+"20", color:resultColor(j.result), border:"1px solid "+resultColor(j.result)+"40", padding:"6px 16px", borderRadius:20, fontSize:13, fontWeight:700 }}>{j.result}</span>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:22 }}>
-            {[["Pair",j.pair],["Direction",j.direction],["Risk",j.risk||"—"],["Gain",j.gain||"—"],["P&L",j.pnl||"—"]].map(([k,v]) => (
-              <div key={k} style={{ background:C.bg, border:"1px solid "+C.border, borderRadius:10, padding:"12px 14px" }}>
-                <div style={{ fontSize:10, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:4 }}>{k}</div>
-                <div style={{ fontSize:16, fontWeight:700 }}>{v}</div>
-              </div>
-            ))}
-          </div>
-          {j.lesson && <div style={{ marginBottom:18 }}><div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Lesson Learned</div><p style={{ fontSize:14, lineHeight:1.8, color:C.dim }}>{j.lesson}</p></div>}
-          {!j._imgLoaded && !(j.images&&j.images.length) && !j.image && (
-            <div style={{ fontSize:12, color:C.grey, padding:"10px 0" }}>Loading charts…</div>
-          )}
-          {((j.images&&j.images.length>0)||j.image) && (
-            <div>
-              <div style={{ fontSize:11, color:C.grey, letterSpacing:".1em", textTransform:"uppercase", marginBottom:8 }}>Charts</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:8 }}>
-                {(j.images&&j.images.length>0 ? j.images : [j.image]).filter(Boolean).map((img,i) => (
-                  <img key={i} src={img} alt={"chart "+i} onClick={() => setZoomImg(img)}
-                    style={{ width:"100%", borderRadius:10, border:"1px solid "+C.border, display:"block", cursor:"zoom-in", objectFit:"cover", maxHeight:200 }} />
-                ))}
-              </div>
-            </div>
-          )}
-          {j.adminComment && <div style={{ marginTop:20, background:"rgba(201,168,76,.06)", border:"1px solid rgba(201,168,76,.25)", borderRadius:10, padding:"14px 16px" }}><div style={{ fontSize:11, fontWeight:700, color:C.gold, marginBottom:6 }}>Coach Taaha — Feedback</div><p style={{ fontSize:14, lineHeight:1.7, color:C.dim }}>{j.adminComment}</p></div>}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ maxWidth:700, margin:"0 auto", padding:"28px 16px 80px" }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, flexWrap:"wrap", gap:12 }}>
-        <div>
-          <p style={{ fontSize:11, fontWeight:700, letterSpacing:".25em", color:C.white, textTransform:"uppercase", marginBottom:4 }}>Trade Journal</p>
-          <h2 style={{ fontFamily:S, fontSize:26, fontWeight:700 }}>My Entries</h2>
-        </div>
-        <Btn onClick={() => { resetForm(); setView("new"); }}>+ New Entry</Btn>
-        <Btn v={showAnalytics ? "gold" : "outline"} onClick={() => setShowAnalytics(p=>!p)}>📊 Analytics</Btn>
-      </div>
-      {/* Model filter */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
-        {["All","TA MODEL","FOREVER MODEL","PM SESSION MODEL","TA 2.0 MODEL","TA MMXM MODEL"].map(m => (
-          <button key={m} onClick={() => setFilterModel(m)} style={{ padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700, border:"1.5px solid", cursor:"pointer", transition:"all .2s",
-            background:filterModel===m?(m==="All"?C.gold:"rgba(107,159,255,.15)"):"transparent",
-            color:filterModel===m?(m==="All"?"#08090E":"#6B9FFF"):C.grey,
-            borderColor:filterModel===m?(m==="All"?C.gold:"rgba(107,159,255,.5)"):C.border }}>{m==="All"?"All Models":m}</button>
-        ))}
-      </div>
-      {myJournals.length === 0 && (
-        <div style={{ textAlign:"center", padding:"60px 0" }}>
-          <div style={{ fontSize:48, marginBottom:16, opacity:.3 }}>📓</div>
-          <p style={{ color:C.grey, fontSize:14 }}>No journal entries yet.</p>
-          <Btn onClick={() => { resetForm(); setView("new"); }} style={{ marginTop:20 }}>Log Your First Trade</Btn>
-        </div>
-      )}
-      {/* Analytics Panel */}
-      {showAnalytics && (() => {
-        const allEntries = myJournals.filter(j => {
-          if (filterModel !== "All" && j.tradeModel !== filterModel) return false;
-          if (dateFrom && j.tradeDate && j.tradeDate < dateFrom) return false;
-          if (dateTo && j.tradeDate && j.tradeDate > dateTo) return false;
-          return true;
-        });
-        const entries = analyticsType==="Live" ? allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : analyticsType==="Backtest" ? allEntries.filter(j=>j.tradeType==="Backtest") : allEntries;
-        const liveCount = allEntries.filter(j=>(j.tradeType||"Live Trade")==="Live Trade").length;
-        const btCount = allEntries.filter(j=>j.tradeType==="Backtest").length;
-
-        const wins = entries.filter(j=>j.result==="Win");
-        const losses = entries.filter(j=>j.result==="Loss");
-        const bes = entries.filter(j=>j.result==="BE");
-        const wr = entries.length ? Math.round((wins.length/entries.length)*100) : 0;
-
-        const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
-        const totalPnl = entries.reduce((s,j)=>s+toNum(j),0);
-        const winPnl = wins.reduce((s,j)=>s+toNum(j),0);
-        const lossPnl = Math.abs(losses.reduce((s,j)=>s+toNum(j),0));
-        const profitFactor = lossPnl>0 ? (winPnl/lossPnl).toFixed(2) : winPnl>0 ? "∞" : "—";
-
-        const rrVals = entries.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
-        const avgRR = rrVals.length ? (rrVals.reduce((a,b)=>a+b,0)/rrVals.length) : null;
-        const winRRs = wins.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
-        const lossRRs = losses.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
-        const avgWinRR = winRRs.length ? (winRRs.reduce((a,b)=>a+b,0)/winRRs.length).toFixed(2) : "—";
-        const avgLossRR = lossRRs.length ? (lossRRs.reduce((a,b)=>a+b,0)/lossRRs.length).toFixed(2) : "—";
-
-        // 1. Win streak + longest
-        const sorted = entries.slice().sort((a,b)=>a.createdAt-b.createdAt);
-        let curStreak=0, bestStreak=0, curLoss=0, worstStreak=0;
-        sorted.forEach(j=>{ if(j.result==="Win"){curStreak++;bestStreak=Math.max(bestStreak,curStreak);curLoss=0;} else if(j.result==="Loss"){curLoss++;worstStreak=Math.max(worstStreak,curLoss);curStreak=0;} else{curStreak=0;curLoss=0;} });
-
-        // 2. Max drawdown
-        let peak=0, running=0, maxDD=0;
-        sorted.forEach(j=>{ running+=toNum(j); peak=Math.max(peak,running); maxDD=Math.max(maxDD,peak-running); });
-
-        // 3. Recovery factor
-        const recoveryFactor = maxDD>0 ? (totalPnl/maxDD).toFixed(2) : "—";
-
-        // 4. Consistency score
-        const tradeDays=[...new Set(entries.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-        const winDays=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-        const consistency = tradeDays.length ? Math.round((winDays.length/tradeDays.length)*100) : 0;
-
-        // 5. TA Score (Zella-style radar: wr, pf, avgRR, consistency, recovery, -drawdown)
-        const wrScore = Math.min(wr, 100);
-        const pfScore = Math.min(parseFloat(profitFactor)||0, 3) / 3 * 100;
-        const rrScore = Math.min(avgRR||0, 3) / 3 * 100;
-        const consScore = consistency;
-        const recScore = Math.min(parseFloat(recoveryFactor)||0, 3) / 3 * 100;
-        const ddScore = maxDD===0 ? 100 : Math.max(0, 100 - (maxDD/Math.max(Math.abs(totalPnl),1))*100);
-        const taScore = Math.round((wrScore+pfScore+rrScore+consScore+recScore+ddScore)/6);
-
-        // 6. Weekly P&L
-        const weeklyMap={};
-        entries.forEach(j=>{ if(!j.tradeDate) return; const d=new Date(j.tradeDate); const day=d.getDay(); const mon=new Date(d); mon.setDate(d.getDate()-(day===0?6:day-1)); const wk=mon.toISOString().slice(0,10); weeklyMap[wk]=(weeklyMap[wk]||0)+toNum(j); });
-        const weeklyPnl=Object.entries(weeklyMap).sort((a,b)=>a[0]>b[0]?1:-1).slice(-10);
-
-        // 7. P&L curve
-        let cum=0;
-        const pnlCurve=sorted.map(j=>{ cum+=toNum(j); return {x:j.tradeDate||new Date(j.createdAt).toISOString().slice(0,10), y:Math.round(cum*100)/100}; });
-
-        // RR distribution
-        const rrBuckets={"<0.5x":0,"0.5-1x":0,"1-2x":0,"2-3x":0,">3x":0};
-        rrVals.forEach(r=>{ if(r<0.5)rrBuckets["<0.5x"]++; else if(r<1)rrBuckets["0.5-1x"]++; else if(r<2)rrBuckets["1-2x"]++; else if(r<3)rrBuckets["2-3x"]++; else rrBuckets[">3x"]++; });
-
-        // Rankings
-        const cBy=(key,fw)=>{ const m={}; (fw?wins:entries).forEach(j=>{ const v=j[key]; if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
-        const pairData=cBy("pair",false); const kzData=cBy("killZone",false); const modelData=cBy("tradeModel",false);
-        // Mood win-rate ranking
-        const mw_={},mt_={};
-        entries.forEach(j=>{ if(!j.mood) return; mt_[j.mood]=(mt_[j.mood]||0)+1; if(j.result==="Win") mw_[j.mood]=(mw_[j.mood]||0)+1; });
-        const moodRank=Object.entries(mt_).map(([m,t])=>({m,t,wr:Math.round(((mw_[m]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        const confData=()=>{ const m={}; wins.forEach(j=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;})}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
-
-        // Day / Hour
-        const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-        const dw_={},dt_={};
-        entries.forEach(j=>{ if(!j.tradeDate) return; const d=DAYS_[new Date(j.tradeDate).getDay()]; dt_[d]=(dt_[d]||0)+1; if(j.result==="Win") dw_[d]=(dw_[d]||0)+1; });
-        const dayRank=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        const hw_={},ht_={};
-        entries.forEach(j=>{ if(!j.entryTime) return; const h=parseInt(j.entryTime.split(":")[0]); const lbl=(h%12||12)+":00"+(h<12?" AM":" PM"); ht_[lbl]=(ht_[lbl]||0)+1; if(j.result==="Win") hw_[lbl]=(hw_[lbl]||0)+1; });
-        const hourRank=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        window.__dayRank=dayRank; window.__hourRank=hourRank;
-
-
-        const SC=(label,val,sub,col,accent)=>(
-          <div style={{background:C.card,border:"1px solid "+(accent||C.border),borderRadius:12,padding:"14px 16px",position:"relative",overflow:"hidden"}}>
-            {accent&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:accent,opacity:.6}}/>}
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:6}}>{label}</div>
-            <div style={{fontSize:21,fontWeight:700,color:col||C.white,lineHeight:1}}>{val}</div>
-            {sub&&<div style={{fontSize:11,color:C.faint,marginTop:4}}>{sub}</div>}
-          </div>
-        );
-
-        const RL=(data,title)=>{
-          const max=data[0]?.[1]||1;
-          return (
-            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"14px 16px"}}>
-              <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:10}}>{title}</div>
-              {data.slice(0,5).map(([k,v],i)=>(
-                <div key={k} style={{marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                    <span style={{color:i===0?C.gold:i===data.length-1&&data.length>2?C.red:C.dim,fontWeight:i===0?700:400}}>
-                      {i===0?"🏆 ":i===data.length-1&&data.length>2?"📉 ":""}{k}
-                    </span>
-                    <span style={{color:C.grey,fontSize:11}}>{v}</span>
-                  </div>
-                  <div style={{height:3,background:C.bg,borderRadius:2,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:Math.round(v/max*100)+"%",background:i===0?C.gold:i===data.length-1&&data.length>2?C.red:"#6B9FFF",borderRadius:2}}/>
-                  </div>
-                </div>
-              ))}
-              {data.length===0&&<div style={{fontSize:12,color:C.faint}}>No data yet</div>}
-            </div>
-          );
-        };
-
-        const CB=(id,h=160)=>(
-          <div style={{height:h,background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"10px"}}>
-            <canvas id={id}/>
-          </div>
-        );
-
-        const CL=(title,h=160)=>(
-          <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:6}}>{title}</div>
-        );
-
-        return (
-          <div style={{border:"1px solid "+C.gold+"20",borderRadius:16,overflow:"hidden",marginBottom:20,background:C.card}}>
-
-            {/* Header bar */}
-            <div style={{background:C.surf,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,borderBottom:"1px solid "+C.border}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:36,height:36,borderRadius:10,background:C.goldDim,border:"1px solid "+C.gold+"40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>📊</div>
-                <div>
-                  <div style={{fontSize:14,fontWeight:700,color:C.white}}>Journal Analytics</div>
-                  <div style={{fontSize:11,color:C.grey}}>{entries.length} entries · Live: {liveCount} · Backtest: {btCount}</div>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"5px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
-                <span style={{color:C.faint,fontSize:11}}>→</span>
-                <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"5px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
-                {(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom("");setDateTo("");}} style={{background:"transparent",border:"none",color:C.grey,cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>}
-                {["All","Live","Backtest"].map(t=>(
-                  <button key={t} onClick={()=>setAnalyticsType(t)} style={{padding:"5px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:"1px solid",transition:"all .15s",background:analyticsType===t?(t==="Live"?"rgba(26,188,156,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",color:analyticsType===t?(t==="Live"?"#1abc9c":t==="Backtest"?"#6B9FFF":C.gold):C.grey,borderColor:analyticsType===t?(t==="Live"?"#1abc9c50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border}}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{padding:"20px"}}>
-
-              {/* TA Score + top KPIs */}
-              <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:12,marginBottom:16}}>
-                {/* TA Score radar */}
-                <div style={{background:C.surf,border:"1px solid "+C.border,borderRadius:12,padding:"14px",display:"flex",flexDirection:"column",alignItems:"center"}}>
-                  <div style={{fontSize:10,fontWeight:700,letterSpacing:".12em",color:C.grey,textTransform:"uppercase",marginBottom:4}}>TA Score</div>
-                  <div style={{height:130,width:"100%"}}><canvas id="ac_radar"/></div>
-                  <div style={{fontSize:28,fontWeight:700,color:taScore>=70?C.green:taScore>=50?C.gold:C.red,marginTop:4}}>{taScore}</div>
-                  <div style={{height:6,width:"100%",background:C.bg,borderRadius:3,overflow:"hidden",marginTop:6}}>
-                    <div style={{height:"100%",width:taScore+"%",background:"linear-gradient(90deg,"+C.red+","+C.gold+","+C.green+")",borderRadius:3}}/>
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",width:"100%",fontSize:9,color:C.faint,marginTop:3}}>
-                    <span>0</span><span>50</span><span>100</span>
-                  </div>
-                </div>
-
-                {/* KPI cards */}
-                <div style={{display:"grid",gridTemplateColumns:window.__tafxLayout==="wide"?"repeat(auto-fill,minmax(140px,1fr))":"repeat(auto-fill,minmax(110px,1fr))",gap:8}}>
-                  {SC("Win Rate",wr+"%",wins.length+"W · "+losses.length+"L · "+bes.length+"BE",wr>=60?"#1abc9c":wr>=45?C.gold:C.red,wr>=60?"#1abc9c":wr>=45?C.gold:C.red)}
-                  {SC("Avg RR",avgRR?"1:"+avgRR.toFixed(2):"—","W:"+avgWinRR+" / L:"+avgLossRR,C.gold,C.gold)}
-                  {SC("Total P&L",(totalPnl>=0?"+":"")+totalPnl.toFixed(0),"Wins: +"+winPnl.toFixed(0),totalPnl>=0?"#1abc9c":C.red,totalPnl>=0?"#1abc9c":C.red)}
-                  {SC("Profit Factor",profitFactor,"Win$ ÷ Loss$",parseFloat(profitFactor)>=1.5?"#1abc9c":parseFloat(profitFactor)>=1?C.gold:C.red)}
-                  {SC("Win Streak",bestStreak,"Current: "+curStreak,"#6B9FFF","#6B9FFF")}
-                  {SC("Max Drawdown","-"+maxDD.toFixed(0),"Recovery: "+recoveryFactor+"x",maxDD>100?C.red:C.gold)}
-                  {SC("Consistency",consistency+"%",winDays.length+"/"+tradeDays.length+" days",consistency>=60?"#1abc9c":consistency>=40?C.gold:C.red)}
-                  {SC("Entries",entries.length,tradeDays.length+" trade days",C.white)}
-                </div>
-              </div>
-
-              {/* P&L Curve + Weekly */}
-              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:12,marginBottom:12}}>
-                <div>
-                  {CL("Cumulative P&L")}
-                  {CB("ac_pnl",180)}
-                </div>
-                <div>
-                  {CL("Weekly P&L")}
-                  {CB("ac_weekly",180)}
-                </div>
-              </div>
-
-              {/* Pair + KZ + RR */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
-                <div>{CL("Pairs — Trades vs Wins")}{CB("ac_pair",150)}</div>
-                <div>{CL("Kill Zone Breakdown")}{CB("ac_kz",150)}</div>
-                <div>{CL("RR Distribution")}{CB("ac_rr",150)}</div>
-              </div>
-
-              {/* Entry Hour */}
-              <div style={{marginBottom:12}}>
-                {CL("Best Entry Hour (Win Rate %)")}
-                {CB("ac_hour",130)}
-                {hourRank.length===0&&<div style={{textAlign:"center",fontSize:12,color:C.faint,marginTop:8}}>Log entry times in your journal to see this chart</div>}
-              </div>
-
-              {/* Rankings */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:10}}>
-                {RL(pairData,"Best vs Worst Pair")}
-                {RL(kzData,"Best vs Worst Kill Zone")}
-                {RL(modelData,"Best vs Worst Model")}
-                {RL(confData().slice(0,5),"Top Confluences")}
-                {RL(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
-                {RL(hourRank.length>0?hourRank.map(({h,t,wr})=>[h+" ("+wr+"%)",t]):[],"Best Entry Hour")}
-                {RL(moodRank.map(({m,t,wr})=>[m+" ("+wr+"%)",t]),"Best vs Worst Mood")}
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
-
-
-      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-        {myJournals.filter(j => filterModel==="All" || j.tradeModel===filterModel).map(j => (
-          <div key={j.id} style={{ background:C.card, border:"1.5px solid "+(j.adminComment?"rgba(201,168,76,.35)":C.border), borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
-            onClick={() => { setSelected(j.id); setView("detail"); if (fetchJournalImages && !j._imgLoaded) fetchJournalImages(j.id); }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
-            onMouseLeave={e => e.currentTarget.style.borderColor = j.adminComment?"rgba(201,168,76,.35)":C.border}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12 }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:S, fontSize:16, fontWeight:700, marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{j.title}</div>
-                <div style={{ display:"flex", gap:8, fontSize:12, color:C.grey, flexWrap:"wrap", alignItems:"center" }}>
-                  {j.tradeType && <span style={{ background:j.tradeType==="Backtest"?C.goldDim:"rgba(46,204,113,.12)", color:j.tradeType==="Backtest"?C.gold:C.green, border:"1px solid "+(j.tradeType==="Backtest"?C.gold:C.green)+"40", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.tradeType}</span>}
-                  {j.tradeModel && <span style={{ background:"rgba(107,159,255,.12)", color:"#6B9FFF", border:"1px solid rgba(107,159,255,.3)", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.tradeModel}</span>}
-                  {j.currency && <span style={{ background:"rgba(201,168,76,.1)", color:C.gold, border:"1px solid "+C.gold+"30", padding:"1px 8px", borderRadius:20, fontSize:10, fontWeight:700 }}>{j.currency}</span>}
-                  <span>{j.pair}</span><span>·</span><span>{j.direction}</span>
-                  {j.pnl && <><span>·</span><span style={{ color:j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold }}>{j.pnl}</span></>}
-                  <span>·</span><span>{j.tradeDate ? new Date(j.tradeDate+"T12:00:00").toLocaleDateString("en-ZA",{day:"numeric",month:"short",year:"numeric"}) : new Date(j.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6, flexShrink:0 }}>
-                <span style={{ background:resultColor(j.result)+"20", color:resultColor(j.result), border:"1px solid "+resultColor(j.result)+"40", padding:"3px 10px", borderRadius:20, fontSize:11, fontWeight:700 }}>{j.result}</span>
-                {j.adminComment && <span style={{ fontSize:10, color:C.gold, fontWeight:700 }}>COACH FEEDBACK</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <PnlCalendar journals={journals} userId={user.id} />
-    </div>
-  );
-}
-
-function AdminJournalTab({ users, journals, patchJournal, loadAll, fetchJournalImages }) {
-  const [selected, setSelected] = React.useState(null);
-  const [comment, setComment] = React.useState("");
-  const [filterUser, setFilterUser] = React.useState("all");
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [showCalendar, setShowCalendar] = React.useState(false);
-  const [showAdminAnalytics, setShowAdminAnalytics] = React.useState(false);
-  const [adminAnalyticsType, setAdminAnalyticsType] = React.useState("All");
-  const [adminDateFrom, setAdminDateFrom] = React.useState("");
-  const [adminDateTo, setAdminDateTo] = React.useState("");
-  const doRefresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
-
-  const approvedUsers = users.filter(u => u.status === "approved");
-  const filtered = (filterUser === "all" ? journals : journals.filter(j => j.userId === filterUser))
-    .sort((a,b) => b.createdAt - a.createdAt);
-
-  const j = selected ? journals.find(x => x.id === selected) : null;
-  const userName = j ? (users.find(u => u.id === j.userId)?.name || "Unknown") : "";
-
-  const submitComment = () => {
-    if (!comment.trim()) return;
-    patchJournal(selected, { adminComment: comment.trim(), adminCommentAt: Date.now(), adminSeen: true });
-    setComment(""); setSelected(null);
-  };
-
-  const markSeen = id => patchJournal(id, { adminSeen: true });
-
-  const resultColor = r => r === "Win" ? C.green : r === "Loss" ? C.red : C.gold;
-
-  if (j) return (
-    <div>
-      <button onClick={() => { setSelected(null); setComment(""); }} style={{ background: "transparent", color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", marginBottom: 20, display: "block" }}>← Back to All Journals</button>
-      <div style={{ background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.white, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 4 }}>Entry by {userName}</div>
-            <h3 style={{ fontFamily: S, fontSize: 20, fontWeight: 700 }}>{j.title}</h3>
-            <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{new Date(j.createdAt).toLocaleDateString("en-ZA", { year:"numeric", month:"long", day:"numeric" })}</div>
-          </div>
-          <span style={{ background: resultColor(j.result) + "20", color: resultColor(j.result), border: "1px solid " + resultColor(j.result) + "40", padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700 }}>{j.result}</span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 18 }}>
-          {[["Pair", j.pair], ["Direction", j.direction], ["Risk (Pips)", j.risk||"—"], ["Gain (Pips)", j.gain||"—"], ["P&L", j.pnl||"—"]].map(([k,v]) => (
-            <div key={k} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: 9, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 3 }}>{k}</div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Analysis</div>
-          <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{j.analysis}</p>
-        </div>
-        {!j._imgLoaded && !(j.images && j.images.length) && !j.image && (
-          <div style={{ fontSize: 12, color: C.grey, marginBottom: 14 }}>Loading charts…</div>
-        )}
-        {((j.images && j.images.length > 0) || j.image) && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 8 }}>Charts ({(j.images && j.images.length) || 1}) — click to zoom</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 10 }}>
-              {(j.images && j.images.length > 0 ? j.images : [j.image]).map((img, imgIdx) => (
-                <div key={imgIdx} style={{ position: "relative", cursor: "zoom-in", borderRadius: 10, overflow: "hidden", border: "1px solid " + C.border }}
-                  onClick={() => {
-                    const ov = document.createElement("div");
-                    ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.93);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;";
-                    const im = document.createElement("img");
-                    im.src = img;
-                    im.style.cssText = "max-width:94vw;max-height:94vh;object-fit:contain;border-radius:8px;box-shadow:0 0 80px rgba(0,0,0,.8);";
-                    ov.appendChild(im);
-                    ov.onclick = () => document.body.removeChild(ov);
-                    document.body.appendChild(ov);
-                  }}>
-                  <img src={img} alt={"chart "+(imgIdx+1)} style={{ width: "100%", height: 200, objectFit: "cover", display: "block", transition: "transform .2s" }}
-                    onMouseEnter={e => e.target.style.transform="scale(1.04)"}
-                    onMouseLeave={e => e.target.style.transform="scale(1)"} />
-                  <div style={{ position: "absolute", bottom: 6, right: 8, background: "rgba(0,0,0,.65)", color: "#fff", fontSize: 10, padding: "2px 7px", borderRadius: 4 }}>🔍</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {j.lesson && <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase", marginBottom: 6 }}>Lesson Learned</div>
-          <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.lesson}</p>
-        </div>}
-        {j.adminComment && (
-          <div style={{ background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.2)", borderRadius: 10, padding: "14px 16px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 6 }}>Your Previous Comment:</div>
-            <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{j.adminComment}</p>
-          </div>
-        )}
-        <div style={{ marginTop: 20 }}>
-          <label>{j.adminComment ? "Update Your Comment" : "Add Coach Comment (only visible to this student)"}</label>
-          <textarea value={comment || j.adminComment || ""} onChange={e => setComment(e.target.value)}
-            placeholder="Write your feedback, advice or encouragement for this trade…"
-            style={{ height: 100, resize: "vertical", background: "#FFFFFF", border: "1.5px solid " + C.border, borderRadius: 10, padding: "10px 12px", color: C.white, fontSize: 13, outline: "none", fontFamily: D }} />
-          <Btn onClick={submitComment} sz="md">Send Comment to {userName}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.white, textTransform: "uppercase" }}>All Student Journals</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={doRefresh} style={{ background: "transparent", color: refreshing ? C.faint : C.gold, border: "1px solid " + C.border, borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>{refreshing ? "Refreshing..." : "↻ Refresh"}</button>
-          <select value={filterUser} onChange={e => { setFilterUser(e.target.value); setShowCalendar(false); setShowAdminAnalytics(false); }} style={{ background: C.card, border: "1px solid " + C.border, color: C.white, borderRadius: 8, padding: "6px 12px", fontSize: 12 }}>
-            <option value="all">All Students</option>
-            {approvedUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          {filterUser !== "all" && (
-            <>
-              <button onClick={() => { setShowAdminAnalytics(p => !p); setShowCalendar(false); }}
-                style={{ background: showAdminAnalytics ? C.goldDim : C.surf, border: "1px solid " + (showAdminAnalytics ? C.gold + "50" : C.border), color: showAdminAnalytics ? C.gold : C.grey, borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                📊 Analytics
-              </button>
-              <button onClick={() => setShowCalendar(p => !p)} style={{ background: showCalendar ? C.goldDim : "transparent", color: C.gold, border: "1px solid " + C.gold + "50", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                📅 {showCalendar ? "Hide Calendar" : "View P&L Calendar"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      {showCalendar && filterUser !== "all" && (
-        <div style={{ marginBottom: 28, background: C.card, border: "1.5px solid " + C.border, borderRadius: 16, padding: "18px 20px" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.gold, marginBottom: 4 }}>
-            {approvedUsers.find(u => u.id === filterUser)?.name || ""} — P&L Calendar
-          </div>
-          <PnlCalendar journals={journals} userId={filterUser} />
-        </div>
-      )}
-      {filtered.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No journal entries found.</p>}
-      {/* Admin Analytics Panel */}
-      {showAdminAnalytics && (() => {
-        const sName = filterUser !== "all" ? (approvedUsers.find(u=>u.id===filterUser)?.name||"Student") : null;
-        const toNum = j => { const n=parseFloat(String(j.pnl||"0").replace(/[^0-9.-]/g,"")); return isNaN(n)?0:n; };
-        const allE = journals.filter(j => {
-          if (filterUser !== "all" && j.userId !== filterUser) return false;
-          if (adminDateFrom && j.tradeDate && j.tradeDate < adminDateFrom) return false;
-          if (adminDateTo && j.tradeDate && j.tradeDate > adminDateTo) return false;
-          return true;
-        });
-        const ents = adminAnalyticsType==="Live" ? allE.filter(j=>(j.tradeType||"Live Trade")==="Live Trade") : adminAnalyticsType==="Backtest" ? allE.filter(j=>j.tradeType==="Backtest") : allE;
-        const wins=ents.filter(j=>j.result==="Win");
-        const losses=ents.filter(j=>j.result==="Loss");
-        const bes=ents.filter(j=>j.result==="BE");
-        const wr2=ents.length?Math.round((wins.length/ents.length)*100):0;
-        const totalPnl=ents.reduce((s,j)=>s+toNum(j),0);
-        const winPnl=wins.reduce((s,j)=>s+toNum(j),0);
-        const lossPnl=Math.abs(losses.reduce((s,j)=>s+toNum(j),0));
-        const pf=lossPnl>0?(winPnl/lossPnl).toFixed(2):winPnl>0?"∞":"—";
-        const rrVals=ents.filter(j=>j.risk&&j.gain&&parseFloat(j.risk)>0).map(j=>parseFloat(j.gain)/parseFloat(j.risk));
-        const avgRR=rrVals.length?(rrVals.reduce((a,b)=>a+b,0)/rrVals.length).toFixed(2):null;
-        const sorted=ents.slice().sort((a,b)=>a.createdAt-b.createdAt);
-        let curS=0,bestS=0,curL=0,worstS=0; sorted.forEach(j=>{if(j.result==="Win"){curS++;bestS=Math.max(bestS,curS);curL=0;}else if(j.result==="Loss"){curL++;worstS=Math.max(worstS,curL);curS=0;}else{curS=0;curL=0;}});
-        let peak=0,run=0,maxDD=0; sorted.forEach(j=>{run+=toNum(j);peak=Math.max(peak,run);maxDD=Math.max(maxDD,peak-run);});
-        const recov=maxDD>0?(totalPnl/maxDD).toFixed(2):"—";
-        const tradeDays=[...new Set(ents.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-        const winDays=[...new Set(wins.filter(j=>j.tradeDate).map(j=>j.tradeDate))];
-        const cons=tradeDays.length?Math.round((winDays.length/tradeDays.length)*100):0;
-        const cBy=(key,fw)=>{const m={};(fw?wins:ents).forEach(j=>{const v=j[key];if(v)m[v]=(m[v]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
-        const DAYS_=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-        const dw_={},dt_={}; ents.forEach(j=>{if(!j.tradeDate)return;const d=DAYS_[new Date(j.tradeDate).getDay()];dt_[d]=(dt_[d]||0)+1;if(j.result==="Win")dw_[d]=(dw_[d]||0)+1;});
-        const dayRank=Object.entries(dt_).map(([d,t])=>({d,t,wr:Math.round(((dw_[d]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        const hw_={},ht_={}; ents.forEach(j=>{if(!j.entryTime)return;const h=parseInt(j.entryTime.split(":")[0]);const lbl=(h%12||12)+":00"+(h<12?" AM":" PM");ht_[lbl]=(ht_[lbl]||0)+1;if(j.result==="Win")hw_[lbl]=(hw_[lbl]||0)+1;});
-        const hourRankA=Object.entries(ht_).map(([h,t])=>({h,t,wr:Math.round(((hw_[h]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        const mw_={},mt_={}; ents.forEach(j=>{if(!j.mood)return;mt_[j.mood]=(mt_[j.mood]||0)+1;if(j.result==="Win")mw_[j.mood]=(mw_[j.mood]||0)+1;});
-        const moodRankA=Object.entries(mt_).map(([m,t])=>({m,t,wr:Math.round(((mw_[m]||0)/t)*100)})).sort((a,b)=>b.wr-a.wr);
-        const SC=(label,val,sub,col)=>(
-          <div style={{background:C.bg,border:"1px solid "+C.border,borderRadius:10,padding:"11px 13px"}}>
-            <div style={{fontSize:10,fontWeight:600,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:4}}>{label}</div>
-            <div style={{fontSize:18,fontWeight:700,color:col||C.white}}>{val}</div>
-            {sub&&<div style={{fontSize:10,color:C.faint,marginTop:2}}>{sub}</div>}
-          </div>
-        );
-        const RL2=(data,title)=>{
-          const max=data[0]?.[1]||1;
-          return (<div style={{background:C.bg,border:"1px solid "+C.border,borderRadius:10,padding:"12px 14px"}}>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:".1em",color:C.grey,textTransform:"uppercase",marginBottom:8}}>{title}</div>
-            {data.slice(0,5).map(([k,v],i)=>(
-              <div key={k} style={{marginBottom:6}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}>
-                  <span style={{color:i===0?C.gold:i===data.length-1&&data.length>2?C.red:C.dim,fontWeight:i===0?700:400}}>{i===0?"🏆 ":i===data.length-1&&data.length>2?"📉 ":""}{k}</span>
-                  <span style={{color:C.grey,fontSize:11}}>{v}</span>
-                </div>
-                <div style={{height:3,background:C.surf,borderRadius:2,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:(v/max*100)+"%",background:i===0?C.gold:i===data.length-1&&data.length>2?C.red:"#6B9FFF",borderRadius:2}}/>
-                </div>
-              </div>
-            ))}
-            {data.length===0&&<div style={{fontSize:11,color:C.faint}}>No data</div>}
-          </div>);
-        };
-        return (
-          <div style={{background:C.card,border:"1px solid "+C.gold+"30",borderRadius:14,padding:"18px 20px",marginBottom:16}}>
-            {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
-              <div style={{fontSize:13,fontWeight:700,color:C.gold}}>📊 {sName?sName+" — Analytics":"All Students Analytics"}</div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="date" value={adminDateFrom} onChange={e=>setAdminDateFrom(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
-                <span style={{color:C.faint,fontSize:11}}>→</span>
-                <input type="date" value={adminDateTo} onChange={e=>setAdminDateTo(e.target.value)} style={{background:C.surf,border:"1px solid "+C.border,borderRadius:7,padding:"4px 8px",color:C.dim,fontSize:11,outline:"none"}}/>
-                {(adminDateFrom||adminDateTo)&&<button onClick={()=>{setAdminDateFrom("");setAdminDateTo("");}} style={{background:"transparent",border:"none",color:C.grey,cursor:"pointer",fontSize:13}}>✕</button>}
-                {["All","Live","Backtest"].map(t=>(
-                  <button key={t} onClick={()=>setAdminAnalyticsType(t)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:"1px solid",background:adminAnalyticsType===t?(t==="Live"?"rgba(26,188,156,.15)":t==="Backtest"?"rgba(107,159,255,.15)":C.goldDim):"transparent",color:adminAnalyticsType===t?(t==="Live"?"#1abc9c":t==="Backtest"?"#6B9FFF":C.gold):C.grey,borderColor:adminAnalyticsType===t?(t==="Live"?"#1abc9c50":t==="Backtest"?"#6B9FFF50":C.gold+"50"):C.border}}>{t}</button>
-                ))}
-              </div>
-            </div>
-            {/* KPIs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:8,marginBottom:14}}>
-              {SC("Win Rate",wr2+"%",wins.length+"W "+losses.length+"L "+bes.length+"BE",wr2>=60?"#1abc9c":wr2>=45?C.gold:C.red)}
-              {SC("Avg RR",avgRR?"1:"+avgRR:"—","risk:reward",C.gold)}
-              {SC("Total P&L",(totalPnl>=0?"+":"")+totalPnl.toFixed(0),"net",totalPnl>=0?"#1abc9c":C.red)}
-              {SC("Profit Factor",pf,"W÷L",parseFloat(pf)>=1.5?"#1abc9c":parseFloat(pf)>=1?C.gold:C.red)}
-              {SC("Win Streak",bestS,"best",C.dim)}
-              {SC("Max DD","-"+maxDD.toFixed(0),"Recov: "+recov+"x",maxDD>100?C.red:C.gold)}
-              {SC("Consistency",cons+"%",winDays.length+"/"+tradeDays.length+" days",cons>=60?"#1abc9c":cons>=40?C.gold:C.red)}
-              {SC("Entries",ents.length,tradeDays.length+" days",C.white)}
-            </div>
-            {/* Rankings */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>
-              {RL2(cBy("pair",false),"Best vs Worst Pair")}
-              {RL2(cBy("killZone",false),"Best vs Worst Kill Zone")}
-              {RL2(cBy("tradeModel",false),"Best vs Worst Model")}
-              {RL2(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})?Object.entries(wins.reduce((m,j)=>{(j.confluences||[]).forEach(c=>{m[c]=(m[c]||0)+1;});return m;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5):[],"Top Confluences")}
-              {RL2(dayRank.map(({d,t,wr})=>[d+" ("+wr+"%)",t]),"Best vs Worst Day")}
-              {RL2(hourRankA.map(({h,t,wr})=>[h+" ("+wr+"%)",t]),"Best Entry Hour")}
-              {RL2(moodRankA.map(({m,t,wr})=>[m+" ("+wr+"%)",t]),"Best vs Worst Mood")}
-            </div>
-          </div>
-        );
-      })()}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {filtered.map(j => {
-          const uname = users.find(u => u.id === j.userId)?.name || "Unknown";
-          return (
-            <div key={j.id}
-              style={{ background: C.card, border: "1.5px solid " + (!j.adminSeen ? C.gold + "50" : C.border), borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "border-color .2s" }}
-              onClick={() => { setSelected(j.id); markSeen(j.id); setComment(j.adminComment || ""); if (fetchJournalImages && !j._imgLoaded) fetchJournalImages(j.id); }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
-              onMouseLeave={e => e.currentTarget.style.borderColor = !j.adminSeen ? C.gold + "50" : C.border}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    {!j.adminSeen && <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.gold, display: "inline-block", flexShrink: 0 }} />}
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.gold, letterSpacing: ".08em" }}>{uname}</span>
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.white, marginBottom: 2 }}>{j.title}</div>
-                  <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{j.pair} · {j.direction} · {new Date(j.createdAt).toLocaleDateString("en-ZA")}</div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                  <span style={{ background: (j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold)+"20", color: (j.result==="Win"?C.green:j.result==="Loss"?C.red:C.gold), padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{j.result}</span>
-                  {j.adminComment && <span style={{ fontSize: 10, color: C.grey }}>✓ Commented</span>}
-                  {!j.adminComment && <span style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>Needs review</span>}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-
 /* ── MEMBERSHIP TAB ──────────────────────────────────────────────────────── */
 const LEVELS = ["Advanced", "Private Mentorship", "1v1", "Beginner", "Free"];
 const LEVEL_COLORS = {
@@ -3438,7 +2248,7 @@ const LEVEL_COLORS = {
   "Free":               { bg: "rgba(76,184,128,.15)", border: "rgba(76,184,128,.4)", text: "#4CB880" },
 };
 
-function MembershipTab({ users, patchUser, courses, patchCourse, lastWatch, journals }) {
+function MembershipTab({ users, patchUser, courses, patchCourse, lastWatch }) {
   const [search, setSearch] = React.useState("");
   const approved = users.filter(u => u.status === "approved").filter(u => !search.trim() || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
 
@@ -3502,7 +2312,6 @@ function MembershipTab({ users, patchUser, courses, patchCourse, lastWatch, jour
                 <div style={{ fontSize: 12, color: C.grey }}>{u.email}</div>
                 <div style={{ display: "flex", gap: 16, marginTop: 4, flexWrap: "wrap" }}>
                   {lastWatch && lastWatch[u.id] && (() => { const [ts, vid] = lastWatch[u.id].split("|"); const d = new Date(ts); const valid = !isNaN(d.getTime()) && d.getFullYear() > 1971; return valid ? <span style={{ fontSize: 11, color: C.grey }}>▶ Last watched: <strong style={{ color: C.dim }}>{vid}</strong> · {d.toLocaleDateString("en-ZA")}</span> : null; })()}
-                  {(() => { const lj = journals.filter(j => j.userId === u.id); const last = lj.length ? Math.max(...lj.map(j=>j.createdAt)) : null; return last ? <span style={{ fontSize: 11, color: C.grey }}>📓 Last journalled: <strong style={{ color: (Date.now()-last > 7*24*60*60*1000) ? C.red : C.dim }}>{new Date(last).toLocaleDateString("en-ZA")}</strong></span> : <span style={{ fontSize: 11, color: C.faint }}>📓 Never journalled</span>; })()}
                 </div>
                 {lastWatch[u.id] && (() => {
                   const [ts, vid] = lastWatch[u.id].split("|");
@@ -4777,7 +3586,7 @@ function App() {
   const [courses,  setCourses]  = React.useState([]);
   const [sections, setSections] = React.useState([]);
   const [videos,   setVideos]   = React.useState([]);
-  const [journals, setJournals] = React.useState([]);
+
   const [comments,  setComments]  = React.useState([]);
   const [homework,  setHomework]  = React.useState([]);
   const [hwSubmits, setHwSubmits] = React.useState([]);
@@ -4794,10 +3603,6 @@ function App() {
   // ── Supabase helpers ──
   const SB_URL = "https://qpjnzhmuwklvqmevlxjm.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwam56aG11d2tsdnFtZXZseGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjQ1ODUsImV4cCI6MjA4OTg0MDU4NX0.OlFw50GiD4vNzrLZ2-dFXVdAD8OxG1-g0xP_erR_n98";
-  // Lightweight column list for journal LIST views — intentionally excludes the
-  // heavy "image"/"images" columns so opening the portal doesn't re-download every
-  // base64 screenshot (the cause of egress blowout). Images load on demand per trade.
-  const J_COLS = "id,user_id,user_name,title,pair,direction,risk,gain,result,pnl,analysis,lesson,trade_type,trade_model,kill_zone,mood,entry_time,confluences,trade_date,currency,admin_comment,admin_comment_at,admin_seen,created_at";
    const sb = async (path, opts={}) => {
      const controller = new AbortController();
      const timer = setTimeout(() => controller.abort(), 10000);
@@ -4823,12 +3628,11 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, j, com, hw, hws] = await Promise.all([
+      const [u, c, sec, v, com, hw, hws] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
         sb("videos?order=created_at.asc&select=id,course_id,section_id,title,url,description,notes,pdf_url,pdf_name,sort_order,created_at"),
-        sb("journals?order=created_at.desc&limit=100&select=" + J_COLS),
         sb("comments?order=created_at.asc&select=id,video_id,user_id,user_name,text,parent_id,is_admin,timestamp,created_at"),
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
@@ -4837,7 +3641,6 @@ function App() {
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false, parentId:x.parent_id||null })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
-      if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
       if (com) setComments(com.map(x => ({ id:x.id, videoId:x.video_id, userId:x.user_id, userName:x.user_name, text:x.text, parentId:x.parent_id||null, isAdmin:x.is_admin||false, timestamp:x.timestamp||null, createdAt:x.created_at })));
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       if (hw) setHomework(hw.map(x => ({ id:x.id, title:x.title, description:x.description, dueDate:x.due_date, dueTime:x.due_time||null, createdAt:x.created_at, feedback:x.feedback||null })));
@@ -4848,32 +3651,6 @@ function App() {
     if (showSpinner) setLoading(false);
   };
   React.useEffect(() => { loadAll(true); }, []);
-
-  // ── Fetch only this user's journals (called after login) ──
-  const fetchUserJournals = async (userId) => {
-    try {
-      const data = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500&select=" + J_COLS);
-      if (data && data.length > 0) {
-        setJournals(prev => {
-          const map = {};
-          prev.forEach(p => map[p.id] = p);
-          data.forEach(x => map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at });
-          return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
-        });
-      }
-    } catch(e) { console.log("fetchUserJournals error:", e.message); }
-  };
-
-  // ── Fetch images for ONE journal on demand (keeps list views lightweight) ──
-  const fetchJournalImages = async (id) => {
-    try {
-      const r = await sb("journals?id=eq." + id + "&select=image,images");
-      const row = r && r[0];
-      if (!row) return;
-      const imgs = (row.images && row.images.length) ? row.images : (row.image ? [row.image] : []);
-      setJournals(prev => prev.map(p => p.id === id ? { ...p, image: row.image || (imgs[0]||null), images: imgs, _imgLoaded: true } : p));
-    } catch(e) { console.log("fetchJournalImages error:", e.message); }
-  };
 
   // ── Setters that also persist to Supabase ──
   const saveUsers = async (newUsers) => {
@@ -5035,50 +3812,12 @@ function App() {
     setComments(prev => prev.filter(c => c.id !== id && c.parentId !== id));
   };
 
-  const loadJournalsDB = async () => {
-    const j = await sb("journals?order=created_at.desc&limit=2000&select=" + J_COLS).catch(()=>null);
-    if (j) setJournals(j.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
-  };
-  const addJournalDB = async (j) => {
-    await sb("journals", { method: "POST", prefer: "return=minimal", body: { id:j.id, user_id:j.userId, user_name:j.userName, title:j.title, pair:j.pair, direction:j.direction, risk:j.risk||null, gain:j.gain||null, result:j.result, pnl:j.pnl||null, analysis:j.analysis, lesson:j.lesson||null, image:j.image||null, images:j.images||[], trade_type:j.tradeType||"Live Trade", trade_model:j.tradeModel||null, kill_zone:j.killZone||null, mood:j.mood||null, entry_time:j.entryTime||null, confluences:j.confluences||[], trade_date:j.tradeDate||null, currency:j.currency||"ZAR", admin_comment:null, admin_comment_at:null, admin_seen:false, created_at:j.createdAt } });
-    setJournals(prev => [j, ...prev]);
-  };
-  const deleteJournalDB = async (id) => {
-    await sb("journals?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
-    setJournals(prev => prev.filter(j => j.id !== id));
-  };
-  const patchJournal = async (id, patch) => {
-    const dbPatch = {};
-    if (patch.adminComment !== undefined) dbPatch.admin_comment = patch.adminComment;
-    if (patch.adminCommentAt !== undefined) dbPatch.admin_comment_at = patch.adminCommentAt;
-    if (patch.adminSeen !== undefined) dbPatch.admin_seen = patch.adminSeen;
-    await sb("journals?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
-    setJournals(prev => prev.map(j => j.id === id ? { ...j, ...patch } : j));
-  };
-
-  const loadUserJournals = async (userId) => {
-    try {
-      const j = await sb("journals?user_id=eq." + userId + "&order=created_at.desc&limit=500&select=" + J_COLS);
-      if (j && j.length > 0) setJournals(prev => {
-        const map = {}; prev.forEach(p => { map[p.id] = p; });
-        j.forEach(x => { map[x.id] = { id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at }; });
-        return Object.values(map).sort((a,b) => b.createdAt - a.createdAt);
-      });
-    } catch(e) { console.log("loadUserJournals:", e); }
-  };
-
   const login = async (email, pass, setMsg) => {
     const u = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
     if (!u) { setMsg("Incorrect email or password."); return; }
 
     setMe(u);
     setScreen(u.status === "approved" ? "portal" : u.status === "declined" ? "declined" : "pending");
-    // Load only this user's journals to reduce egress
-    if (u.status === "approved") {
-      sb("journals?user_id=eq." + u.id + "&order=created_at.desc&limit=500&select=" + J_COLS).then(uj => {
-        if (uj) setJournals(uj.map(x => ({ id:x.id, userId:x.user_id, userName:x.user_name, title:x.title, pair:x.pair, direction:x.direction, risk:x.risk||"", gain:x.gain||"", result:x.result, pnl:x.pnl||"", analysis:x.analysis, lesson:x.lesson||"", image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), tradeType:x.trade_type||"Live Trade", tradeModel:x.trade_model||"", killZone:x.kill_zone||"", mood:x.mood||"", entryTime:x.entry_time||"", confluences:x.confluences||[], tradeDate:x.trade_date||null, adminComment:x.admin_comment, adminCommentAt:x.admin_comment_at, adminSeen:x.admin_seen||false, createdAt:x.created_at })));
-      }).catch(()=>{});
-    }
   };
 
   const register = async (name, email, pass, setMsg) => {
@@ -5112,8 +3851,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} journals={journals} patchJournal={patchJournal} homework={homework} addHomework={addHomeworkDB} patchHomework={patchHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} loadJournalsDB={loadJournalsDB} onLogout={logout} loadAll={loadAll} fetchJournalImages={fetchJournalImages} />}
-      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} journals={journals} addJournal={addJournalDB} deleteJournal={deleteJournalDB} fetchJournalImages={fetchJournalImages} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} homework={homework} addHomework={addHomeworkDB} patchHomework={patchHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
