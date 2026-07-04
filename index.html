@@ -103,12 +103,12 @@ const C = {
   green:   "#1A7A4A",
 };
 
-const S = "'Cinzel',Georgia,serif";
-const D = "'Raleway',system-ui,sans-serif";
+const S = "'Fraunces','Georgia',serif";
+const D = "'Inter',system-ui,-apple-system,sans-serif";
 
 /* ── GLOBAL CSS ──────────────────────────────────────────────────────────── */
 const GS = `
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;600;700;900&family=Raleway:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%;letter-spacing:.01em}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:${C.gold};border-radius:4px}
@@ -118,7 +118,7 @@ input:focus,select:focus,textarea:focus{border-color:#C9A84C;box-shadow:0 0 0 3p
 input::placeholder,textarea::placeholder{color:#A8A09A}
 select option{background:${C.navy};color:${C.white}}
 button{font-family:${D};cursor:pointer;border:none;outline:none;letter-spacing:.05em}
-label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:${C.grey};margin-bottom:7px;font-family:'Cinzel',serif}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:${C.grey};margin-bottom:7px;font-family:${D}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -1606,100 +1606,38 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
       {/* ══ HOME ══ */}
       {!showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
-          {/* ── HERO ── */}
-          <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #EAE4D8 0%, #F5F1EB 60%)" }}>
-            {/* Background video loop */}
-            <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.08, pointerEvents: "none" }}
-              src="https://assets.mixkit.co/videos/preview/mixkit-trading-financial-chart-close-up-4486-large.mp4" />
-            <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(201,168,76,.13) 0%, transparent 65%)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0 }}><Rule /></div>
-            {/* Decorative circle */}
-            <div style={{ position: "absolute", right: -80, top: -80, width: 400, height: 400, borderRadius: "50%", border: "1px solid rgba(201,168,76,.07)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", right: -40, top: -40, width: 280, height: 280, borderRadius: "50%", border: "1px solid rgba(201,168,76,.05)", pointerEvents: "none" }} />
-
-            <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 900, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "60px 64px 56px" : "60px 24px 56px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-              <div className="fu" style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
-                <Logo w={180} />
-              </div>
-
-              <div className="fu" style={{ animationDelay: ".1s" }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".35em", color: C.gold, textTransform: "uppercase", marginBottom: 16 }}>Member Portal</p>
-                <h1 style={{ fontFamily: S, fontSize: "clamp(32px,6vw,58px)", fontWeight: 700, lineHeight: 1.1, marginBottom: 16 }}>
-                  Welcome back,<br />
-                  <em style={{ fontStyle: "italic", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                    {user.name.split(" ")[0]}.
-                  </em>
+          {/* ── WELCOME HEADER ── */}
+          <div style={{ borderBottom: "1px solid " + C.border, background: C.surf }}>
+            <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 48px 28px" : "40px 24px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".3em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Member Portal</p>
+                <h1 style={{ fontFamily: S, fontSize: "clamp(26px,4vw,40px)", fontWeight: 600, lineHeight: 1.1, margin: 0 }}>
+                  Welcome back, <em style={{ fontStyle: "italic", color: C.gold }}>{user.name.split(" ")[0]}</em>
                 </h1>
-                <p style={{ color: C.grey, fontSize: 15, maxWidth: 480, margin: "0 auto 36px", lineHeight: 1.8 }}>
-                  You've taken the first step toward financial freedom. Your courses, lessons and resources are all here — ready when you are.
-                </p>
               </div>
-
-              {/* Forex Factory link */}
-              <a href="https://www.forexfactory.com/calendar?day=today" target="_blank" rel="noopener noreferrer"
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(217,96,96,.12)", border: "1px solid rgba(217,96,96,.35)", borderRadius: 10, padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "#E88080", textDecoration: "none", marginBottom: 20, letterSpacing: ".03em" }}>
-                🔴 View Today's Red Folder USD News — Forex Factory
-              </a>
-
-            {/* Stats bar */}
-              <div className="fu" style={{ display: "flex", gap: 0, background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 16, overflow: "hidden", animationDelay: ".18s", width: "100%", maxWidth: 500 }}>
-                {[
-                  { n: accessibleCourses.length, l: "Courses", icon: "🎓" },
-                  { n: videos.length, l: "Lessons", icon: "▶" },
-                  { n: "200+", l: "Traders", icon: "👥" },
-                ].map(({ n, l, icon }, i) => (
-                  <div key={l} style={{ flex: 1, padding: "20px 10px", textAlign: "center", borderRight: i < 2 ? "1px solid rgba(201,168,76,.12)" : "none" }}>
-                    <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-                    <div style={{ fontFamily: S, fontSize: 26, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{n}</div>
-                    <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 4 }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}><Rule /></div>
-          </div>
-
-          {/* ── WELCOME MESSAGE ── */}
-          <div style={{ background: C.surf, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 900, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 64px" : "40px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
-              {[
-                { icon: "🏆", title: "You're Among the Elite", body: "Less than 5% of traders commit to structured education. By being here, you have already separated yourself from the crowd." },
-                { icon: "📈", title: "Proven Strategy", body: "The TA FX methodology is built on real market experience — price action, structure and discipline that actually works." },
-                { icon: "🤝", title: "Community & Support", body: "Access to 200+ active traders, live classes twice a week, and direct mentorship from Taaha. You're never trading alone." },
-              ].map(({ icon, title, body }) => (
-                <div key={title} style={{ background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.1)", borderRadius: 14, padding: "22px 20px" }}>
-                  <div style={{ fontSize: 28, marginBottom: 12 }}>{icon}</div>
-                  <div style={{ fontFamily: S, fontSize: 17, fontWeight: 700, color: C.white, marginBottom: 8 }}>{title}</div>
-                  <div style={{ fontSize: 13, color: C.grey, lineHeight: 1.7 }}>{body}</div>
+              <div style={{ display: "flex", gap: 28 }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontFamily: S, fontSize: 28, fontWeight: 600, color: C.gold, lineHeight: 1 }}>{accessibleCourses.length}</div>
+                  <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 5 }}>Courses</div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── RESULTS / TESTIMONIALS ── */}
-          <div style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 900, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "48px 64px" : "48px 24px" }}>
-              <div style={{ textAlign: "center", marginBottom: 32 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".25em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>Student Results</p>
-                <h2 style={{ fontFamily: S, fontSize: "clamp(24px,4vw,36px)", fontWeight: 700 }}>What Our Graduates Say</h2>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
-                {[
-                  { name: "Matteo", result: "Private Mentorship Trader", quote: "The structure and discipline I learned changed everything. I finally understand how the market moves.", stars: 5 },
-                  { name: "Anees", result: "Passed funded account challenge", quote: "TA FX gave me a real edge. The price action strategy is unlike anything else I've studied.", stars: 5 },
-                  { name: "Lorelei", result: "First profitable month after 2 years of losses", quote: "I wish I found this course sooner. The community alone is worth every cent.", stars: 5 },
-                  { name: "Adam", result: "Full-time trader within 6 months", quote: "Taaha's mentorship is unmatched. He actually cares about your success and it shows.", stars: 5 },
-                ].map(({ name, result, quote, stars }) => (
-                  <div key={name} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 20px", position: "relative" }}>
-                    <div style={{ color: C.gold, fontSize: 14, marginBottom: 10, letterSpacing: 2 }}>{"★".repeat(stars)}</div>
-                    <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.75, marginBottom: 16, fontStyle: "italic" }}>"{quote}"</p>
-                    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: C.white }}>{name}</div>
-                      <div style={{ fontSize: 12, color: C.gold, marginTop: 2 }}>{result}</div>
-                    </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontFamily: S, fontSize: 28, fontWeight: 600, color: C.gold, lineHeight: 1 }}>{videos.filter(v => accessibleCourses.some(c => c.id === v.courseId)).length}</div>
+                  <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 5 }}>Lessons</div>
+                </div>
+                {(user.watchedVideos||[]).length > 0 && (
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontFamily: S, fontSize: 28, fontWeight: 600, color: C.green, lineHeight: 1 }}>{(user.watchedVideos||[]).length}</div>
+                    <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginTop: 5 }}>Watched</div>
                   </div>
-                ))}
+                )}
               </div>
+            </div>
+            {/* Today's news link */}
+            <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "0 48px 24px" : "0 24px 24px" }}>
+              <a href="https://www.forexfactory.com/calendar?day=today" target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(217,96,96,.10)", border: "1px solid rgba(217,96,96,.30)", borderRadius: 9, padding: "8px 14px", fontSize: 12, fontWeight: 600, color: "#C0504D", textDecoration: "none" }}>
+                🔴 Today's Red Folder USD News — Forex Factory
+              </a>
             </div>
           </div>
 
