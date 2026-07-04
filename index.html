@@ -785,8 +785,9 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
 
   const pickBunny = (bv) => {
     // Fill the form from a chosen Bunny video: embed URL + title.
+    // Always overwrite the title so switching videos updates it too.
     setVU(bv.embedUrl);
-    if (!vT.trim()) setVT(bv.title || "");
+    setVT(bv.title || "");
     setBunnyErr(""); 
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
