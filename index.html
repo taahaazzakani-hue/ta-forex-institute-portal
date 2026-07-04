@@ -746,6 +746,7 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   const [vErr, setVErr] = React.useState("");
   const [dragVid, setDragVid] = React.useState(null);
   const [dragOverVid, setDragOverVid] = React.useState(null);
+  const [dragOverSec, setDragOverSec] = React.useState(null);
 
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
@@ -756,25 +757,73 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
     setVT(""); setVU(""); setVD(""); setVErr("");
   };
 
-  const handleVidDrop = (sectionId, droppedOnId) => {
-    if (!dragVid || dragVid === droppedOnId) return;
-    // Sort by explicit sort_order first, then use array index as stable fallback
-    const sv = videos.filter(v => v.sectionId === sectionId)
-      .map((v, i) => ({ ...v, _idx: i }))
-      .sort((a,b) => {
-        const ao = a.sortOrder != null ? a.sortOrder : a._idx * 10000;
-        const bo = b.sortOrder != null ? b.sortOrder : b._idx * 10000;
-        return ao - bo;
-      });
-    const from = sv.findIndex(v => v.id === dragVid);
-    const to = sv.findIndex(v => v.id === droppedOnId);
-    if (from === -1 || to === -1) return;
+  const orderedInSection = (sectionId) => videos.filter(v => v.sectionId === sectionId)
+    .map((v, i) => ({ ...v, _idx: i }))
+    .sort((a,b) => {
+      const ao = a.sortOrder != null ? a.sortOrder : a._idx * 10000;
+      const bo = b.sortOrder != null ? b.sortOrder : b._idx * 10000;
+      return ao - bo;
+    });
+
+  // Drop a video ONTO another video. Handles both reordering within a section
+  // and moving into a different section (inserted at the target's position).
+  const handleVidDrop = (targetSectionId, droppedOnId) => {
+    if (!dragVid || dragVid === droppedOnId) { setDragVid(null); setDragOverVid(null); setDragOverSec(null); return; }
+    const moving = videos.find(v => v.id === dragVid);
+    if (!moving) return;
+    const sameSection = moving.sectionId === targetSectionId;
+
+    if (sameSection) {
+      const sv = orderedInSection(targetSectionId);
+      const from = sv.findIndex(v => v.id === dragVid);
+      const to = sv.findIndex(v => v.id === droppedOnId);
+      if (from === -1 || to === -1) return;
+      const reordered = [...sv];
+      const [m] = reordered.splice(from, 1);
+      reordered.splice(to, 0, m);
+      reordered.forEach((v, i) => patchVideo(v.id, { sort_order: i + 1 }));
+    } else {
+      // Moving into a different section: insert at the target video's position.
+      const target = orderedInSection(targetSectionId).filter(v => v.id !== dragVid);
+      const to = target.findIndex(v => v.id === droppedOnId);
+      const reordered = [...target];
+      reordered.splice(to === -1 ? reordered.length : to, 0, { ...moving });
+      // Re-parent the moved video, then renumber the whole target section.
+      const course = sections.find(s => s.id === targetSectionId)?.courseId;
+      reordered.forEach((v, i) => patchVideo(v.id, v.id===dragVid ? { sectionId: targetSectionId, courseId: course, sort_order: i + 1 } : { sort_order: i + 1 }));
+    }
+    setDragVid(null); setDragOverVid(null); setDragOverSec(null);
+  };
+
+  // Drop a video onto a SECTION header/empty area → append to end of that section.
+  const handleSectionDrop = (targetSectionId) => {
+    if (!dragVid) { setDragOverSec(null); return; }
+    const moving = videos.find(v => v.id === dragVid);
+    if (!moving) { setDragOverSec(null); return; }
+    if (moving.sectionId === targetSectionId) { setDragOverSec(null); setDragVid(null); return; }
+    const target = orderedInSection(targetSectionId).filter(v => v.id !== dragVid);
+    const course = sections.find(s => s.id === targetSectionId)?.courseId;
+    [...target, { ...moving }].forEach((v, i) => patchVideo(v.id, v.id===dragVid ? { sectionId: targetSectionId, courseId: course, sort_order: i + 1 } : { sort_order: i + 1 }));
+    setDragVid(null); setDragOverVid(null); setDragOverSec(null);
+  };
+
+  // Tap-based reordering (works on mobile, where drag-and-drop does not).
+  const moveVid = (sectionId, vidId, dir) => {
+    const sv = orderedInSection(sectionId);
+    const idx = sv.findIndex(v => v.id === vidId);
+    const swap = idx + dir;
+    if (idx === -1 || swap < 0 || swap >= sv.length) return;
     const reordered = [...sv];
-    const [moved] = reordered.splice(from, 1);
-    reordered.splice(to, 0, moved);
-    // Save clean sequential integers starting from 1
+    [reordered[idx], reordered[swap]] = [reordered[swap], reordered[idx]];
     reordered.forEach((v, i) => patchVideo(v.id, { sort_order: i + 1 }));
-    setDragVid(null); setDragOverVid(null);
+  };
+  // Move a video to a different section (mobile-friendly, appends to end).
+  const moveVidToSection = (vidId, targetSectionId) => {
+    const moving = videos.find(v => v.id === vidId);
+    if (!moving || !targetSectionId || moving.sectionId === targetSectionId) return;
+    const target = orderedInSection(targetSectionId).filter(v => v.id !== vidId);
+    const course = sections.find(s => s.id === targetSectionId)?.courseId;
+    [...target, { ...moving }].forEach((v, i) => patchVideo(v.id, v.id===vidId ? { sectionId: targetSectionId, courseId: course, sort_order: i + 1 } : { sort_order: i + 1 }));
   };
 
   return (
@@ -803,38 +852,70 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
       {courses.map(course => {
         const courseSecs = sections.filter(s => s.courseId === course.id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0));
         const courseVids = videos.filter(v => v.courseId === course.id);
-        if (!courseVids.length) return null;
+        if (!courseVids.length && !courseSecs.length) return null;
         return (
           <div key={course.id} style={{ marginBottom: 28 }}>
-            <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 12, fontWeight: 700 }}>{course.title}</div>
+            <div style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 4, fontWeight: 700 }}>{course.title}</div>
+            <div style={{ fontSize: 10, color: C.faint, marginBottom: 12, letterSpacing: ".05em" }}>USE ▲▼ OR DRAG TO REORDER · USE "MOVE TO…" (OR DRAG ONTO A SECTION NAME) TO MOVE BETWEEN SECTIONS</div>
             {courseSecs.map(sec => {
-              const sv = videos.filter(v => v.sectionId === sec.id).map((v,i)=>({...v,_i:i})).sort((a,b)=>{ const ao=a.sortOrder!=null?a.sortOrder:a._i*10000; const bo=b.sortOrder!=null?b.sortOrder:b._i*10000; return ao-bo; });
-              if (!sv.length) return null;
+              const sv = orderedInSection(sec.id);
+              const isSecDropTarget = dragOverSec === sec.id && dragVid && videos.find(v=>v.id===dragVid)?.sectionId !== sec.id;
               return (
-                <div key={sec.id} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 6 }}>{sec.title}</div>
-                  <div style={{ fontSize: 10, color: C.faint, marginBottom: 6, letterSpacing: ".05em" }}>DRAG TO REORDER</div>
-                  {sv.map(vid => (
+                <div key={sec.id} style={{ marginBottom: 16 }}
+                  onDragOver={e => { if (dragVid) { e.preventDefault(); setDragOverSec(sec.id); } }}
+                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverSec(s => s===sec.id?null:s); }}
+                  onDrop={() => handleSectionDrop(sec.id)}>
+                  <div
+                    style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: isSecDropTarget ? C.gold : C.grey, textTransform: "uppercase", marginBottom: 6,
+                      padding: isSecDropTarget ? "8px 12px" : "4px 0", borderRadius: 8,
+                      border: isSecDropTarget ? "2px dashed "+C.gold : "2px dashed transparent",
+                      background: isSecDropTarget ? C.goldDim : "transparent", transition: "all .15s" }}>
+                    {sec.isFolder ? "📁 " : ""}{sec.title}{isSecDropTarget ? "  ← drop here" : ""} <span style={{ color: C.faint, fontWeight: 400 }}>({sv.length})</span>
+                  </div>
+                  {sv.length === 0 && (
+                    <div style={{ fontSize: 11, color: C.faint, fontStyle: "italic", padding: "8px 16px", border: "1px dashed "+C.border, borderRadius: 8, marginBottom: 6 }}>
+                      {dragVid ? "Drop a video here to move it into this section" : "No videos yet"}
+                    </div>
+                  )}
+                  {sv.map((vid, vidIdx) => {
+                    const otherSecs = courseSecs.filter(s => s.id !== sec.id);
+                    return (
                     <div key={vid.id}
                       draggable
                       onDragStart={() => setDragVid(vid.id)}
                       onDragOver={e => { e.preventDefault(); setDragOverVid(vid.id); }}
                       onDragLeave={() => setDragOverVid(null)}
-                      onDrop={() => handleVidDrop(sec.id, vid.id)}
-                      onDragEnd={() => { setDragVid(null); setDragOverVid(null); }}
+                      onDrop={e => { e.stopPropagation(); handleVidDrop(sec.id, vid.id); }}
+                      onDragEnd={() => { setDragVid(null); setDragOverVid(null); setDragOverSec(null); }}
                       style={{ background: dragOverVid === vid.id ? C.goldDim : C.card,
                         border: "1px solid " + (dragOverVid === vid.id ? C.gold : dragVid === vid.id ? C.border+"80" : C.border),
-                        borderRadius: 10, padding: "11px 16px", marginBottom: 6,
-                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
-                        opacity: dragVid === vid.id ? 0.5 : 1, cursor: "grab", transition: "background .15s" }}>
-                      <span style={{ color: C.faint, fontSize: 16, flexShrink: 0 }}>⠿</span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
+                        borderRadius: 10, padding: "11px 14px", marginBottom: 6,
+                        display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                        opacity: dragVid === vid.id ? 0.5 : 1, transition: "background .15s" }}>
+                      {/* Up/down arrows — mobile-friendly reordering */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                        <button onClick={() => moveVid(sec.id, vid.id, -1)} disabled={vidIdx===0}
+                          style={{ background: C.bg, border: "1px solid "+C.border, borderRadius: 5, width: 26, height: 20, cursor: vidIdx===0?"default":"pointer", color: vidIdx===0?C.faint:C.dim, fontSize: 11, lineHeight: 1, padding: 0 }}>▲</button>
+                        <button onClick={() => moveVid(sec.id, vid.id, 1)} disabled={vidIdx===sv.length-1}
+                          style={{ background: C.bg, border: "1px solid "+C.border, borderRadius: 5, width: 26, height: 20, cursor: vidIdx===sv.length-1?"default":"pointer", color: vidIdx===sv.length-1?C.faint:C.dim, fontSize: 11, lineHeight: 1, padding: 0 }}>▼</button>
+                      </div>
+                      <span style={{ color: C.faint, fontSize: 16, flexShrink: 0, cursor: "grab" }} title="Drag to reorder (desktop)">⠿</span>
+                      <div style={{ minWidth: 120, flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vid.title}</div>
                         {vid.desc && <div style={{ fontSize: 11, color: C.grey, marginTop: 2 }}>{vid.desc}</div>}
                       </div>
+                      {/* Move to another section — works on mobile */}
+                      {otherSecs.length > 0 && (
+                        <select value="" onChange={e => { if (e.target.value) moveVidToSection(vid.id, e.target.value); }}
+                          style={{ fontSize: 11, padding: "5px 8px", borderRadius: 7, border: "1px solid "+C.border, background: C.bg, color: C.dim, maxWidth: 150, flexShrink: 0 }}>
+                          <option value="">Move to…</option>
+                          {otherSecs.map(s => <option key={s.id} value={s.id}>{s.isFolder?"📁 ":""}{s.title}</option>)}
+                        </select>
+                      )}
                       <Btn v="danger" onClick={() => deleteVideo(vid.id)} sz="sm">Delete</Btn>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })}
