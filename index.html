@@ -1448,19 +1448,21 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
 }
 
 
-function Portal({ layout, toggleLayout, user, courses, sections, videos, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, onLogout }) {
+function Portal({ layout, toggleLayout, user, courses, sections, videos, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, toggleWatched, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
   const [openS, setOpenS]   = useState({});
+  const [vidSearch, setVidSearch] = useState("");
 
+  const watchedSet = new Set(user.watchedVideos || []);
   const goHome = () => { setView("home"); setCourse(null); setVideo(null); };
   const openCourse = c => {
     setCourse(c); setVideo(null); setView("course");
     const o = {}; sections.filter(s => s.courseId === c.id).forEach(s => o[s.id] = true);
     setOpenS(o);
   };
-  const play = v => { setVideo(v); setView("player"); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); trackWatch(user.id, v.title); };
+  const play = v => { setVideo(v); setView("player"); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); trackWatch(user.id, v.title, v.id); };
   const backToCourse = () => { setVideo(null); setView("course"); };
   const toggleS = id => setOpenS(p => ({ ...p, [id]: !p[id] }));
 
@@ -1701,6 +1703,74 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
             </div>
           </div>
 
+          {/* ── CONTINUE WATCHING + SEARCH ── */}
+          {(() => {
+            const accessibleVideos = videos.filter(v => accessibleCourses.some(c => c.id === v.courseId));
+            // Resume: parse last_watched = "timestamp|title|videoId"
+            let resumeVid = null;
+            if (user.lastWatched) {
+              const parts = user.lastWatched.split("|");
+              const lwId = parts.length >= 3 ? parts[2] : null;
+              if (lwId) resumeVid = accessibleVideos.find(v => v.id === lwId) || null;
+            }
+            const q = vidSearch.trim().toLowerCase();
+            const searchResults = q ? accessibleVideos.filter(v => (v.title||"").toLowerCase().includes(q) || (v.desc||"").toLowerCase().includes(q)) : [];
+            if (!accessibleVideos.length) return null;
+            return (
+              <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "36px 48px 0" : "36px 16px 0" }}>
+                {/* Search */}
+                <div style={{ position: "relative", marginBottom: resumeVid || q ? 20 : 0 }}>
+                  <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 15, pointerEvents: "none" }}>🔍</span>
+                  <input value={vidSearch} onChange={e => setVidSearch(e.target.value)} placeholder="Search all lessons by title…"
+                    style={{ width: "100%", padding: "12px 36px 12px 40px", borderRadius: 12, border: "1.5px solid " + C.border, background: C.surf, color: C.white, fontSize: 14, outline: "none", fontFamily: D }} />
+                  {vidSearch && <button onClick={() => setVidSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.grey, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>}
+                </div>
+
+                {/* Search results */}
+                {q && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 }}>{searchResults.length} result{searchResults.length!==1?"s":""}</div>
+                    {searchResults.map(v => {
+                      const c = courses.find(c => c.id === v.courseId);
+                      return (
+                        <div key={v.id} onClick={() => { setCourse(c||null); play(v); }}
+                          style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.card, border: "1px solid " + C.border, borderRadius: 11, marginBottom: 6, cursor: "pointer" }}
+                          onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
+                          onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}>{watchedSet.has(v.id) ? "✅" : "▶"}</span>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</div>
+                            <div style={{ fontSize: 11, color: C.grey }}>{c ? c.title : ""}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {searchResults.length === 0 && <div style={{ fontSize: 13, color: C.grey, padding: "8px 0" }}>No lessons match "{vidSearch}".</div>}
+                  </div>
+                )}
+
+                {/* Continue watching */}
+                {!q && resumeVid && (() => {
+                  const c = courses.find(c => c.id === resumeVid.courseId);
+                  return (
+                    <div>
+                      <div style={{ fontSize: 11, color: C.gold, letterSpacing: ".18em", textTransform: "uppercase", marginBottom: 10, fontWeight: 700 }}>▶ Continue Watching</div>
+                      <div onClick={() => { setCourse(c||null); play(resumeVid); }}
+                        style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "linear-gradient(135deg, rgba(201,168,76,.10), rgba(201,168,76,.03))", border: "1px solid " + C.gold + "40", borderRadius: 14, cursor: "pointer" }}>
+                        <div style={{ width: 46, height: 46, borderRadius: 11, background: C.gold, color: "#1a1200", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>▶</div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{resumeVid.title}</div>
+                          <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{c ? c.title : ""} · Pick up where you left off</div>
+                        </div>
+                        <span style={{ fontSize: 13, color: C.gold, fontWeight: 700, flexShrink: 0 }}>Resume →</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
+
           {/* ── COURSES ── */}
           <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 48px 80px" : "40px 16px 80px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
@@ -1826,9 +1896,9 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                             style={{ padding:"13px 20px 13px 24px", borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", gap:12, cursor:"pointer", background:C.surf, transition:"background .12s" }}
                             onMouseEnter={e => e.currentTarget.style.background=C.cardHov}
                             onMouseLeave={e => e.currentTarget.style.background=C.surf}>
-                            <span style={{ color:C.gold, fontSize:10, flexShrink:0 }}>▶</span>
+                            <span style={{ color:watchedSet.has(v.id)?C.green:C.gold, fontSize:watchedSet.has(v.id)?13:10, flexShrink:0 }}>{watchedSet.has(v.id)?"✓":"▶"}</span>
                             <div style={{ flex:1, minWidth:0 }}>
-                              <div style={{ fontSize:14, fontWeight:500, color:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
+                              <div style={{ fontSize:14, fontWeight:500, color:watchedSet.has(v.id)?C.grey:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
                               {v.desc&&<div style={{ fontSize:12, color:C.grey, marginTop:2 }}>{v.desc}</div>}
                             </div>
                           </div>
@@ -1859,9 +1929,9 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                                   style={{ padding:"12px 20px 12px 48px", borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", gap:12, cursor:"pointer", background:C.surf, transition:"background .12s" }}
                                   onMouseEnter={e => e.currentTarget.style.background=C.cardHov}
                                   onMouseLeave={e => e.currentTarget.style.background=C.surf}>
-                                  <span style={{ color:C.gold, fontSize:10, flexShrink:0 }}>▶</span>
+                                  <span style={{ color:watchedSet.has(v.id)?C.green:C.gold, fontSize:watchedSet.has(v.id)?13:10, flexShrink:0 }}>{watchedSet.has(v.id)?"✓":"▶"}</span>
                                   <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontSize:14, fontWeight:500, color:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
+                                    <div style={{ fontSize:14, fontWeight:500, color:watchedSet.has(v.id)?C.grey:C.white, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{v.title}</div>
                                     {v.desc&&<div style={{ fontSize:12, color:C.grey, marginTop:2 }}>{v.desc}</div>}
                                   </div>
                                 </div>
@@ -1913,6 +1983,17 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                 {sec && <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>{sec.title}</p>}
                 <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: C.white, marginBottom: 8, lineHeight: 1.3 }}>{video.title}</h2>
                 {video.desc && <p style={{ color: C.grey, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>{video.desc}</p>}
+
+                {/* Mark as watched */}
+                <button onClick={() => toggleWatched(user.id, video.id)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 24,
+                    background: watchedSet.has(video.id) ? C.green + "18" : "transparent",
+                    border: "1.5px solid " + (watchedSet.has(video.id) ? C.green + "70" : C.border),
+                    color: watchedSet.has(video.id) ? C.green : C.grey,
+                    fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 10, cursor: "pointer", transition: "all .15s" }}>
+                  <span style={{ fontSize: 14 }}>{watchedSet.has(video.id) ? "✓" : "○"}</span>
+                  {watchedSet.has(video.id) ? "Watched" : "Mark as watched"}
+                </button>
 
                 {next && (
                   <div onClick={() => play(next)} style={{ background: C.surf, border: "1px solid " + C.border, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", marginBottom: 24, transition: "border-color .2s" }}
@@ -3804,7 +3885,7 @@ function App() {
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
       ]);
-      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
+      if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, watchedVideos:x.watched_videos||[], pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
       if (sec) setSections(sec.map(x => ({ id:x.id, courseId:x.course_id, title:x.title, sortOrder:x.sort_order||0, isFolder:x.is_folder||false, parentId:x.parent_id||null })).sort((a,b)=>a.sortOrder-b.sortOrder));
       if (v) setVideos(v.map(x => ({ id:x.id, courseId:x.course_id, sectionId:x.section_id, title:x.title, url:x.url, desc:x.description, notes:x.notes||"", pdfUrl:x.pdf_url||null, pdfName:x.pdf_name||"", createdAt:x.created_at })));
@@ -3940,10 +4021,25 @@ function App() {
     await sb("hw_submissions?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: { admin_feedback: patch.adminFeedback } });
     setHwSubmits(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   };
-  const trackVideoWatch = async (userId, videoTitle) => {
+  const trackVideoWatch = async (userId, videoTitle, videoId) => {
     const ts = new Date().toISOString();
-    await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: ts + "|" + videoTitle } });
-    setLastWatch(prev => ({ ...prev, [userId]: ts + "|" + videoTitle }));
+    // last_watched keeps "timestamp|title" (admin view parses this); we append the
+    // video id so the student portal can link straight back to it for "Continue watching".
+    const value = ts + "|" + videoTitle + (videoId ? "|" + videoId : "");
+    await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { last_watched: value } });
+    setLastWatch(prev => ({ ...prev, [userId]: value }));
+    setMe(prev => prev && prev.id === userId ? { ...prev, lastWatched: value } : prev);
+  };
+
+  // Toggle a video's "watched" state for a user. Stored as a small array of video
+  // ids on the user row — written only on click, so it's egress-safe.
+  const toggleWatched = async (userId, videoId) => {
+    const u = users.find(x => x.id === userId) || (me && me.id === userId ? me : null);
+    const current = (u && u.watchedVideos) || [];
+    const next = current.includes(videoId) ? current.filter(id => id !== videoId) : [...current, videoId];
+    setUsers(prev => prev.map(x => x.id === userId ? { ...x, watchedVideos: next } : x));
+    setMe(prev => prev && prev.id === userId ? { ...prev, watchedVideos: next } : prev);
+    await sb("users?id=eq." + userId, { method: "PATCH", prefer: "return=minimal", body: { watched_videos: next } });
   };
 
   const addReviewDB = async (r) => {
@@ -4019,7 +4115,7 @@ function App() {
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
       {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} homework={homework} addHomework={addHomeworkDB} patchHomework={patchHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} onLogout={logout} />}
+      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} toggleWatched={toggleWatched} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
