@@ -766,6 +766,22 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   const [bunnyLoading, setBunnyLoading] = React.useState(false);
   const [bunnyErr, setBunnyErr] = React.useState("");
   const [bunnySearch, setBunnySearch] = React.useState("");
+  const [bulkSel, setBulkSel] = React.useState({}); // guid -> true
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+
+  const toggleBulk = (guid) => setBulkSel(prev => { const n = { ...prev }; if (n[guid]) delete n[guid]; else n[guid] = true; return n; });
+
+  const bulkImport = async () => {
+    if (!vC || !vS) { setVErr("Pick a Course and Section above before bulk-importing."); if (typeof window!=="undefined") window.scrollTo({top:0,behavior:"smooth"}); return; }
+    const chosen = (bunnyList||[]).filter(bv => bulkSel[bv.guid]);
+    if (!chosen.length) return;
+    setBulkBusy(true);
+    for (const bv of chosen) {
+      if (videos.some(v => (v.url||"").includes(bv.guid))) continue; // skip already-added
+      await addVideo({ id: uid(), courseId: vC, sectionId: vS, title: bv.title || "Untitled", url: bv.embedUrl, desc: "", createdAt: Date.now() });
+    }
+    setBulkSel({}); setBulkBusy(false);
+  };
 
   const loadBunny = async () => {
     setBunnyLoading(true); setBunnyErr("");
@@ -901,30 +917,43 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
                 {bunnyLoading ? "Loading…" : bunnyList ? "↻ Refresh list" : "Load my Bunny videos"}
               </button>
             </div>
-            <div style={{ fontSize: 11, color: C.grey, marginTop: 6 }}>Click a video below to auto-fill the URL and title above, then pick its course/section and hit Add Video.</div>
+            <div style={{ fontSize: 11, color: C.grey, marginTop: 6 }}>Click a video to auto-fill one, or tick multiple and use "Add selected" to import them all into the course/section chosen above.</div>
             {bunnyErr && <div style={{ color: C.red, fontSize: 12, marginTop: 8 }}>{bunnyErr}</div>}
             {bunnyList && bunnyList.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <input value={bunnySearch} onChange={e => setBunnySearch(e.target.value)} placeholder="Filter videos…"
                   style={{ width: "100%", maxWidth: 320, padding: "8px 12px", borderRadius: 8, border: "1.5px solid " + C.border, background: "#FFFFFF", color: C.white, fontSize: 13, outline: "none", marginBottom: 10 }} />
+                {/* Bulk action bar */}
+                {Object.keys(bulkSel).length > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 14px", background: C.goldDim, border: "1px solid " + C.gold + "40", borderRadius: 10, marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.gold }}>{Object.keys(bulkSel).length} selected</span>
+                    <span style={{ fontSize: 11, color: C.grey }}>→ into {vC ? (courses.find(c=>c.id===vC)?.title||"course") : "(pick a course above)"}{vS ? " / " + (fSecs.find(s=>s.id===vS)?.title||"section") : ""}</span>
+                    <div style={{ flex: 1 }} />
+                    <Btn onClick={bulkImport} disabled={bulkBusy} sz="sm">{bulkBusy ? "Importing…" : "Add selected"}</Btn>
+                    <Btn v="outline" onClick={() => setBulkSel({})} sz="sm">Clear</Btn>
+                  </div>
+                )}
                 <div style={{ maxHeight: 320, overflowY: "auto", display: "grid", gap: 6 }}>
                   {bunnyList.filter(bv => !bunnySearch.trim() || (bv.title||"").toLowerCase().includes(bunnySearch.trim().toLowerCase())).map(bv => {
                     const already = videos.some(v => (v.url||"").includes(bv.guid));
+                    const checked = !!bulkSel[bv.guid];
                     return (
-                      <div key={bv.guid} onClick={() => pickBunny(bv)}
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 9, border: "1px solid " + C.border, background: C.card, cursor: "pointer" }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
-                        onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                        {bv.thumbnail
-                          ? <img src={bv.thumbnail} alt="" style={{ width: 72, height: 40, objectFit: "cover", borderRadius: 5, flexShrink: 0, background: C.bg }} />
-                          : <div style={{ width: 72, height: 40, borderRadius: 5, background: C.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎬</div>}
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bv.title || "Untitled"}</div>
-                          <div style={{ fontSize: 10, color: C.faint }}>{bv.length ? Math.floor(bv.length/60) + "m " + (bv.length%60) + "s" : ""}{bv.status !== undefined && bv.status < 4 ? " · still processing" : ""}</div>
+                      <div key={bv.guid}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 9, border: "1px solid " + (checked ? C.gold : C.border), background: checked ? C.goldDim : C.card }}>
+                        <input type="checkbox" checked={checked} disabled={already} onChange={() => toggleBulk(bv.guid)}
+                          style={{ width: 17, height: 17, flexShrink: 0, accentColor: C.gold, cursor: already ? "default" : "pointer" }} />
+                        <div onClick={() => !already && pickBunny(bv)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, cursor: already ? "default" : "pointer" }}>
+                          {bv.thumbnail
+                            ? <img src={bv.thumbnail} alt="" style={{ width: 72, height: 40, objectFit: "cover", borderRadius: 5, flexShrink: 0, background: C.bg }} />
+                            : <div style={{ width: 72, height: 40, borderRadius: 5, background: C.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎬</div>}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bv.title || "Untitled"}</div>
+                            <div style={{ fontSize: 10, color: C.faint }}>{bv.length ? Math.floor(bv.length/60) + "m " + (bv.length%60) + "s" : ""}{bv.status !== undefined && bv.status < 4 ? " · still processing" : ""}</div>
+                          </div>
+                          {already
+                            ? <span style={{ fontSize: 10, color: C.faint, flexShrink: 0 }}>added</span>
+                            : <span style={{ fontSize: 11, color: C.gold, fontWeight: 700, flexShrink: 0 }}>Use →</span>}
                         </div>
-                        {already
-                          ? <span style={{ fontSize: 10, color: C.faint, flexShrink: 0 }}>added</span>
-                          : <span style={{ fontSize: 11, color: C.gold, fontWeight: 700, flexShrink: 0 }}>Use →</span>}
                       </div>
                     );
                   })}
@@ -1012,10 +1041,48 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   );
 }
 
-function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, homework, addHomework, patchHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, onLogout, loadAll }) {
+function AnnounceTab({ announcements, addAnnouncement, toggleAnnouncement, deleteAnnouncement }) {
+  const [text, setText] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const post = async () => {
+    if (!text.trim()) return;
+    setSaving(true); await addAnnouncement(text); setText(""); setSaving(false);
+  };
+  const active = announcements.filter(a => a.active);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ padding: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 12 }}>📢 Post an Announcement</div>
+        <div style={{ fontSize: 12, color: C.grey, marginBottom: 12 }}>Active announcements show as a banner at the top of every student's portal.</div>
+        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="e.g. Live session moved to 8pm tonight — see you there!"
+          style={{ height: 80, resize: "vertical", background: "#FFFFFF", border: "1.5px solid " + C.border, borderRadius: 10, padding: "12px 14px", color: C.white, width: "100%", outline: "none", fontFamily: D, fontSize: 13, lineHeight: 1.6, marginBottom: 12 }} />
+        <Btn onClick={post} disabled={saving || !text.trim()} style={{ justifySelf: "start" }}>{saving ? "Posting…" : "Post Announcement"}</Btn>
+      </Card>
+
+      {active.length > 0 && (
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.green, textTransform: "uppercase" }}>Live now ({active.length})</div>
+      )}
+      {announcements.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "30px 0" }}>No announcements yet.</p>}
+      {announcements.map(a => (
+        <Card key={a.id} style={{ padding: "16px 18px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, borderLeft: "3px solid " + (a.active ? C.green : C.border) }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: C.white, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{a.text}</div>
+            <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>{new Date(a.createdAt).toLocaleString("en-ZA", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} · {a.active ? "Visible to students" : "Hidden"}</div>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <Btn v="outline" onClick={() => toggleAnnouncement(a.id, !a.active)} sz="sm">{a.active ? "Hide" : "Show"}</Btn>
+            <Btn v="danger" onClick={() => deleteAnnouncement(a.id)} sz="sm">Delete</Btn>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCourse, deleteCourse, sections, addSection, patchSection, deleteSection, videos, addVideo, deleteVideo, patchVideo, homework, addHomework, patchHomework, deleteHomework, hwSubmits, patchHwSubmit, lastWatch, reviews, patchReview, weeklyPrompts, addPrompt, deletePrompt, togglePrompt, announcements, addAnnouncement, toggleAnnouncement, deleteAnnouncement, onLogout, loadAll }) {
   const [tab, setTab] = useState("users");
   const pending = users.filter(u => u.status === "pending");
-  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }, { k: "subscriptions", l: "💳 Subscriptions" }];
+  const TABS = [{ k: "users", l: "Users", badge: pending.length }, { k: "content", l: "Courses" }, { k: "videos", l: "Videos" }, { k: "announce", l: "📢 Announce" }, { k: "homework", l: "📚 Homework" }, { k: "review", l: "📅 Reviews" }, { k: "membership", l: "Membership" }, { k: "subscriptions", l: "💳 Subscriptions" }];
   return (
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <Rule />
@@ -1043,6 +1110,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
         {tab === "videos"  && <VideosTab  courses={courses} sections={sections} videos={videos} addVideo={addVideo} deleteVideo={deleteVideo} patchVideo={patchVideo} />}
         {tab === "membership" && <MembershipTab users={users} patchUser={patchUser} courses={courses} patchCourse={patchCourse} lastWatch={lastWatch} />}
         {tab === "subscriptions" && <SubscriptionsTab users={users} patchUser={patchUser} />}
+        {tab === "announce" && <AnnounceTab announcements={announcements} addAnnouncement={addAnnouncement} toggleAnnouncement={toggleAnnouncement} deleteAnnouncement={deleteAnnouncement} />}
         {tab === "homework" && <AdminHomeworkTab homework={homework} addHomework={addHomework} patchHomework={patchHomework} deleteHomework={deleteHomework} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} users={users} />}
         {tab === "review" && <AdminWeeklyReviewTab reviews={reviews} patchReview={patchReview} users={users} weeklyPrompts={weeklyPrompts} addPrompt={addPrompt} deletePrompt={deletePrompt} togglePrompt={togglePrompt} />}
       </div>
@@ -1448,7 +1516,7 @@ function CoursesPanel({ user, courses, sections, videos, onSelectCourse }) {
 }
 
 
-function Portal({ layout, toggleLayout, user, courses, sections, videos, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, toggleWatched, onLogout }) {
+function Portal({ layout, toggleLayout, user, courses, sections, videos, comments, addComment, deleteComment, homework, hwSubmits, addHwSubmit, reviews, addReviewDB, weeklyPrompts, trackWatch, toggleWatched, announcements, onLogout }) {
   const [view, setView]   = useState("home");
   const [course, setCourse] = useState(null);
   const [video, setVideo]   = useState(null);
@@ -1606,6 +1674,19 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
       {/* ══ HOME ══ */}
       {!showCourses && !showCalc && !showHomework && !showPlaybook && !showChecklist && !showReview && view === "home" && (
         <div>
+          {/* ── ANNOUNCEMENT BANNER ── */}
+          {(announcements||[]).filter(a => a.active).length > 0 && (
+            <div style={{ background: C.goldDim, borderBottom: "1px solid " + C.gold + "30" }}>
+              <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "14px 48px" : "14px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {(announcements||[]).filter(a => a.active).map(a => (
+                  <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ fontSize: 15, flexShrink: 0 }}>📢</span>
+                    <div style={{ fontSize: 13, color: C.navy, lineHeight: 1.6, fontWeight: 500, whiteSpace: "pre-wrap" }}>{a.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* ── WELCOME HEADER ── */}
           <div style={{ borderBottom: "1px solid " + C.border, background: C.surf }}>
             <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "40px 48px 28px" : "40px 24px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
@@ -1726,8 +1807,11 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {accessibleCourses.map((c, i) => {
-                const total = videos.filter(v => v.courseId === c.id).length;
+                const courseVideoList = videos.filter(v => v.courseId === c.id);
+                const total = courseVideoList.length;
                 const sects = sections.filter(s => s.courseId === c.id).length;
+                const doneCount = courseVideoList.filter(v => watchedSet.has(v.id)).length;
+                const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
                 const colors = [
                   `linear-gradient(135deg,${C.goldLt},${C.gold})`,
                   `linear-gradient(135deg,#1a2e1a,#0a1a0a)`,
@@ -1750,6 +1834,17 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                             <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{sects} section{sects !== 1 ? "s" : ""}</span>
                             <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{total} lesson{total !== 1 ? "s" : ""}</span>
                           </div>
+                          {total > 0 && (
+                            <div style={{ marginTop: 14 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
+                                <span style={{ color: pct === 100 ? C.green : C.grey, fontWeight: 600 }}>{pct === 100 ? "✓ Completed" : doneCount + " of " + total + " watched"}</span>
+                                <span style={{ color: pct === 100 ? C.green : C.gold, fontWeight: 700 }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 6, borderRadius: 6, background: "rgba(255,255,255,.10)", overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: pct + "%", borderRadius: 6, background: pct === 100 ? C.green : `linear-gradient(90deg,${C.goldLt},${C.gold})`, transition: "width .4s" }} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 6px 24px rgba(201,168,76,.3)` }}>
                           <span style={{ color: "#08090E", fontSize: 22, fontWeight: 900, marginLeft: 3 }}>›</span>
@@ -1792,6 +1887,21 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
               <span>·</span>
               <span>{cVideos.length} lesson{cVideos.length !== 1 ? "s" : ""}</span>
             </div>
+            {cVideos.length > 0 && (() => {
+              const done = cVideos.filter(v => watchedSet.has(v.id)).length;
+              const pct = Math.round((done / cVideos.length) * 100);
+              return (
+                <div style={{ marginTop: 16, maxWidth: 420 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                    <span style={{ color: pct === 100 ? C.green : C.grey, fontWeight: 600 }}>{pct === 100 ? "✓ Course completed" : "Your progress"}</span>
+                    <span style={{ color: pct === 100 ? C.green : C.gold, fontWeight: 700 }}>{done}/{cVideos.length} · {pct}%</span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 7, background: "rgba(255,255,255,.10)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: pct + "%", borderRadius: 7, background: pct === 100 ? C.green : `linear-gradient(90deg,${C.goldLt},${C.gold})`, transition: "width .4s" }} />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {cSecs.length === 0 && <p style={{ color: C.grey, fontSize: 14 }}>No content yet.</p>}
@@ -3779,6 +3889,7 @@ function App() {
   const [lastWatch, setLastWatch] = React.useState({});
   const [reviews,   setReviews]   = React.useState([]);
   const [weeklyPrompts, setWeeklyPrompts] = React.useState([]);
+  const [announcements, setAnnouncements] = React.useState([]);
   const [screen,   setScreen]   = React.useState("login");
   const [layout, setLayout] = React.useState(() => { try { return localStorage.getItem("tafx_layout") || "compact"; } catch(e) { return "compact"; } });
   const toggleLayout = () => setLayout(l => { const n = l==="compact" ? "wide" : "compact"; try { localStorage.setItem("tafx_layout",n); } catch(e){} window.__tafxLayout = n; document.body.setAttribute("data-layout",n); return n; });
@@ -3814,7 +3925,7 @@ function App() {
   const loadAll = async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const [u, c, sec, v, com, hw, hws] = await Promise.all([
+      const [u, c, sec, v, com, hw, hws, ann] = await Promise.all([
         sb("users?order=created_at.asc"),
         sb("courses?order=created_at.asc"),
         sb("sections?select=*"),
@@ -3822,6 +3933,7 @@ function App() {
         sb("comments?order=created_at.asc&select=id,video_id,user_id,user_name,text,parent_id,is_admin,timestamp,created_at"),
         sb("homework?order=created_at.desc"),
         sb("hw_submissions?order=created_at.desc"),
+        sb("announcements?order=created_at.desc&limit=20").catch(()=>null),
       ]);
       if (u) setUsers(u.map(x => ({ id:x.id, name:x.name, email:x.email, password:x.password, phone:x.phone||null, status:x.status, levels:x.levels||[], createdAt:x.created_at, lastWatched:x.last_watched||null, watchedVideos:x.watched_videos||[], pmStartDate:x.pm_start_date||null, pmDueDate:x.pm_due_date||null, pmPrice:x.pm_price||null, pmPaid:x.pm_paid||false })));
       if (c) setCourses(c.map(x => ({ id:x.id, title:x.title, desc:x.description, level:x.level, createdAt:x.created_at })));
@@ -3833,6 +3945,7 @@ function App() {
       if (hws) setHwSubmits(hws.map(x => ({ id:x.id, homeworkId:x.homework_id, userId:x.user_id, userName:x.user_name, text:x.text, image:x.image||null, images:(x.images&&x.images.length?x.images:(x.image?[x.image]:[])), adminFeedback:x.admin_feedback||null, createdAt:x.created_at })));
       // Build lastWatched map
       if (u) { const lw = {}; u.forEach(x => { if (x.last_watched) lw[x.id] = x.last_watched; }); setLastWatch(lw); }
+      if (ann) setAnnouncements(ann.map(x => ({ id:x.id, text:x.text, active:x.active!==false, createdAt:x.created_at })));
     } catch(e) { console.error("loadAll error:", e); if (e?.message?.includes('exceed_egress_quota') || JSON.stringify(e)?.includes('egress')) { setLoading(false); alert('The portal is temporarily over its monthly data limit. Your data is safe and it will be back shortly.'); } }
     if (showSpinner) setLoading(false);
   };
@@ -3990,6 +4103,19 @@ function App() {
     await sb("weekly_reviews?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: dbPatch });
     setReviews(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
   };
+  const addAnnouncementDB = async (text) => {
+    const a = { id: uid(), text: text.trim(), active: true, createdAt: new Date().toISOString() };
+    await sb("announcements", { method: "POST", prefer: "return=minimal", body: { id:a.id, text:a.text, active:true, created_at:a.createdAt } });
+    setAnnouncements(prev => [a, ...prev]);
+  };
+  const toggleAnnouncementDB = async (id, active) => {
+    await sb("announcements?id=eq." + id, { method: "PATCH", prefer: "return=minimal", body: { active } });
+    setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, active } : a));
+  };
+  const deleteAnnouncementDB = async (id) => {
+    await sb("announcements?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+  };
   const addPromptDB = async (p) => {
     await sb("weekly_prompts", { method: "POST", prefer: "return=minimal", body: { id:p.id, question:p.question, required:p.required!==false, active:true, created_at:p.createdAt } });
     setWeeklyPrompts(prev => [...prev, p]);
@@ -4052,8 +4178,8 @@ function App() {
       <style>{GS}</style>
       {screen === "login"     && <LoginScreen onLogin={login} onRegister={register} onAdmin={() => setScreen("adminAuth")} />}
       {screen === "adminAuth" && <AdminAuthScreen onBack={() => setScreen("login")} onEnter={() => setScreen("admin")} />}
-      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} homework={homework} addHomework={addHomeworkDB} patchHomework={patchHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} onLogout={logout} loadAll={loadAll} />}
-      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} toggleWatched={toggleWatched} onLogout={logout} />}
+      {screen === "admin"     && <AdminPanel users={users} patchUser={patchUser} deleteUser={deleteUserDB} courses={courses} addCourse={addCourseDB} patchCourse={patchCourse} deleteCourse={deleteCourseDB} sections={sections} addSection={addSectionDB} patchSection={patchSectionDB} deleteSection={deleteSectionDB} videos={videos} addVideo={addVideoDB} deleteVideo={deleteVideoDB} patchVideo={patchVideo} homework={homework} addHomework={addHomeworkDB} patchHomework={patchHomeworkDB} deleteHomework={deleteHomeworkDB} hwSubmits={hwSubmits} patchHwSubmit={patchHwSubmit} lastWatch={lastWatch} reviews={reviews} patchReview={patchReviewDB} weeklyPrompts={weeklyPrompts} addPrompt={addPromptDB} deletePrompt={deletePromptDB} togglePrompt={togglePromptDB} announcements={announcements} addAnnouncement={addAnnouncementDB} toggleAnnouncement={toggleAnnouncementDB} deleteAnnouncement={deleteAnnouncementDB} onLogout={logout} loadAll={loadAll} />}
+      {screen === "portal"    && me && <Portal layout={layout} toggleLayout={toggleLayout} user={me} courses={courses} sections={sections} videos={videos} comments={comments} addComment={addCommentDB} deleteComment={deleteCommentDB} homework={homework} hwSubmits={hwSubmits} addHwSubmit={addHwSubmitDB} reviews={reviews} addReviewDB={addReviewDB} weeklyPrompts={weeklyPrompts} trackWatch={trackVideoWatch} toggleWatched={toggleWatched} announcements={announcements} onLogout={logout} />}
       {screen === "pending"   && me && <StatusScreen icon="⏳" title="Pending Approval" color={C.gold} onLogout={logout} msg={`Hi ${me.name}, your registration is under review. You'll be granted access once the admin approves your account.`} />}
       {screen === "declined"  && <StatusScreen icon="✕" title="Access Declined" color={C.red} onLogout={logout} msg="Your access request has been declined. Please contact the administrator for assistance." />}
     </>
