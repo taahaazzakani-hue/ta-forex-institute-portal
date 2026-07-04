@@ -9,16 +9,16 @@
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
-    body{margin:0;background:#F5F1EB;color:#0D1730;}
-    input,textarea,select{background:#FFFFFF!important;color:#0D1730!important;border-color:#E2D9CC!important;}
+    body{margin:0;background:#F7F8FA;color:#111827;}
+    input,textarea,select{background:#FFFFFF!important;color:#111827!important;border-color:#E4E8EF!important;}
     input::placeholder,textarea::placeholder{color:#A8A09A!important;}
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator{filter:none;opacity:.6;cursor:pointer;}
     ::-webkit-scrollbar{width:5px;height:5px;}
-    ::-webkit-scrollbar-track{background:#F5F1EB;}
-    ::-webkit-scrollbar-thumb{background:#D4CEC4;border-radius:3px;}
+    ::-webkit-scrollbar-track{background:#F7F8FA;}
+    ::-webkit-scrollbar-thumb{background:#C7CDD6;border-radius:3px;}
     *{box-sizing:border-box;}
-    select option{background:#FFFFFF;color:#0D1730;}
+    select option{background:#FFFFFF;color:#111827;}
   </style>
 </head>
 <body>
@@ -85,22 +85,22 @@ const compressAndUpload = (file, cb) => {
 
 /* ── PALETTE ─────────────────────────────────────────────────────────────── */
 const C = {
-  bg:      "#F5F1EB",
-  surf:    "#FFFFFF",
-  card:    "#FDFCFA",
-  cardHov: "#F0EDE6",
-  border:  "#E2D9CC",
-  borderH: "#C9A84C",
-  navy:    "#0D1730",
-  gold:    "#C9A84C",
-  goldLt:  "#E6C86A",
-  goldDim: "rgba(201,168,76,.12)",
-  white:   "#0D1730",
-  dim:     "#2C3A5A",
-  grey:    "#7A8099",
-  faint:   "#C2BAB0",
-  red:     "#C0392B",
-  green:   "#1A7A4A",
+  bg:      "#F7F8FA",   // app background — soft off-white
+  surf:    "#FFFFFF",   // cards / surfaces — pure white
+  card:    "#FFFFFF",
+  cardHov: "#F1F4F9",
+  border:  "#E4E8EF",   // light neutral borders
+  borderH: "#1E4FD8",   // accent border on hover
+  navy:    "#111827",   // near-black (used as dark brand color)
+  gold:    "#1E4FD8",   // ACCENT — deep blue (kept key name so all refs update)
+  goldLt:  "#4B7BF5",   // lighter blue for gradients
+  goldDim: "rgba(30,79,216,.10)",
+  white:   "#111827",   // primary TEXT — near black
+  dim:     "#374151",   // secondary text — dark grey
+  grey:    "#6B7280",   // muted text
+  faint:   "#9CA3AF",   // faint labels
+  red:     "#DC2626",
+  green:   "#059669",   // completion / success green
 };
 
 const S = "'Fraunces','Georgia',serif";
@@ -113,10 +113,10 @@ const GS = `
 html,body{background:${C.bg};color:${C.white};font-family:${D};-webkit-font-smoothing:antialiased;min-height:100%;letter-spacing:.01em}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:${C.gold};border-radius:4px}
 a{color:inherit;text-decoration:none}
-input,select,textarea{font-family:${D};letter-spacing:.02em;font-size:14px;color:#0D1730;background:#FFFFFF;border:1.5px solid #E2D9CC;border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;resize:vertical}
-input:focus,select:focus,textarea:focus{border-color:#C9A84C;box-shadow:0 0 0 3px rgba(201,168,76,.12)}
+input,select,textarea{font-family:${D};letter-spacing:.02em;font-size:14px;color:#111827;background:#FFFFFF;border:1.5px solid #E4E8EF;border-radius:10px;padding:12px 14px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:#1E4FD8;box-shadow:0 0 0 3px rgba(30,79,216,.12)}
 input::placeholder,textarea::placeholder{color:#A8A09A}
-select option{background:${C.navy};color:${C.white}}
+select option{background:#FFFFFF;color:${C.white}}
 button{font-family:${D};cursor:pointer;border:none;outline:none;letter-spacing:.05em}
 label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:${C.grey};margin-bottom:7px;font-family:${D}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
@@ -155,8 +155,8 @@ const Btn = ({ children, onClick, v = "gold", sz = "md", style, disabled, full }
   const bases = { borderRadius: 10, fontWeight: 600, letterSpacing: ".03em", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .18s", whiteSpace: "nowrap", opacity: disabled ? .45 : 1, cursor: disabled ? "not-allowed" : "pointer", ...(full && { width: "100%" }) };
   const szs = { sm: { fontSize: 12, padding: "7px 14px" }, md: { fontSize: 13, padding: "11px 20px" }, lg: { fontSize: 15, padding: "14px 30px" } };
   const vs = {
-    gold:    { background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, color: "#08090E", boxShadow: `0 6px 24px rgba(201,168,76,.28)` },
-    outline: { background: "transparent", color: C.gold, border: `1.5px solid rgba(201,168,76,.45)` },
+    gold:    { background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, color: "#FFFFFF", boxShadow: `0 6px 24px rgba(30,79,216,.28)` },
+    outline: { background: "transparent", color: C.gold, border: `1.5px solid rgba(30,79,216,.45)` },
     ghost:   { background: "transparent", color: C.grey },
     danger:  { background: "transparent", color: C.red, border: `1.5px solid rgba(217,96,96,.3)` },
     navy:    { background: "#FFFFFF", color: C.white, border: `1.5px solid ${C.border}` },
@@ -364,9 +364,9 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
 
   const inputStyle = {
     width: "100%", padding: "12px 14px", borderRadius: 8,
-    border: "1.5px solid rgba(201,168,76,.3)",
+    border: "1.5px solid rgba(30,79,216,.3)",
     background: "rgba(255,255,255,.08)",
-    color: "#F5F1EB", fontSize: 14, outline: "none",
+    color: "#F7F8FA", fontSize: 14, outline: "none",
     fontFamily: D, transition: "border .15s, background .15s",
   };
 
@@ -376,30 +376,30 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
       {/* ── Left panel — navy branding ── */}
       <div style={{ flex: 1, background: C.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 48px", position: "relative", overflow: "hidden" }}>
         {/* Subtle gold circle decoration */}
-        <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", border:"1px solid rgba(201,168,76,.06)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", width:260, height:260, borderRadius:"50%", border:"1px solid rgba(201,168,76,.08)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", border:"1px solid rgba(30,79,216,.06)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", width:260, height:260, borderRadius:"50%", border:"1px solid rgba(30,79,216,.08)", top:"50%", left:"50%", transform:"translate(-50%,-50%)", pointerEvents:"none" }} />
 
         {/* Logo — inverted to show white on navy */}
         <img src={LOGO_SRC} alt="TA Forex Institute"
           style={{ height: 180, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 32 }} />
 
         <div style={{ width: 36, height: 1.5, background: C.gold, marginBottom: 24 }} />
-        <p style={{ fontSize: 11, letterSpacing: ".28em", color: "rgba(201,168,76,.8)", textTransform: "uppercase", textAlign: "center", fontFamily: S, margin: 0 }}>Member Portal</p>
+        <p style={{ fontSize: 11, letterSpacing: ".28em", color: C.goldLt, textTransform: "uppercase", textAlign: "center", fontFamily: S, margin: 0 }}>Member Portal</p>
         <p style={{ fontSize: 13, color: "rgba(245,241,235,.35)", textAlign: "center", lineHeight: 1.8, marginTop: 16, maxWidth: 240, fontFamily: D }}>
           Elite forex education for serious traders.
         </p>
       </div>
 
       {/* ── Right panel — cream form ── */}
-      <style>{`.login-input{background:#FFFFFF!important;color:#0D1730!important;border-color:#E2D9CC!important}.login-input:focus{border-color:#C9A84C!important;box-shadow:0 0 0 3px rgba(201,168,76,.1)!important}.login-input::placeholder{color:#9A8F7A!important}`}</style>
-      <div style={{ width: 520, flexShrink: 0, background: "#F5F1EB", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px" }}>
+      <style>{`.login-input{background:#FFFFFF!important;color:#111827!important;border-color:#E4E8EF!important}.login-input:focus{border-color:#1E4FD8!important;box-shadow:0 0 0 3px rgba(30,79,216,.1)!important}.login-input::placeholder{color:#9A8F7A!important}`}</style>
+      <div style={{ width: 520, flexShrink: 0, background: "#F7F8FA", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px" }}>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 36, borderBottom: "1.5px solid #E2D9CC" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 36, borderBottom: "1.5px solid #E4E8EF" }}>
           {["login", "register"].map(t => (
             <button key={t} onClick={() => { setTab(t); setErr(""); }}
               style={{ flex: 1, background: "transparent", border: "none", cursor: "pointer", padding: "10px 0", fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: S,
-                color: tab === t ? C.navy : "#9A8F7A",
+                color: tab === t ? C.navy : C.grey,
                 borderBottom: tab === t ? "2px solid " + C.gold : "2px solid transparent",
                 marginBottom: -1.5, transition: "all .15s" }}>
               {t === "login" ? "Sign In" : "Register"}
@@ -413,18 +413,18 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
             <div>
               <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Full Name</label>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name"
-                className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:"#0D1730", fontSize:15, outline:"none", fontFamily:D }}
+                className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E4E8EF", background:"#FFFFFF", color:"#111827", fontSize:15, outline:"none", fontFamily:D }}
                 onFocus={e => e.target.style.borderColor = C.gold}
-                onBlur={e => e.target.style.borderColor = "#E2D9CC"} />
+                onBlur={e => e.target.style.borderColor = "#E4E8EF"} />
             </div>
           )}
 
           <div>
             <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Email Address</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"
-              className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:"#0D1730", fontSize:15, outline:"none", fontFamily:D }}
+              className="login-input" style={{ width:"100%", padding:"14px 16px", borderRadius:8, border:"1.5px solid #E4E8EF", background:"#FFFFFF", color:"#111827", fontSize:15, outline:"none", fontFamily:D }}
               onFocus={e => e.target.style.borderColor = C.gold}
-              onBlur={e => e.target.style.borderColor = "#E2D9CC"}
+              onBlur={e => e.target.style.borderColor = "#E4E8EF"}
               onKeyDown={e => e.key === "Enter" && submit()} />
           </div>
 
@@ -432,9 +432,9 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
             <label style={{ color: "#6A7490", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Password</label>
             <div style={{ position: "relative" }}>
               <input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••"
-                style={{ width:"100%", padding:"12px 14px", paddingRight:44, borderRadius:8, border:"1.5px solid #E2D9CC", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
+                style={{ width:"100%", padding:"12px 14px", paddingRight:44, borderRadius:8, border:"1.5px solid #E4E8EF", background:"#FFFFFF", color:C.navy, fontSize:14, outline:"none", fontFamily:D }}
                 onFocus={e => e.target.style.borderColor = C.gold}
-                onBlur={e => e.target.style.borderColor = "#E2D9CC"}
+                onBlur={e => e.target.style.borderColor = "#E4E8EF"}
                 onKeyDown={e => e.key === "Enter" && submit()} />
               <button onClick={() => setShowPass(p => !p)} type="button"
                 style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", cursor:"pointer", color:"#9A8F7A", fontSize:16, padding:0, lineHeight:1 }}>
@@ -460,13 +460,13 @@ function LoginScreen({ onLogin, onRegister, onAdmin }) {
         )}
 
         <button onClick={submit} disabled={loading}
-          style={{ marginTop:28, width:"100%", padding:"16px", borderRadius:8, border:"none", background:loading?"#C2BAB0":C.navy, color:"#F5F1EB", fontSize:15, fontWeight:700, letterSpacing:".06em", fontFamily:S, cursor:loading?"not-allowed":"pointer", transition:"background .2s" }}
+          style={{ marginTop:28, width:"100%", padding:"16px", borderRadius:8, border:"none", background:loading?"#C2BAB0":C.navy, color:"#F7F8FA", fontSize:15, fontWeight:700, letterSpacing:".06em", fontFamily:S, cursor:loading?"not-allowed":"pointer", transition:"background .2s" }}
           onMouseEnter={e => { if(!loading) e.target.style.background=C.gold; }}
           onMouseLeave={e => { if(!loading) e.target.style.background=C.navy; }}>
           {loading ? "Please wait…" : tab === "login" ? "Sign In →" : "Create Account →"}
         </button>
 
-        <div style={{ marginTop:20, padding:"12px 14px", background:"rgba(201,168,76,.07)", border:"1px solid rgba(201,168,76,.2)", borderRadius:8 }}>
+        <div style={{ marginTop:20, padding:"12px 14px", background:"rgba(30,79,216,.07)", border:"1px solid rgba(30,79,216,.2)", borderRadius:8 }}>
           <div style={{ fontSize:11, fontWeight:700, letterSpacing:".1em", color:C.gold, textTransform:"uppercase", marginBottom:4 }}>🔒 Security Notice</div>
           <p style={{ fontSize:12, color:"#7A8099", lineHeight:1.5, margin:0 }}>Sharing login credentials is strictly prohibited. All activity is monitored.</p>
         </div>
@@ -502,7 +502,7 @@ function AdminAuthScreen({ onBack, onEnter }) {
           <div><label>Admin Password</label><input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === "Enter" && go()} /></div>
           <div onClick={() => setRemember(!remember)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
             <div style={{ width: 18, height: 18, borderRadius: 5, border: "2px solid " + (remember ? C.gold : C.faint), background: remember ? C.gold : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}>
-              {remember && <span style={{ color: "#08090E", fontSize: 11, fontWeight: 900 }}>✓</span>}
+              {remember && <span style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 900 }}>✓</span>}
             </div>
             <span style={{ fontSize: 13, color: C.grey }}>Remember me</span>
           </div>
@@ -1099,7 +1099,7 @@ function AdminPanel({ users, patchUser, deleteUser, courses, addCourse, patchCou
           {TABS.map(t => (
             <button key={t.k} onClick={() => setTab(t.k)} style={{ flex: 1, padding: "10px 4px", borderRadius: 9, fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", position: "relative", transition: "all .2s",
               background: tab === t.k ? "linear-gradient(135deg," + C.goldLt + "," + C.gold + ")" : "transparent",
-              color: tab === t.k ? "#08090E" : C.grey }}>
+              color: tab === t.k ? "#FFFFFF" : C.grey }}>
               {t.l}
               {t.badge > 0 && <span style={{ position: "absolute", top: 5, right: 7, width: 16, height: 16, borderRadius: "50%", background: C.red, color: "#fff", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.badge}</span>}
             </button>
@@ -1201,7 +1201,7 @@ function PartnersSection() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: C.white }}>HFM — HF Markets</span>
-              <span style={{ background: "rgba(201,168,76,.15)", color: C.gold, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, border: "1px solid " + C.gold + "40" }}>⭐ Recommended</span>
+              <span style={{ background: "rgba(30,79,216,.15)", color: C.gold, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, border: "1px solid " + C.gold + "40" }}>⭐ Recommended</span>
             </div>
             <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.6, margin: "0 0 14px" }}>Our preferred and highly recommended broker. Trusted by millions of traders worldwide with tight spreads, fast execution and full regulatory compliance.</p>
             <a href="https://register.hfm.com/za/en/new-live-account/?refid=30474075&acid=s8rflbdeyw" target="_blank" rel="noreferrer"
@@ -1263,7 +1263,7 @@ function RiskCalculator() {
 
   const INSTRUMENTS = {
     "NAS/US30":  { multiplier: 1,   label: "NAS / US30",  pip: "index points", color: "#6B9FFF", icon: "📊" },
-    "Gold":      { multiplier: 100, label: "Gold (XAUUSD)", pip: "pips",        color: "#E6C86A", icon: "🥇" },
+    "Gold":      { multiplier: 100, label: "Gold (XAUUSD)", pip: "pips",        color: "#4B7BF5", icon: "🥇" },
     "Currency":  { multiplier: 1,   label: "Currency Pairs", pip: "pips",       color: "#4CB880", icon: "💱", isCurrency: true },
   };
 
@@ -1455,10 +1455,10 @@ function RiskCalculator() {
             </div>
           </div>
           {accountType === "HFM" && riskPct > 10 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>⚠️ You are risking more than 10% of your HFM account. Reduce your lot size.</div>}
-          {accountType === "HFM" && riskPct > 5 && riskPct <= 10 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk is above 5% — be cautious with your HFM account.</div>}
+          {accountType === "HFM" && riskPct > 5 && riskPct <= 10 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(30,79,216,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk is above 5% — be cautious with your HFM account.</div>}
           {accountType === "Funded" && riskPct > 1.5 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(217,96,96,.12)", border: "1px solid " + C.red + "40", borderRadius: 9, fontSize: 13, color: C.red, textAlign: "center" }}>🚨 DANGER — Over 1.5% risk on a funded account. You risk breaching your drawdown rules.</div>}
-          {accountType === "Funded" && riskPct > 1 && riskPct <= 1.5 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Approaching 1.5% funded account risk limit. Consider reducing size.</div>}
-          {parseFloat(rrRatio) > 0 && parseFloat(rrRatio) < 1.5 && <div style={{ marginTop: 10, padding: "10px 16px", background: "rgba(201,168,76,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk:Reward is below 1:1.5. Look for a better setup.</div>}
+          {accountType === "Funded" && riskPct > 1 && riskPct <= 1.5 && <div style={{ marginTop: 14, padding: "10px 16px", background: "rgba(30,79,216,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Approaching 1.5% funded account risk limit. Consider reducing size.</div>}
+          {parseFloat(rrRatio) > 0 && parseFloat(rrRatio) < 1.5 && <div style={{ marginTop: 10, padding: "10px 16px", background: "rgba(30,79,216,.1)", border: "1px solid " + C.gold + "40", borderRadius: 9, fontSize: 13, color: C.gold, textAlign: "center" }}>⚡ Risk:Reward is below 1:1.5. Look for a better setup.</div>}
         </Card>
       )}
     </div>
@@ -1775,8 +1775,8 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                     <div>
                       <div style={{ fontSize: 11, color: C.gold, letterSpacing: ".18em", textTransform: "uppercase", marginBottom: 10, fontWeight: 700 }}>▶ Continue Watching</div>
                       <div onClick={() => { setCourse(c||null); play(resumeVid); }}
-                        style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "linear-gradient(135deg, rgba(201,168,76,.10), rgba(201,168,76,.03))", border: "1px solid " + C.gold + "40", borderRadius: 14, cursor: "pointer" }}>
-                        <div style={{ width: 46, height: 46, borderRadius: 11, background: C.gold, color: "#1a1200", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>▶</div>
+                        style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "linear-gradient(135deg, rgba(30,79,216,.10), rgba(30,79,216,.03))", border: "1px solid " + C.gold + "40", borderRadius: 14, cursor: "pointer" }}>
+                        <div style={{ width: 46, height: 46, borderRadius: 11, background: C.gold, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>▶</div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: 15, fontWeight: 700, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{resumeVid.title}</div>
                           <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{c ? c.title : ""} · Pick up where you left off</div>
@@ -1812,27 +1812,21 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                 const sects = sections.filter(s => s.courseId === c.id).length;
                 const doneCount = courseVideoList.filter(v => watchedSet.has(v.id)).length;
                 const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
-                const colors = [
-                  `linear-gradient(135deg,${C.goldLt},${C.gold})`,
-                  `linear-gradient(135deg,#1a2e1a,#0a1a0a)`,
-                  `linear-gradient(135deg,#3a1a1a,#1a0a0a)`,
-                  `linear-gradient(135deg,#2a1a3a,#100a1a)`,
-                ];
-                const bg = colors[i % colors.length];
+                const bg = "#FFFFFF";
                 return (
                   <div key={c.id} className="fu" style={{ animationDelay: `${.2 + i * .07}s` }}>
-                    <Card hover onClick={() => openCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex", background: bg, border: `1px solid rgba(201,168,76,.18)` }}>
+                    <Card hover onClick={() => openCourse(c)} style={{ padding: 0, overflow: "hidden", display: "flex", background: bg, border: `1px solid ${C.border}`, boxShadow: "0 1px 3px rgba(17,24,39,.05)" }}>
                       <div style={{ width: 5, background: `linear-gradient(180deg,${C.goldLt},${C.gold})`, flexShrink: 0 }} />
                       <div style={{ flex: 1, padding: "24px 20px 24px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
                             <div style={{ fontFamily: S, fontSize: 22, fontWeight: 700, color: C.white }}>{c.title}</div>
-                            {c.level && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ({"Advanced":"rgba(41,98,255,.15)","Private Mentorship":"rgba(201,168,76,.15)","Free":"rgba(76,184,128,.15)"})[c.level]||"transparent", color: ({"Advanced":"#6B9FFF","Private Mentorship":"#E6C86A","Free":"#4CB880"})[c.level]||C.grey, border: "1px solid " + ({"Advanced":"rgba(41,98,255,.4)","Private Mentorship":"rgba(201,168,76,.4)","Free":"rgba(76,184,128,.4)"})[c.level]||C.border }}>{c.level}</span>}
+                            {c.level && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: ({"Advanced":"rgba(41,98,255,.12)","Private Mentorship":"rgba(30,79,216,.12)","Free":"rgba(5,150,105,.12)"})[c.level]||C.goldDim, color: ({"Advanced":"#2962FF","Private Mentorship":"#1E4FD8","Free":"#059669"})[c.level]||C.grey, border: "1px solid " + ({"Advanced":"rgba(41,98,255,.3)","Private Mentorship":"rgba(30,79,216,.3)","Free":"rgba(5,150,105,.3)"})[c.level]||C.border }}>{c.level}</span>}
                           </div>
                           {c.desc && <div style={{ fontSize: 13, color: C.grey, marginBottom: 14, lineHeight: 1.6 }}>{c.desc}</div>}
                           <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
-                            <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{sects} section{sects !== 1 ? "s" : ""}</span>
-                            <span style={{ background: "rgba(201,168,76,.12)", color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{total} lesson{total !== 1 ? "s" : ""}</span>
+                            <span style={{ background: C.goldDim, color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{sects} section{sects !== 1 ? "s" : ""}</span>
+                            <span style={{ background: C.goldDim, color: C.gold, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{total} lesson{total !== 1 ? "s" : ""}</span>
                           </div>
                           {total > 0 && (
                             <div style={{ marginTop: 14 }}>
@@ -1840,14 +1834,14 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                                 <span style={{ color: pct === 100 ? C.green : C.grey, fontWeight: 600 }}>{pct === 100 ? "✓ Completed" : doneCount + " of " + total + " watched"}</span>
                                 <span style={{ color: pct === 100 ? C.green : C.gold, fontWeight: 700 }}>{pct}%</span>
                               </div>
-                              <div style={{ height: 6, borderRadius: 6, background: "rgba(255,255,255,.10)", overflow: "hidden" }}>
+                              <div style={{ height: 6, borderRadius: 6, background: C.cardHov, overflow: "hidden" }}>
                                 <div style={{ height: "100%", width: pct + "%", borderRadius: 6, background: pct === 100 ? C.green : `linear-gradient(90deg,${C.goldLt},${C.gold})`, transition: "width .4s" }} />
                               </div>
                             </div>
                           )}
                         </div>
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 6px 24px rgba(201,168,76,.3)` }}>
-                          <span style={{ color: "#08090E", fontSize: 22, fontWeight: 900, marginLeft: 3 }}>›</span>
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: `linear-gradient(135deg,${C.goldLt},${C.gold})`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 6px 24px rgba(30,79,216,.3)` }}>
+                          <span style={{ color: "#FFFFFF", fontSize: 22, fontWeight: 900, marginLeft: 3 }}>›</span>
                         </div>
                       </div>
                     </Card>
@@ -1863,7 +1857,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
 
           <div style={{ maxWidth: window.__tafxLayout==="wide" ? "100%" : 720, margin: "0 auto", padding: window.__tafxLayout==="wide" ? "0 48px 40px" : "0 16px 40px" }}>
             {/* Bottom message */}
-            <div style={{ marginTop: 0, padding: "24px", background: "rgba(201,168,76,.05)", border: "1px solid rgba(201,168,76,.12)", borderRadius: 14, textAlign: "center" }}>
+            <div style={{ marginTop: 0, padding: "24px", background: "rgba(30,79,216,.05)", border: "1px solid rgba(30,79,216,.12)", borderRadius: 14, textAlign: "center" }}>
               <p style={{ fontFamily: S, fontSize: 18, color: C.gold, marginBottom: 6, fontStyle: "italic" }}>"The market rewards the prepared mind."</p>
               <p style={{ fontSize: 12, color: C.grey }}>Keep learning. Keep growing. The results will follow.</p>
             </div>
@@ -1896,7 +1890,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                     <span style={{ color: pct === 100 ? C.green : C.grey, fontWeight: 600 }}>{pct === 100 ? "✓ Course completed" : "Your progress"}</span>
                     <span style={{ color: pct === 100 ? C.green : C.gold, fontWeight: 700 }}>{done}/{cVideos.length} · {pct}%</span>
                   </div>
-                  <div style={{ height: 7, borderRadius: 7, background: "rgba(255,255,255,.10)", overflow: "hidden" }}>
+                  <div style={{ height: 7, borderRadius: 7, background: C.cardHov, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: pct + "%", borderRadius: 7, background: pct === 100 ? C.green : `linear-gradient(90deg,${C.goldLt},${C.gold})`, transition: "width .4s" }} />
                   </div>
                 </div>
@@ -2056,7 +2050,7 @@ function Portal({ layout, toggleLayout, user, courses, sections, videos, comment
                 )}
 
                 {(video.notes || video.pdfUrl) && (
-                  <div style={{ background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.15)", borderRadius: 10, padding: "18px 20px", marginBottom: 24 }}>
+                  <div style={{ background: "rgba(30,79,216,.04)", border: "1px solid rgba(30,79,216,.15)", borderRadius: 10, padding: "18px 20px", marginBottom: 24 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".18em", color: C.gold, textTransform: "uppercase", marginBottom: 10 }}>Notes</div>
                     {video.notes && <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: video.pdfUrl ? 14 : 0 }}>{video.notes}</p>}
                     {video.pdfUrl && (
@@ -2364,7 +2358,7 @@ function StudentHomework({ user, homework, hwSubmits = [], addHwSubmit }) {
                         ); })()}
                       </div>
                       {sub.adminFeedback && (
-                        <div style={{ background: "rgba(201,168,76,.06)", border: "1px solid rgba(201,168,76,.25)", borderRadius: 10, padding: "14px 16px" }}>
+                        <div style={{ background: "rgba(30,79,216,.06)", border: "1px solid rgba(30,79,216,.25)", borderRadius: 10, padding: "14px 16px" }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, marginBottom: 6 }}>💬 Coach Taaha — Feedback</div>
                           <p style={{ fontSize: 13, color: C.dim, lineHeight: 1.7 }}>{sub.adminFeedback}</p>
                         </div>
@@ -2538,7 +2532,7 @@ function AdminHomeworkTab({ homework, addHomework, patchHomework, deleteHomework
 const LEVELS = ["Advanced", "Private Mentorship", "1v1", "Beginner", "Free"];
 const LEVEL_COLORS = {
   "Advanced":           { bg: "rgba(41,98,255,.15)",  border: "rgba(41,98,255,.4)",  text: "#6B9FFF" },
-  "Private Mentorship": { bg: "rgba(201,168,76,.15)", border: "rgba(201,168,76,.4)", text: "#E6C86A" },
+  "Private Mentorship": { bg: "rgba(30,79,216,.15)", border: "rgba(30,79,216,.4)", text: "#4B7BF5" },
   "1v1":                { bg: "rgba(255,80,120,.15)", border: "rgba(255,80,120,.4)", text: "#FF7096" },
   "Beginner":           { bg: "rgba(180,80,255,.15)", border: "rgba(180,80,255,.4)", text: "#C96BFF" },
   "Free":               { bg: "rgba(76,184,128,.15)", border: "rgba(76,184,128,.4)", text: "#4CB880" },
@@ -2754,7 +2748,7 @@ const PLAYBOOK_DATA = {
     },
   },
   "PM SESSION MODEL": {
-    color: "#C9A84C",
+    color: "#1E4FD8",
     icon: "🌆",
     tagline: "Lunch hour precision. M1 entries. Maximum discipline.",
     description: "The PM Session Model targets the New York lunch hour (12-1pm US time) and the M15 window (1-1:15pm US time). Entries are on the M1 timeframe using the same MSS and IFVG models as TA and Forever Model.",
@@ -2786,7 +2780,7 @@ const PLAYBOOK_DATA = {
       sections: [
         {
           name: "Lunch Hour Window (12-1pm US)",
-          color: "#C9A84C",
+          color: "#1E4FD8",
           steps: [
             "12:00pm-1:00pm US time — watch the range form",
             "Wait for Lunch High (sell bias) or Lunch Low (buy bias) to be swept",
@@ -3243,7 +3237,7 @@ function WeeklyReview({ user, reviews, addReview, weeklyPrompts }) {
         <h2 style={{ fontFamily: S, fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Weekly Review</h2>
         <p style={{ color: C.grey, fontSize: 14 }}>Reflect. Learn. Improve. The traders who review are the traders who grow.</p>
       </div>
-      <div style={{ background: "linear-gradient(135deg,rgba(201,168,76,.12),rgba(201,168,76,.04))", border: "1px solid " + C.gold + "40", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ background: "linear-gradient(135deg,rgba(30,79,216,.12),rgba(30,79,216,.04))", border: "1px solid " + C.gold + "40", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontFamily: S, fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Current week: {getWeekLabel()}</div>
           <div style={{ fontSize: 13, color: C.grey }}>Complete your review before Sunday midnight</div>
@@ -3458,7 +3452,7 @@ function SecurityTab({ loginSessions, users }) {
 
       {/* Multi-country in 24h */}
       {suspicious.length > 0 && impossibleTravels.length === 0 && (
-        <div style={{ background: "rgba(201,168,76,.08)", border: "1.5px solid rgba(201,168,76,.4)", borderRadius: 14, padding: "16px 20px" }}>
+        <div style={{ background: "rgba(30,79,216,.08)", border: "1.5px solid rgba(30,79,216,.4)", borderRadius: 14, padding: "16px 20px" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
             <span style={{ fontSize: 18 }}>⚠️</span>
             <span style={{ fontFamily: S, fontSize: 15, fontWeight: 700, color: C.gold }}>Multiple Countries — 24h</span>
@@ -3718,7 +3712,7 @@ function SubscriptionsTab({ users, patchUser }) {
           {[
             { label: "Total Monthly Revenue", value: "R" + totalMonthly.toLocaleString(), sub: pm.length + " active members", color: C.white, bg: C.surf },
             { label: "Paid This Month", value: "R" + paidThisMonth.toLocaleString(), sub: pm.filter(u => { const d = getDueDay(u); return d && new Date(today.getFullYear(), today.getMonth(), d) <= today; }).length + " payments received", color: C.green, bg: "rgba(76,184,128,.06)" },
-            { label: "Still Expected", value: "R" + stillExpected.toLocaleString(), sub: pm.filter(u => { const d = getDueDay(u); return d && new Date(today.getFullYear(), today.getMonth(), d) > today; }).length + " payments pending", color: C.gold, bg: "rgba(201,168,76,.06)" },
+            { label: "Still Expected", value: "R" + stillExpected.toLocaleString(), sub: pm.filter(u => { const d = getDueDay(u); return d && new Date(today.getFullYear(), today.getMonth(), d) > today; }).length + " payments pending", color: C.gold, bg: "rgba(30,79,216,.06)" },
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, border: "1px solid " + C.border, borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 10, color: C.grey, letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 8 }}>{s.label}</div>
