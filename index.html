@@ -524,7 +524,12 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
   const decline = id => patchUser(id, { status: "declined" });
   const delUser = id => deleteUser(id);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const refresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? rest.filter(u => (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q))
+    : rest;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
@@ -549,8 +554,16 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
           ))}
         </div>
       )}
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase", marginBottom: 10 }}>All Members ({rest.length})</div>
-      {rest.map(u => (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: C.grey, textTransform: "uppercase" }}>All Members ({q ? filtered.length + " of " + rest.length : rest.length})</div>
+        <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 340 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.faint, fontSize: 13, pointerEvents: "none" }}>🔍</span>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name or email…"
+            style={{ width: "100%", padding: "9px 32px 9px 34px", borderRadius: 9, border: "1.5px solid " + C.border, background: "#FFFFFF", color: C.white, fontSize: 13, outline: "none", fontFamily: D }} />
+          {query && <button onClick={() => setQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.grey, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4 }}>×</button>}
+        </div>
+      </div>
+      {filtered.map(u => (
         <Card key={u.id} style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div>
             <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>{u.name} <Badge status={u.status} /></div>
@@ -563,6 +576,7 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
           </div>
         </Card>
       ))}
+      {rest.length > 0 && filtered.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "30px 0" }}>No members match "{query}".</p>}
       {users.length === 0 && <p style={{ color: C.grey, textAlign: "center", padding: "40px 0" }}>No registered users yet.</p>}
     </div>
   );
