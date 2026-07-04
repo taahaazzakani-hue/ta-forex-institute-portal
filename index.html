@@ -761,6 +761,35 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
   const [dragVid, setDragVid] = React.useState(null);
   const [dragOverVid, setDragOverVid] = React.useState(null);
   const [dragOverSec, setDragOverSec] = React.useState(null);
+  // Bunny.net import
+  const [bunnyList, setBunnyList] = React.useState(null); // null=not loaded, []=loaded empty
+  const [bunnyLoading, setBunnyLoading] = React.useState(false);
+  const [bunnyErr, setBunnyErr] = React.useState("");
+  const [bunnySearch, setBunnySearch] = React.useState("");
+
+  const loadBunny = async () => {
+    setBunnyLoading(true); setBunnyErr("");
+    try {
+      const r = await fetch("/api/bunny-videos");
+      if (!r.ok) {
+        const t = await r.text();
+        throw new Error(r.status === 404 ? "Bunny import isn't set up on the server yet (see setup notes)." : (t || ("Error " + r.status)));
+      }
+      const data = await r.json();
+      setBunnyList(Array.isArray(data.videos) ? data.videos : []);
+    } catch (e) {
+      setBunnyErr(e.message || "Could not reach Bunny. Check the server setup.");
+      setBunnyList(null);
+    } finally { setBunnyLoading(false); }
+  };
+
+  const pickBunny = (bv) => {
+    // Fill the form from a chosen Bunny video: embed URL + title.
+    setVU(bv.embedUrl);
+    if (!vT.trim()) setVT(bv.title || "");
+    setBunnyErr(""); 
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const fSecs = sections.filter(s => s.courseId === vC);
   const detected = vU.trim() ? detect(vU) : null;
@@ -861,6 +890,48 @@ function VideosTab({ courses, sections, videos, addVideo, deleteVideo, patchVide
           <div><label>Description (optional)</label><input value={vD} onChange={e => setVD(e.target.value)} placeholder="Brief summary" /></div>
           {vErr && <div style={{ color: C.red, fontSize: 12 }}>{vErr}</div>}
           <Btn onClick={addVid} style={{ justifySelf: "start" }}>Add Video</Btn>
+
+          {/* ── Import from Bunny.net ── */}
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: "1px solid " + C.border }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase" }}>🐰 Import from Bunny.net</div>
+              <button onClick={loadBunny} disabled={bunnyLoading}
+                style={{ background: "transparent", color: bunnyLoading ? C.faint : C.gold, border: "1px solid " + (bunnyLoading ? C.faint : C.gold) + "60", borderRadius: 8, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: bunnyLoading ? "default" : "pointer" }}>
+                {bunnyLoading ? "Loading…" : bunnyList ? "↻ Refresh list" : "Load my Bunny videos"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: C.grey, marginTop: 6 }}>Click a video below to auto-fill the URL and title above, then pick its course/section and hit Add Video.</div>
+            {bunnyErr && <div style={{ color: C.red, fontSize: 12, marginTop: 8 }}>{bunnyErr}</div>}
+            {bunnyList && bunnyList.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <input value={bunnySearch} onChange={e => setBunnySearch(e.target.value)} placeholder="Filter videos…"
+                  style={{ width: "100%", maxWidth: 320, padding: "8px 12px", borderRadius: 8, border: "1.5px solid " + C.border, background: "#FFFFFF", color: C.white, fontSize: 13, outline: "none", marginBottom: 10 }} />
+                <div style={{ maxHeight: 320, overflowY: "auto", display: "grid", gap: 6 }}>
+                  {bunnyList.filter(bv => !bunnySearch.trim() || (bv.title||"").toLowerCase().includes(bunnySearch.trim().toLowerCase())).map(bv => {
+                    const already = videos.some(v => (v.url||"").includes(bv.guid));
+                    return (
+                      <div key={bv.guid} onClick={() => pickBunny(bv)}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 9, border: "1px solid " + C.border, background: C.card, cursor: "pointer" }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                        {bv.thumbnail
+                          ? <img src={bv.thumbnail} alt="" style={{ width: 72, height: 40, objectFit: "cover", borderRadius: 5, flexShrink: 0, background: C.bg }} />
+                          : <div style={{ width: 72, height: 40, borderRadius: 5, background: C.bg, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎬</div>}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{bv.title || "Untitled"}</div>
+                          <div style={{ fontSize: 10, color: C.faint }}>{bv.length ? Math.floor(bv.length/60) + "m " + (bv.length%60) + "s" : ""}{bv.status !== undefined && bv.status < 4 ? " · still processing" : ""}</div>
+                        </div>
+                        {already
+                          ? <span style={{ fontSize: 10, color: C.faint, flexShrink: 0 }}>added</span>
+                          : <span style={{ fontSize: 11, color: C.gold, fontWeight: 700, flexShrink: 0 }}>Use →</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {bunnyList && bunnyList.length === 0 && !bunnyErr && <div style={{ fontSize: 12, color: C.grey, marginTop: 8 }}>No videos found in your Bunny library.</div>}
+          </div>
         </div>
       </Card>
       {courses.map(course => {
