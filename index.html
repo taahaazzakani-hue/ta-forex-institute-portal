@@ -517,12 +517,25 @@ function AdminAuthScreen({ onBack, onEnter }) {
 }
 
 /* ── ADMIN TABS ─────────────────────────────────────────────────────────── */
+const LEVELS = ["Beginner", "Intermediate", "Advanced", "Private Mentorship"];
+const LEVEL_COLORS = {
+  "Beginner":          "#4CB880",
+  "Intermediate":      "#6B9FFF",
+  "Advanced":          "#C96BFF",
+  "Private Mentorship":"#C9A84C",
+};
+
 function UsersTab({ users, patchUser, deleteUser, loadAll }) {
   const pending = users.filter(u => u.status === "pending");
   const rest    = users.filter(u => u.status !== "pending");
   const approve = id => patchUser(id, { status: "approved" });
   const decline = id => patchUser(id, { status: "declined" });
   const delUser = id => deleteUser(id);
+  const toggleLevel = (u, lvl) => {
+    const cur = u.levels || [];
+    const next = cur.includes(lvl) ? cur.filter(l => l !== lvl) : [...cur, lvl];
+    patchUser(u.id, { levels: next });
+  };
   const [refreshing, setRefreshing] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const refresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
@@ -564,15 +577,34 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
         </div>
       </div>
       {filtered.map(u => (
-        <Card key={u.id} style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-          <div>
-            <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>{u.name} <Badge status={u.status} /></div>
-            <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{u.email}</div>
+        <Card key={u.id} style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>{u.name} <Badge status={u.status} /></div>
+              <div style={{ fontSize: 12, color: C.grey, marginTop: 2 }}>{u.email}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {u.status === "declined" && <Btn onClick={() => approve(u.id)} sz="sm">Approve</Btn>}
+              {u.status === "approved" && <Btn v="danger" onClick={() => decline(u.id)} sz="sm">Revoke</Btn>}
+              <Btn v="outline" onClick={() => delUser(u.id)} sz="sm" style={{ color: C.faint }}>Delete</Btn>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {u.status === "declined" && <Btn onClick={() => approve(u.id)} sz="sm">Approve</Btn>}
-            {u.status === "approved" && <Btn v="danger" onClick={() => decline(u.id)} sz="sm">Revoke</Btn>}
-            <Btn v="outline" onClick={() => delUser(u.id)} sz="sm" style={{ color: C.faint }}>Delete</Btn>
+          {/* Level access toggles */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 10, borderTop: "1px solid " + C.border }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: C.faint, textTransform: "uppercase", marginRight: 2 }}>Access:</span>
+            {LEVELS.map(lvl => {
+              const on = (u.levels || []).includes(lvl);
+              const col = LEVEL_COLORS[lvl];
+              return (
+                <button key={lvl} onClick={() => toggleLevel(u, lvl)}
+                  style={{ padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                    border: "1.5px solid " + (on ? col : C.border),
+                    background: on ? col + "1A" : "transparent",
+                    color: on ? col : C.grey, transition: "all .15s" }}>
+                  {on ? "✓ " : ""}{lvl}
+                </button>
+              );
+            })}
           </div>
         </Card>
       ))}
@@ -583,7 +615,7 @@ function UsersTab({ users, patchUser, deleteUser, loadAll }) {
 }
 
 function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, addSection, deleteSection, patchSection, videos }) {
-  const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState("");
+  const [cT, setCT] = React.useState(""); const [cD, setCD] = React.useState(""); const [cLevel, setCLevel] = React.useState("Beginner");
   const [sT, setST] = React.useState(""); const [sC, setSC] = React.useState("");
   const [addingSubTo, setAddingSubTo] = React.useState(null); const [subTitle, setSubTitle] = React.useState("");
   const [editCourse, setEditCourse] = React.useState(null); const [editCourseTitle, setEditCourseTitle] = React.useState("");
@@ -591,7 +623,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
   const [dragSec, setDragSec] = React.useState(null);
   const [dragOverSec, setDragOverSec] = React.useState(null);
 
-  const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), createdAt: Date.now() }); setCT(""); setCD(""); };
+  const doAddCourse = () => { if (!cT.trim()) return; addCourse({ id: uid(), title: cT.trim(), desc: cD.trim(), level: cLevel, createdAt: Date.now() }); setCT(""); setCD(""); setCLevel("Beginner"); };
   const doAddSec = (isFolder=false, parentId=null, title=null, courseId=null) => {
     const t = title || sT.trim();
     const cid = courseId || sC;
@@ -629,6 +661,7 @@ function CoursesTab({ courses, addCourse, deleteCourse, patchCourse, sections, a
         <div style={{ display: "grid", gap: 14 }}>
           <div><label>Course Title</label><input value={cT} onChange={e => setCT(e.target.value)} placeholder="e.g. Advanced Trading Masterclass" /></div>
           <div><label>Short Description</label><input value={cD} onChange={e => setCD(e.target.value)} placeholder="What students will learn…" /></div>
+          <div><label>Level</label><select value={cLevel} onChange={e => setCLevel(e.target.value)}>{LEVELS.map(l => <option key={l} value={l}>{l}</option>)}</select></div>
           <Btn onClick={doAddCourse} style={{ justifySelf: "start" }}>Create Course</Btn>
         </div>
       </Card>
